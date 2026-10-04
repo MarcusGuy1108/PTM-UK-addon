@@ -4,9 +4,9 @@
   "housing": "ptmuk:block/signal/housing_led",
   "inside": "ptmuk:block/signal/hood_inside",
   "metal": "ptmuk:block/signal/grey_metal",
-  "face": "ptmuk:block/signal/face_7",
+  "face": "ptmuk:block/signal/face_10",
   "sign": "ptmuk:block/signal/sign_ahead_only",
-  "board": "ptmuk:block/signal/board_2",
+  "board": "ptmuk:block/signal/board_3",
   "board_back": "ptmuk:block/signal/grey_metal"
  },
  "elements": [

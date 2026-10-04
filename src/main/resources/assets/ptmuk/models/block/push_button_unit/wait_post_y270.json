@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/push_button_face_wait","housing":"ptmuk:block/signal/push_button_face_wait","face":"ptmuk:block/signal/push_button_face_wait"},"elements":[{"from":[17.97,4.0,5.5],"to":[18.0,12.0,10.5],"faces":{"west":{"texture":"#face","uv":[0,0,16,16]}},"shade":false,"forge_data":{"block_light":15,"sky_light":15}}]}

@@ -1,0 +1,16 @@
+{
+ "variants": {
+  "base=false,cap=false": {
+   "model": "ptmuk:block/signal_pole_black/mid_open"
+  },
+  "base=false,cap=true": {
+   "model": "ptmuk:block/signal_pole_black/mid_cap"
+  },
+  "base=true,cap=false": {
+   "model": "ptmuk:block/signal_pole_black/base_open"
+  },
+  "base=true,cap=true": {
+   "model": "ptmuk:block/signal_pole_black/base_cap"
+  }
+ }
+}

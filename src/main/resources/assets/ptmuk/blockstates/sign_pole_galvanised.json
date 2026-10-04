@@ -1,0 +1,16 @@
+{
+ "variants": {
+  "base=false,cap=false": {
+   "model": "ptmuk:block/sign_pole_galvanised/mid_open"
+  },
+  "base=false,cap=true": {
+   "model": "ptmuk:block/sign_pole_galvanised/mid_cap"
+  },
+  "base=true,cap=false": {
+   "model": "ptmuk:block/sign_pole_galvanised/base_open"
+  },
+  "base=true,cap=true": {
+   "model": "ptmuk:block/sign_pole_galvanised/base_cap"
+  }
+ }
+}

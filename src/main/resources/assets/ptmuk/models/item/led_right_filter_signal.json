@@ -9,7 +9,7 @@
   "face1": "ptmuk:block/signal/face_0",
   "face2": "ptmuk:block/signal/face_0",
   "face3": "ptmuk:block/signal/face_0",
-  "board": "ptmuk:block/signal/board_1",
+  "board": "ptmuk:block/signal/board_2",
   "board_back": "ptmuk:block/signal/grey_metal",
   "led_red_on": "ptmuk:block/signal/led_red_on",
   "led_amber_off": "ptmuk:block/signal/led_amber_off",

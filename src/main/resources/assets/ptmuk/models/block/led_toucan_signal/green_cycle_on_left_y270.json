@@ -1,1 +1,0 @@
-{"textures":{"particle":"ptmuk:block/signal/led_green_cycle_on","glass":"ptmuk:block/signal/led_green_cycle_on","lens":"ptmuk:block/signal/led_green_cycle_on"},"elements":[{"from":[6.8,3.8,-1.5],"to":[6.85,8.0,2.7],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}},"shade":false,"forge_data":{"block_light":15,"sky_light":15}}]}

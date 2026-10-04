@@ -5,7 +5,7 @@
   "inside": "ptmuk:block/signal/hood_inside",
   "metal": "ptmuk:block/signal/grey_metal",
   "lens": "ptmuk:block/signal/hood_inside",
-  "face0": "ptmuk:block/signal/face_4",
+  "face0": "ptmuk:block/signal/face_8",
   "classic_red_man_off": "ptmuk:block/signal/classic_red_man_off",
   "classic_green_man_on": "ptmuk:block/signal/classic_green_man_on"
  },

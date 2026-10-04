@@ -1,8 +1,13 @@
 {
  "itemGroup.ptmuk.main": "PTM UK Addon",
+ "block.ptmuk.signal_pole_black": "UK Traffic Signal Pole (Black)",
+ "block.ptmuk.signal_pole_grey": "UK Traffic Signal Pole (Galvanised)",
+ "block.ptmuk.sign_pole_galvanised": "UK Sign Pole (Galvanised)",
+ "block.ptmuk.sign_pole_black": "UK Sign Pole (Black)",
  "block.ptmuk.led_signal": "UK Traffic Signal (LED)",
  "block.ptmuk.led_tunnel_signal": "UK Traffic Signal (LED, Tunnel Hoods)",
  "block.ptmuk.classic_signal": "UK Traffic Signal (Classic Bulb)",
+ "block.ptmuk.classic_large_green_signal": "UK Traffic Signal (Classic Bulb, Large Green)",
  "block.ptmuk.led_left_arrow_signal": "UK Left Arrow Signal (LED)",
  "block.ptmuk.led_tunnel_left_arrow_signal": "UK Left Arrow Signal (LED, Tunnel Hoods)",
  "block.ptmuk.classic_left_arrow_signal": "UK Left Arrow Signal (Classic Bulb)",

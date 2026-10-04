@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import numpy as np  # noqa: E402
 import signal_textures as T  # noqa: E402
 
 MOD_ID = "ptmuk"
@@ -28,9 +29,10 @@ DATA = ROOT / "src/main/resources/data"
 
 # Must match SignalType / SignalStyle / AccessoryType / ModBlocks.stylesFor in Java.
 STYLES = ["led", "led_tunnel", "classic"]
+ALL_STYLES = STYLES + ["classic_large_green"]
 SIGNAL_TYPES = {
     # type id: (styles, layout, boardable)
-    "signal": (STYLES, "standard", True),
+    "signal": (ALL_STYLES, "standard", True),
     "left_arrow_signal": (STYLES, "left_arrow", True),
     "right_arrow_signal": (STYLES, "right_arrow", True),
     "ahead_arrow_signal": (STYLES, "ahead_arrow", True),
@@ -41,6 +43,13 @@ SIGNAL_TYPES = {
     "pelican_signal": (["led", "classic"], "pelican", False),
     "puffin_signal": (["led"], "puffin", False),
     "toucan_signal": (["led"], "toucan", False),
+}
+POLES = {
+    # id: (radius px, surface, collar at the foot, cap style, name)
+    "signal_pole_black": (1.85, "black", True, "dome", "UK Traffic Signal Pole (Black)"),
+    "signal_pole_grey": (1.85, "galvanised", True, "dome", "UK Traffic Signal Pole (Galvanised)"),
+    "sign_pole_galvanised": (1.25, "galvanised", False, "plastic", "UK Sign Pole (Galvanised)"),
+    "sign_pole_black": (1.25, "black", False, "plastic", "UK Sign Pole (Black)"),
 }
 ACCESSORIES = {
     "no_left_turn_sign": "sign",
@@ -54,7 +63,12 @@ ACCESSORIES = {
     "push_button_unit": "push_button",
 }
 
-STYLE_NAMES = {"led": "LED", "led_tunnel": "LED, Tunnel Hoods", "classic": "Classic Bulb"}
+STYLE_NAMES = {"led": "LED", "led_tunnel": "LED, Tunnel Hoods", "classic": "Classic Bulb",
+               "classic_large_green": "Classic Bulb, Large Green"}
+
+
+def is_bulb(style):
+    return style.startswith("classic")
 TYPE_NAMES = {
     "signal": "UK Traffic Signal",
     "left_arrow_signal": "UK Left Arrow Signal",
@@ -82,12 +96,18 @@ ACCESSORY_NAMES = {
 
 # Offsets (in pixels) of the head for each PTM2 attachment, copied from PTM2's light models.
 ATTACHMENTS = ["center", "wall", "left", "right", "post", "left_post", "right_post"]
+# Post mounts sit 1 px further from the pole than PTM2's own lights, leaving the small gap
+# real UK heads have between head and pole, bridged by clamp brackets (see clamps()).
 STRAIGHT_OFFSET = {
     "center": (0, 0), "wall": (0, 5), "left": (5, 0), "right": (-5, 0),
-    "post": (0, 11), "left_post": (11, 0), "right_post": (-11, 0),
+    "post": (0, 10), "left_post": (10, 0), "right_post": (-10, 0),
 }
 # Diagonal (45 degree) placements only ever use these three attachments.
-DIAGONAL_OFFSET = {"center": 0.0, "wall": 9.3, "post": 17.4}
+DIAGONAL_OFFSET = {"center": 0.0, "wall": 9.3, "post": 16.4}
+# Where the pole is, in the head's own (centre) frame, for each post mount.
+POLE_IN_FRAME = {"post": (8, 14), "post45": (8, 8 + 16 * math.sqrt(2) - 16.4),
+                 "left_post": (14, 8), "right_post": (2, 8)}
+CLAMP_R = 2.05
 
 
 def placements():
@@ -119,12 +139,16 @@ def write_textures():
     if TEX.exists():
         shutil.rmtree(TEX)
     t = {}
-    for style in STYLES:
+    for style in ALL_STYLES:
         t[f"housing_{style}"] = save(T.housing(style), f"signal/housing_{style}")
     t["hood_inside"] = save(T.hood_inside(), "signal/hood_inside")
     t["grey_metal"] = save(T.grey_metal(), "signal/grey_metal")
     t["detector_lens"] = save(T.detector_lens(), "signal/detector_lens")
-    t["push_button"] = save(T.push_button_face(), "signal/push_button_face")
+    t["push_button"] = save(T.push_button_face(False), "signal/push_button_face")
+    t["push_button_wait"] = save(T.push_button_face(True), "signal/push_button_face_wait")
+    t["yellow_plastic"] = save(T.yellow_plastic(), "signal/yellow_plastic")
+    for surface in ("black", "galvanised", "plastic"):
+        t[f"pole_{surface}"] = save(T.pole(surface), f"pole/{surface}")
 
     arrows = {d: T.arrow_mask(d) for d in ("left", "right", "ahead")}
     bike, standing, walking = T.bicycle_mask(), T.standing_man_mask(), T.walking_man_mask()
@@ -142,6 +166,17 @@ def write_textures():
             for lit in (True, False):
                 key = f"{prefix}_{name}_{'on' if lit else 'off'}"
                 t[key] = save(T.square_lens(colour, lit, m, prefix), f"signal/{key}")
+        if prefix == "led":
+            # round LED pedestrian aspects (square module, round lens, cowl)
+            man_r, man_g = T.fit_mask(standing, 0.72), T.fit_mask(walking, 0.72)
+            toucan = np.maximum(T.fit_mask(walking, 0.46, -0.2), T.fit_mask(bike, 0.42, 0.19))
+            for name, colour, m in (("red_man", "red", man_r), ("green_man", "green", man_g), ("green_toucan", "green", toucan)):
+                for lit in (True, False):
+                    key = f"led_round_{name}_{'on' if lit else 'off'}"
+                    t[key] = save(T.lens_led(colour, lit, symbol=m), f"signal/{key}")
+            t["led_round_green_man_flash"] = save(T.flash(T.lens_led("green", True, symbol=man_g),
+                                                          T.lens_led("green", False, symbol=man_g)),
+                                                  "signal/led_round_green_man_flash", 10)
         t[f"{prefix}_green_man_flash"] = save(T.flash(T.square_lens("green", True, walking, prefix),
                                                       T.square_lens("green", False, walking, prefix)),
                                               f"signal/{prefix}_green_man_flash", 10)
@@ -165,19 +200,21 @@ def faceplate_ref(style, rect, lenses):
     x1, y1, x2, y2 = rect
     inside = tuple((round(cx - x1, 3), round(cy - y1, 3), dia, rnd) for _, cx, cy, dia, rnd in lenses
                    if x1 <= cx <= x2 and y1 <= cy <= y2)
-    key = (style if style == "classic" else "led", round(x2 - x1, 3), round(y2 - y1, 3), inside)
+    key = ("classic" if is_bulb(style) else "led", round(x2 - x1, 3), round(y2 - y1, 3), inside)
     if key not in FACEPLATES:
         FACEPLATES[key] = save(T.faceplate(key[0], key[1], key[2], inside), f"signal/face_{len(FACEPLATES)}")
     return FACEPLATES[key]
 
 
 BOARDS = {}
+BOARD_FILL = {"classic_large_green": (112, 115, 118)}   # older light grey boards
 
 
-def board_ref(w, h):
-    key = (round(w, 2), round(h, 2))
+def board_ref(w, h, style="led"):
+    fill = BOARD_FILL.get(style, (44, 46, 49))
+    key = (round(w, 2), round(h, 2), fill)
     if key not in BOARDS:
-        BOARDS[key] = save(T.board(*key), f"signal/board_{len(BOARDS)}")
+        BOARDS[key] = save(T.board(key[0], key[1], fill=fill), f"signal/board_{len(BOARDS)}")
     return BOARDS[key]
 
 
@@ -231,9 +268,10 @@ LENS_Z = 6.8      # lens face, just in front of the faceplate
 FACE_Z = 6.9      # faceplate front
 
 
-def lens(cx, cy, dia, tex_key, emissive):
+def lens(cx, cy, dia, tex_key, emissive, forward=0.0):
     r = dia / 2
-    return box((cx - r, cy - r, LENS_Z), (cx + r, cy + r, LENS_Z + 0.05), "#lens", faces=("north",),
+    z = LENS_Z - forward
+    return box((cx - r, cy - r, z), (cx + r, cy + r, z + 0.05), "#lens", faces=("north",),
                front=f"#{tex_key}", emissive=emissive, full_front_uv=True)
 
 
@@ -270,8 +308,14 @@ def layout(kind):
         return [("cycle_" + a, x, y, d, r) for a, x, y, d, r in std]
     if kind == "low_level_cycle":
         return [("cycle_red", 8, 10.4, 2.7, True), ("cycle_amber", 8, 7.1, 2.7, True), ("cycle_green", 8, 3.8, 2.7, True)]
+    if kind == "large_green":
+        return [("red", 8, 13.45, 3.6, True), ("amber", 8, 9.25, 3.6, True), ("green", 8, 3.55, 5.6, True)]
     if kind == "pelican":
         return [("red_man", 8, 12.0, 5.0, False), ("green_man", 8, 5.9, 5.0, False)]
+    if kind == "pelican_round":
+        return [("red_man", 8, 12.35, 5.2, True), ("green_man", 8, 5.65, 5.2, True)]
+    if kind == "toucan_round":
+        return [("red_man", 8, 12.35, 5.2, True), ("green_toucan", 8, 5.65, 5.2, True)]
     if kind == "puffin":
         return [("red_man", 8, 11.6, 3.4, False), ("green_man", 8, 7.9, 3.4, False)]
     if kind == "toucan":
@@ -285,6 +329,10 @@ def module_rects(kind):
     exactly, so no flickering coplanar faces), one box for pedestrian and small heads."""
     if kind == "pelican":
         return [(4.5, 2.6, 11.5, 15.3)]
+    if kind in ("pelican_round", "toucan_round"):
+        return [(4.4, 2.0, 11.6, 9.0), (4.4, 9.0, 11.6, 16.0)]
+    if kind == "large_green":
+        return [(4.6, 0.0, 11.4, 7.0), (5.65, 7.0, 10.35, 11.35), (5.65, 11.35, 10.35, 15.55)]
     if kind == "toucan":
         return [(2.9, 3.0, 13.1, 15.0)]
     if kind == "puffin":
@@ -351,6 +399,10 @@ def hood(style, kind, cx, cy, dia, rnd):
         # Helios-style cowl: deep at the top, cut back towards the sides, open underneath
         return hood_ring(cx, cy, r, steps(-22.5, 202.5),
                          lambda p: 2.9 * (0.36 + 0.64 * max(0.0, math.sin(math.radians(p)))))
+    if style == "classic_large_green":
+        # older "pods": long at the top, cut back steeply towards the bottom
+        return hood_ring(cx, cy, r + 0.05, steps(-67.5, 247.5),
+                         lambda p: dia * 0.95 * (0.35 + 0.65 * (math.sin(math.radians(p)) + 1) / 2), t=0.34)
     if style == "led_tunnel":
         return hood_ring(cx, cy, r, steps(-67.5, 247.5), lambda p: 4.8 * (0.84 + 0.16 * math.sin(math.radians(p))))
     # classic: deep full tube with a slot at the bottom for drainage
@@ -364,7 +416,7 @@ def body_elements(style, kind):
     h = "#housing"
     lenses = layout(kind)
     rects = module_rects(kind)
-    classic = style == "classic"
+    classic = is_bulb(style)
     for i, (x1, y1, x2, y2) in enumerate(rects):
         var = f"face{i}"
         faces[var] = faceplate_ref(style, (x1, y1, x2, y2), lenses)
@@ -391,6 +443,30 @@ def body_elements(style, kind):
     for _, cx, cy, dia, rnd in lenses:
         els += hood(style, kind, cx, cy, dia, rnd)
     return els, faces
+
+
+def clamps(geometry, heights, back=11.0, half_width=3.0):
+    """Clamp brackets for post mounts: an arm from the head to a strap ring around the pole,
+    one per height. Built in the head's centre frame; place() then shifts them with the head."""
+    if geometry not in POLE_IN_FRAME:
+        return []
+    px, pz = POLE_IN_FRAME[geometry]
+    R, t, h = CLAMP_R, 0.3, 0.7
+    els = []
+    for y in heights:
+        # strap ring around the pole
+        els += [box((px - R - t, y, pz - R - t), (px + R + t, y + h, pz - R), "#metal"),
+                box((px - R - t, y, pz + R), (px + R + t, y + h, pz + R + t), "#metal"),
+                box((px - R - t, y, pz - R), (px - R, y + h, pz + R), "#metal"),
+                box((px + R, y, pz - R), (px + R + t, y + h, pz + R), "#metal")]
+        # arm from the head to the strap
+        if geometry in ("post", "post45"):
+            els.append(box((px - 0.5, y, back), (px + 0.5, y + h, pz - R - t), "#metal"))
+        elif geometry == "left_post":
+            els.append(box((8 + half_width, y, 7.5), (px - R - t, y + h, 8.5), "#metal"))
+        else:
+            els.append(box((px + R + t, y, 7.5), (8 - half_width, y + h, 8.5), "#metal"))
+    return els
 
 
 def board_dims(kind):
@@ -423,6 +499,7 @@ def lens_looks(kind, state, red_amber):
             lit["green_man"] = "on"
             if kind == "toucan":
                 lit["green_cycle"] = "on"
+                lit["green_toucan"] = "on"
         elif m == 5:
             if kind == "pelican":
                 lit["green_man"] = "flash"      # flashing green man
@@ -448,8 +525,10 @@ def lens_looks(kind, state, red_amber):
     return lit
 
 
-def lens_texture(style, aspect, look):
-    prefix = "classic" if style == "classic" else "led"
+def lens_texture(style, aspect, look, round_ped=False):
+    prefix = "classic" if is_bulb(style) else "led"
+    if round_ped:
+        return f"led_round_{aspect}_{look}"
     if look == "flash":
         return f"{prefix}_{aspect}_flash"
     if aspect.startswith("cycle_"):
@@ -483,9 +562,21 @@ def common_textures(style, tex):
     }
 
 
+def geometry_kind(style, kind):
+    """Which layout a head uses: some styles change the aspect sizes (large green pod) or
+    lens shape (round LED pedestrian aspects)."""
+    if style == "classic_large_green":
+        return "large_green"
+    if style == "led" and kind in ("pelican", "toucan"):
+        return kind + "_round"
+    return kind
+
+
 def write_signal(block, style, kind, boardable, tex):
     textures = common_textures(style, tex)
-    aspects = layout(kind)
+    gkind = geometry_kind(style, kind)
+    round_ped = gkind.endswith("_round")
+    aspects = layout(gkind)
 
     usage = set()
     for state in range(16):
@@ -494,23 +585,30 @@ def write_signal(block, style, kind, boardable, tex):
             for aspect, *_ in aspects:
                 usage.add((aspect, lit.get(aspect, "off")))
 
-    body, faces = body_elements(style, kind)
+    body, faces = body_elements(style, gkind)
     textures.update(faces)
     board_tex = board_els = None
     if boardable:
-        bx1, by1, bx2, by2 = board_dims(kind)
-        board_tex = board_ref(bx2 - bx1, by2 - by1)
+        bx1, by1, bx2, by2 = board_dims(gkind)
+        board_tex = board_ref(bx2 - bx1, by2 - by1, style)
         board_els = board_elements(bx1, by1, bx2, by2)
+    x1, y1, x2, y2 = head_bbox(gkind)
+    clamp_heights = (y1 + 1.6, y2 - 2.3) if y2 - y1 > 8 else ((y1 + y2) / 2 - 0.35,)
     for geometry, diagonal, attachment in GEOMETRIES:
-        parts = {"body": model(textures, place(body, attachment, diagonal))}
+        mounted = body + clamps(geometry, clamp_heights, half_width=(x2 - x1) / 2)
+        parts = {"body": model(textures, place(mounted, attachment, diagonal))}
         if boardable:
             parts["board"] = model({"particle": board_tex, "board": board_tex, "board_back": tex["grey_metal"]},
                                    place(board_els, attachment, diagonal), cutout=True)
         for aspect, look in usage:
             _, cx, cy, dia, rnd = next(x for x in aspects if x[0] == aspect)
-            key = lens_texture(style, aspect, look)
+            key = lens_texture(style, aspect, look, round_ped)
             parts[f"{aspect}_{look}"] = model({"particle": tex[key], "glass": tex[key], "lens": tex[key]},
-                                              place([lens(cx, cy, dia, "glass", look != "off")], attachment, diagonal),
+                                              # classic lit lenses are drawn over the unlit ones by
+                                              # ClassicLampRenderer, so sit them just in front
+                                              place([lens(cx, cy, dia, "glass", look != "off",
+                                                          forward=0.03 if is_bulb(style) and look != "off" else 0.0)],
+                                                    attachment, diagonal),
                                               cutout=rnd)
         write_parts(block, geometry, diagonal, parts)
 
@@ -521,7 +619,7 @@ def write_signal(block, style, kind, boardable, tex):
                 continue
             lit = lens_looks(kind, state, ra)
             looks[f"{state}+ra" if ra else str(state)] = {a: lit.get(a, "off") for a, *_ in aspects}
-    INDEX[block] = {"board": boardable, "aspects": [a for a, *_ in aspects], "looks": looks}
+    INDEX[block] = {"board": boardable, "fade": is_bulb(style), "aspects": [a for a, *_ in aspects], "looks": looks}
     write_json(ASSETS / f"blockstates/{block}.json", {"variants": {"": {"model": f"{MOD_ID}:block/{block}/body_center_y0"}}})
 
     # item: centre placement showing a representative aspect
@@ -536,7 +634,7 @@ def write_signal(block, style, kind, boardable, tex):
     for aspect, cx, cy, dia, _ in aspects:
         look = lit.get(aspect, "off")
         look = "on" if look == "flash" else look
-        k = lens_texture(style, aspect, look)
+        k = lens_texture(style, aspect, look, round_ped)
         item_tex[k] = tex[k]
         els.append(lens(cx, cy, dia, k, look != "off"))
     write_item(block, model(item_tex, els, cutout=True), small=kind in ("puffin", "low_level_cycle"))
@@ -621,30 +719,83 @@ def accessory_parts(kind, name, tex):
                box((5.8, 4.6, 6.2), (10.2, 4.95, 10.8), "#housing")]                 # rain lip
         return els, textures, None
     if kind == "push_button":
-        textures["face"] = tex["push_button"]
-        els = [box((5.5, 4.0, 8.0), (10.5, 12.0, 11.0), "#housing", front="#face", full_front_uv=True),
-               box((5.7, 12.0, 8.2), (10.3, 12.3, 10.8), "#housing"),
-               box((6.6, 3.2, 8.6), (9.4, 4.0, 10.4), "#housing"),                   # tactile cone housing
-               box((7.6, 2.9, 9.2), (8.4, 3.2, 9.9), "#metal")]
+        textures.update({"face": tex["push_button"], "yellow": tex["yellow_plastic"]})
+        els = [box((5.5, 4.0, 8.2), (10.5, 12.0, 11.0), "#housing", faces=("east", "west", "up", "down", "south")),
+               box((5.5, 4.0, 8.0), (10.5, 12.0, 8.2), "#housing", front="#face", full_front_uv=True),
+               box((5.75, 4.25, 8.6), (10.25, 11.75, 11.25), "#housing"),             # rounded back shell
+               # yellow tactile cones underneath
+               box((6.0, 3.5, 8.4), (7.1, 4.0, 9.4), "#yellow"),
+               box((8.9, 3.5, 8.4), (10.0, 4.0, 9.4), "#yellow")]
         return els, textures, None
     raise ValueError(kind)
 
 
 def write_accessory(name, kind, tex):
     els, textures, board = accessory_parts(kind, name, tex)
+    clamp_heights = {"sign": (12.6,), "push_button": (5.2, 10.0)}.get(kind, ())
     for geometry, diagonal, attachment in GEOMETRIES:
-        parts = {"body": model(textures, place(els, attachment, diagonal))}
+        mounted = els + clamps(geometry, clamp_heights, half_width=2.5)
+        parts = {"body": model(textures, place(mounted, attachment, diagonal))}
         if board:
             parts["board"] = model({"particle": board[1], "board": board[1], "board_back": tex["grey_metal"]},
                                    place(board[0], attachment, diagonal), cutout=True)
         write_parts(name, geometry, diagonal, parts)
-    INDEX[name] = {"board": board is not None, "aspects": [], "looks": {}}
+    INDEX[name] = {"board": board is not None, "wait": kind == "push_button", "aspects": [], "looks": {}}
+    if kind == "push_button":
+        # lit WAIT panel, shown while the button has been pressed
+        wait = box((5.5, 4.0, 7.97), (10.5, 12.0, 8.0), "#housing", faces=("north",), front="#face",
+                   emissive=True, full_front_uv=True)
+        wait_tex = {"particle": tex["push_button_wait"], "housing": tex["push_button_wait"], "face": tex["push_button_wait"]}
+        for geometry, diagonal, attachment in GEOMETRIES:
+            write_parts(name, geometry, diagonal, {"wait": model(wait_tex, place([wait], attachment, diagonal))})
     write_json(ASSETS / f"blockstates/{name}.json", {"variants": {"": {"model": f"{MOD_ID}:block/{name}/body_center_y0"}}})
     item_els, item_tex = list(els), dict(textures)
     if board:
         item_els += board[0]
         item_tex.update({"board": board[1], "board_back": tex["grey_metal"]})
     write_item(name, model(item_tex, item_els, cutout=bool(board)), small=True)
+
+
+# ---- poles
+
+def round_column(r, y1, y2, tex, faces=("north", "east", "south", "west")):
+    """A 16-sided column: four square prisms turned 0 / 22.5 / 45 / -22.5 degrees."""
+    a = r * math.cos(math.radians(11.25))
+    els = []
+    for ang in (0, 22.5, 45, -22.5):
+        els.append(box((8 - a, y1, 8 - a), (8 + a, y2, 8 + a), tex, faces=faces,
+                       rotation=("y", ang, (8, 8, 8)) if ang else None))
+    return els
+
+
+def write_pole(name, radius, surface, collar, cap, tex):
+    textures = {"particle": tex[f"pole_{surface}"], "pole": tex[f"pole_{surface}"], "plastic": tex["pole_plastic"]}
+    body = round_column(radius, 0, 16, "#pole")
+    variants = {}
+    for base in (False, True):
+        for top in (False, True):
+            els = list(body)
+            if base and collar:
+                els += round_column(radius + 0.55, 0, 3.6, "#pole", faces=("north", "east", "south", "west", "up"))
+                els += round_column(radius + 0.3, 3.6, 4.0, "#pole", faces=("north", "east", "south", "west", "up"))
+            if top:
+                if cap == "dome":
+                    els += round_column(radius + 0.12, 15.2, 16.0, "#pole", faces=("north", "east", "south", "west", "up"))
+                    els += round_column(radius * 0.7, 16.0, 16.35, "#pole", faces=("north", "east", "south", "west", "up"))
+                else:
+                    els += round_column(radius + 0.1, 15.3, 16.1, "#plastic", faces=("north", "east", "south", "west", "up"))
+            model_name = f"{name}/{'base' if base else 'mid'}_{'cap' if top else 'open'}"
+            write_json(ASSETS / f"models/block/{model_name}.json", model(textures, els), compact=True)
+            variants[f"base={str(base).lower()},cap={str(top).lower()}"] = {"model": f"{MOD_ID}:block/{model_name}"}
+    write_json(ASSETS / f"blockstates/{name}.json", {"variants": variants})
+    item = {"parent": f"{MOD_ID}:block/{name}/base_cap", "display": {
+        "gui": {"rotation": [30, 225, 0], "scale": [0.625, 0.625, 0.625]},
+        "ground": {"translation": [0, 3, 0], "scale": [0.25, 0.25, 0.25]},
+        "fixed": {"scale": [0.5, 0.5, 0.5]},
+        "thirdperson_righthand": {"rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.375, 0.375, 0.375]},
+        "firstperson_righthand": {"rotation": [0, 45, 0], "scale": [0.4, 0.4, 0.4]},
+        "firstperson_lefthand": {"rotation": [0, 225, 0], "scale": [0.4, 0.4, 0.4]}}}
+    write_json(ASSETS / f"models/item/{name}.json", item)
 
 
 # =================================================================== data + lang
@@ -657,6 +808,8 @@ def all_signal_blocks():
 
 def write_lang():
     lang = {"itemGroup.ptmuk.main": "PTM UK Addon"}
+    for name, (*_, title) in POLES.items():
+        lang[f"block.{MOD_ID}.{name}"] = title
     for block, style, type_id, _, _ in all_signal_blocks():
         lang[f"block.{MOD_ID}.{block}"] = f"{TYPE_NAMES[type_id]} ({STYLE_NAMES[style]})"
     for name in ACCESSORIES:
@@ -666,7 +819,7 @@ def write_lang():
 
 def write_data():
     signals = [f"{MOD_ID}:{b}" for b, *_ in all_signal_blocks()]
-    everything = signals + [f"{MOD_ID}:{n}" for n in ACCESSORIES]
+    everything = [f"{MOD_ID}:{n}" for n in POLES] + signals + [f"{MOD_ID}:{n}" for n in ACCESSORIES]
     loot = DATA / MOD_ID / "loot_tables"
     if loot.exists():
         shutil.rmtree(loot)
@@ -690,6 +843,8 @@ def main():
         write_signal(block, style, kind, boardable, tex)
     for name, kind in ACCESSORIES.items():
         write_accessory(name, kind, tex)
+    for name, (radius, surface, collar, cap, _) in POLES.items():
+        write_pole(name, radius, surface, collar, cap, tex)
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)
     write_lang()
     write_data()

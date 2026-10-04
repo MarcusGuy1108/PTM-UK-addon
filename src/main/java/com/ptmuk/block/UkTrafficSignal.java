@@ -10,6 +10,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
@@ -53,6 +54,12 @@ public class UkTrafficSignal extends TrafficLight {
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);
         builder.add(RED_AMBER, BOARD);
+    }
+
+    /** Classic (bulb) heads get a block entity so the client can fade the lamps. */
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return style.isBulb() ? new ClassicLampBlockEntity(pos, state) : super.newBlockEntity(pos, state);
     }
 
     /** Sneak + right-click with an empty hand adds or removes the backing board. */

@@ -7,7 +7,9 @@ public enum SignalStyle {
     /** Modern LED heads with long tunnel hoods. */
     LED_TUNNEL("led_tunnel"),
     /** Older incandescent bulb heads with deep hoods and fresnel lenses. */
-    CLASSIC("classic");
+    CLASSIC("classic"),
+    /** Older bulb heads with small red / amber aspects over a large 300 mm green "pod". */
+    CLASSIC_LARGE_GREEN("classic_large_green");
 
     private final String id;
 
@@ -17,5 +19,10 @@ public enum SignalStyle {
 
     public String id() {
         return id;
+    }
+
+    /** Incandescent heads fade their lamps on and off (see ClassicLampRenderer). */
+    public boolean isBulb() {
+        return this == CLASSIC || this == CLASSIC_LARGE_GREEN;
     }
 }

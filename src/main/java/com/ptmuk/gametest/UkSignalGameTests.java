@@ -14,7 +14,15 @@ import com.rinventor.ptm2.packets.sync.TrafficLightClientboundPacket;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import com.rinventor.ptm2.core.properties.TrafficLightStates;
+import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -116,6 +124,28 @@ public class UkSignalGameTests {
         player.setShiftKeyDown(true);
         helper.useBlock(SIGNAL, player);
         helper.assertFalse(helper.getBlockState(SIGNAL).getValue(UkTrafficSignal.BOARD), "sneak + right-click should remove the board");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty5x4x5")
+    public static void headsMountOnUkPoles(GameTestHelper helper) {
+        // poles on all four sides, so whichever way the player faces PTM2 should find a post
+        for (BlockPos side : new BlockPos[]{SIGNAL.north(), SIGNAL.south(), SIGNAL.east(), SIGNAL.west()}) {
+            helper.setBlock(side, ModBlocks.POLES.get("signal_pole_black").get());
+        }
+        Player player = helper.makeMockPlayer();
+        player.setYRot(180);
+        ItemStack stack = new ItemStack(ModBlocks.signal(SignalStyle.LED, SignalType.STANDARD).get());
+        BlockPos below = helper.absolutePos(SIGNAL.below());
+        helper.setBlock(SIGNAL.below(), Blocks.STONE);
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        stack.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND,
+                new BlockHitResult(Vec3.atCenterOf(below).add(0, 0.5, 0), Direction.UP, below, false)));
+        BlockState placed = helper.getBlockState(SIGNAL);
+        helper.assertTrue(placed.getBlock() instanceof UkTrafficSignal, "signal was not placed: " + placed);
+        TrafficLightStates attachment = placed.getValue(UkTrafficSignal.ATTACHMENT);
+        helper.assertTrue(attachment == TrafficLightStates.POST || attachment == TrafficLightStates.LEFT_POST
+                || attachment == TrafficLightStates.RIGHT_POST, "head should mount on the UK pole, got " + attachment);
         helper.succeed();
     }
 

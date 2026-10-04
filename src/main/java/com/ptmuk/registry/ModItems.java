@@ -14,10 +14,11 @@ import net.minecraftforge.registries.RegistryObject;
 public final class ModItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, PtmUk.MOD_ID);
 
-    /** Block items in creative-tab order: signals first, then accessories. */
+    /** Block items in creative-tab order: poles, signals, then accessories. */
     public static final List<RegistryObject<Item>> BLOCK_ITEMS = new ArrayList<>();
 
     static {
+        register(ModBlocks.POLES);
         register(ModBlocks.SIGNALS);
         register(ModBlocks.ACCESSORIES);
     }

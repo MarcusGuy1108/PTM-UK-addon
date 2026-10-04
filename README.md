@@ -10,7 +10,7 @@ All of them are real PTM2 traffic lights: PTM2's intersection controller switche
 
 | Head | LED | LED, tunnel hoods | Classic bulb |
 |---|:-:|:-:|:-:|
-| Signal (red / amber / green) | ✓ | ✓ | ✓ |
+| Signal (red / amber / green) | ✓ | ✓ | ✓ (also with large green "pod") |
 | Left / right / ahead green-arrow signal | ✓ | ✓ | ✓ |
 | Left / right filter signal (extra green filter arrow) | ✓ | ✓ | ✓ |
 | Cycle signal (bicycle symbols) | ✓ | | |
@@ -21,7 +21,10 @@ All of them are real PTM2 traffic lights: PTM2's intersection controller switche
 
 - **LED**: modern LED heads with short angled cowls.
 - **LED, tunnel hoods**: LED heads with long tunnel hoods.
-- **Classic bulb**: older incandescent heads with deep hoods, fresnel lenses and a visible bulb.
+- **Classic bulb**: older incandescent heads with deep hoods, fresnel lenses and a visible bulb. Their lamps **fade** on and off like real filament bulbs; LED heads switch instantly.
+- **Classic bulb, large green**: older layout with small red and amber aspects over a big 300 mm green "pod", on a light grey board.
+
+LED pedestrian heads have round dot-matrix lenses with cowls, as on current UK crossings.
 
 Vehicle heads come with a grey backing board with a white border. **Sneak + right-click with an empty hand** removes or adds the board.
 
@@ -31,13 +34,22 @@ They show the proper UK sequence: **red → red + amber → green → amber → 
 - Puffin heads show the red man during clearance.
 - Toucan heads go blank during clearance.
 
+### Poles
+
+UK poles that PTM2 treats as its own streetposts, so UK heads and PTM2's own lights and signs mount on them:
+
+- **Traffic signal pole**, black or galvanised (114 mm), with ground collar and domed cap.
+- **Sign pole**, galvanised or black (76 mm), with plastic cap.
+
+Heads mounted on a pole sit a small gap off it on clamp brackets, as on real UK poles. Mount two heads back to back on one pole for primary and secondary signals.
+
 ### Signal furniture
 
 These are decorative and line up with the head above or below:
 
 - **Illuminated sign plates** that go under a head: No Left Turn, No Right Turn, No U-Turn, Ahead Only, Turn Left, Turn Right, and Except Buses, Taxis & Cycles. Sneak + right-click toggles their board.
 - **Vehicle detector** that sits on top of a head.
-- **Pedestrian push-button unit** with WAIT indicator, mounted on the pole.
+- **Pedestrian push-button unit**: "PEDESTRIANS push button and wait for signal opposite", wait / cross with care diagram and yellow tactile cones. Press it (right-click) and WAIT lights up for 10 seconds.
 
 ## How it works with PTM2
 

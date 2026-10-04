@@ -5,7 +5,7 @@
   "inside": "ptmuk:block/signal/hood_inside",
   "metal": "ptmuk:block/signal/grey_metal",
   "lens": "ptmuk:block/signal/hood_inside",
-  "face0": "ptmuk:block/signal/face_2",
+  "face0": "ptmuk:block/signal/face_5",
   "led_cycle_red_on": "ptmuk:block/signal/led_cycle_red_on",
   "led_cycle_amber_on": "ptmuk:block/signal/led_cycle_amber_on",
   "led_cycle_green_off": "ptmuk:block/signal/led_cycle_green_off"

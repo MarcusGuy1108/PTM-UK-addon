@@ -1,9 +1,14 @@
 {
  "replace": false,
  "values": [
+  "ptmuk:signal_pole_black",
+  "ptmuk:signal_pole_grey",
+  "ptmuk:sign_pole_galvanised",
+  "ptmuk:sign_pole_black",
   "ptmuk:led_signal",
   "ptmuk:led_tunnel_signal",
   "ptmuk:classic_signal",
+  "ptmuk:classic_large_green_signal",
   "ptmuk:led_left_arrow_signal",
   "ptmuk:led_tunnel_left_arrow_signal",
   "ptmuk:classic_left_arrow_signal",

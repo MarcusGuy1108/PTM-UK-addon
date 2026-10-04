@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/classic_amber_on","glass":"ptmuk:block/signal/classic_amber_on","lens":"ptmuk:block/signal/classic_amber_on"},"elements":[{"from":[6.77,7.45,-3.8],"to":[6.82,11.05,-0.2],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}},"shade":false,"forge_data":{"block_light":15,"sky_light":15}}],"render_type":"minecraft:cutout_mipped"}

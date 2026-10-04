@@ -6,6 +6,10 @@ import com.rinventor.ptm2.engine.base.PTMEntity;
 import com.rinventor.ptm2.engine.computing.Rotation8;
 import com.rinventor.ptm2.objects.blockentities.traffic_light.TrafficLight;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -16,6 +20,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
@@ -31,6 +36,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class SignalAccessory extends Block {
     public static final IntegerProperty ROTATION = TrafficLight.ROTATION;
     public static final EnumProperty<TrafficLightStates> ATTACHMENT = TrafficLight.ATTACHMENT;
+    /** Push-button unit: WAIT indicator lit after the button is pressed. */
+    public static final BooleanProperty WAIT = BooleanProperty.create("wait");
+    private static final int WAIT_TICKS = 200;
 
     private final AccessoryType type;
 
@@ -40,7 +48,8 @@ public class SignalAccessory extends Block {
         registerDefaultState(stateDefinition.any()
                 .setValue(ROTATION, 0)
                 .setValue(ATTACHMENT, TrafficLightStates.CENTER)
-                .setValue(UkTrafficSignal.BOARD, type.mount == AccessoryType.Mount.BELOW_HEAD));
+                .setValue(UkTrafficSignal.BOARD, type.mount == AccessoryType.Mount.BELOW_HEAD)
+                .setValue(WAIT, false));
     }
 
     public AccessoryType getType() {
@@ -49,7 +58,7 @@ public class SignalAccessory extends Block {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(ROTATION, ATTACHMENT, UkTrafficSignal.BOARD);
+        builder.add(ROTATION, ATTACHMENT, UkTrafficSignal.BOARD, WAIT);
     }
 
     @Override
@@ -69,7 +78,23 @@ public class SignalAccessory extends Block {
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
+        if (type == AccessoryType.PUSH_BUTTON_UNIT) {
+            // pressing the button lights WAIT for a while, like the real thing
+            if (!level.isClientSide) {
+                level.setBlock(pos, state.setValue(WAIT, true), Block.UPDATE_ALL);
+                level.scheduleTick(pos, this, WAIT_TICKS);
+                level.playSound(null, pos, SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS, 0.4F, 1.6F);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         return InteractionResult.PASS;
+    }
+
+    @Override
+    public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        if (state.getValue(WAIT)) {
+            level.setBlock(pos, state.setValue(WAIT, false), Block.UPDATE_ALL);
+        }
     }
 
     @Override
@@ -99,10 +124,14 @@ public class SignalAccessory extends Block {
     static TrafficLightStates attachmentFor(Level level, BlockPos pos, int rot) {
         int x = pos.getX(), y = pos.getY(), z = pos.getZ();
         if (rot % 2 == 1) {
-            int dx = rot == 1 || rot == 3 ? 1 : -1;
+            // diagonal: the corner behind, then the two blocks either side of it
+            int dx = rot == 1 || rot == 3 ? -1 : 1;
             int dz = rot == 1 || rot == 7 ? 1 : -1;
-            if (post(level, x + dx, y, z + dz)) return TrafficLightStates.POST;
-            if (solid(level, x + dx, y, z + dz)) return TrafficLightStates.WALL;
+            int[][] candidates = {{dx, dz}, {0, dz}, {dx, 0}};
+            for (int[] c : candidates) {
+                if (post(level, x + c[0], y, z + c[1])) return TrafficLightStates.POST;
+                if (solid(level, x + c[0], y, z + c[1])) return TrafficLightStates.WALL;
+            }
             return TrafficLightStates.CENTER;
         }
         // "back" is the side the head is mounted on, "left"/"right" as seen from the road.

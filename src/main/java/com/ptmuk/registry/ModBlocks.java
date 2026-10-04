@@ -2,9 +2,11 @@ package com.ptmuk.registry;
 
 import com.ptmuk.PtmUk;
 import com.ptmuk.block.AccessoryType;
+import com.ptmuk.block.PoleType;
 import com.ptmuk.block.SignalAccessory;
 import com.ptmuk.block.SignalStyle;
 import com.ptmuk.block.SignalType;
+import com.ptmuk.block.UkPole;
 import com.ptmuk.block.UkTrafficSignal;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -18,12 +20,17 @@ import net.minecraftforge.registries.RegistryObject;
 public final class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, PtmUk.MOD_ID);
 
+    /** Every UK pole, in creative-tab order. */
+    public static final Map<String, RegistryObject<Block>> POLES = new LinkedHashMap<>();
     /** Every signal head, in creative-tab order. */
     public static final Map<String, RegistryObject<Block>> SIGNALS = new LinkedHashMap<>();
     /** Every accessory, in creative-tab order. */
     public static final Map<String, RegistryObject<Block>> ACCESSORIES = new LinkedHashMap<>();
 
     static {
+        for (PoleType type : PoleType.values()) {
+            POLES.put(type.id(), BLOCKS.register(type.id(), () -> new UkPole(type)));
+        }
         for (SignalType type : SignalType.values()) {
             for (SignalStyle style : stylesFor(type)) {
                 String name = style.id() + "_" + type.id();
@@ -40,7 +47,8 @@ public final class ModBlocks {
         return switch (type) {
             case CYCLE, LOW_LEVEL_CYCLE, PUFFIN, TOUCAN -> EnumSet.of(SignalStyle.LED);
             case PELICAN -> EnumSet.of(SignalStyle.LED, SignalStyle.CLASSIC);
-            default -> EnumSet.allOf(SignalStyle.class);
+            case STANDARD -> EnumSet.allOf(SignalStyle.class);
+            default -> EnumSet.of(SignalStyle.LED, SignalStyle.LED_TUNNEL, SignalStyle.CLASSIC);
         };
     }
 

@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_round_green_toucan_off","glass":"ptmuk:block/signal/led_round_green_toucan_off","lens":"ptmuk:block/signal/led_round_green_toucan_off"},"elements":[{"from":[16.8,3.05,5.4],"to":[16.85,8.25,10.6],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}}}],"render_type":"minecraft:cutout_mipped"}

@@ -178,6 +178,16 @@ def lens_classic(colour, lit, symbol=None):
     return to_image(rgb, _round_alpha(x, y, R))
 
 
+def fit_mask(mask, scale, dx=0.0):
+    """Shrink a symbol mask about the centre (and shift it by dx * size) to fit a round lens."""
+    size = mask.shape[0]
+    small = Image.fromarray((mask * 255).astype(np.uint8), "L").resize((int(size * scale),) * 2, Image.LANCZOS)
+    out = Image.new("L", (size, size), 0)
+    off = (size - small.width) // 2
+    out.paste(small, (off + int(dx * size), off))
+    return np.asarray(out) / 255.0
+
+
 def square_lens(colour, lit, symbol, style):
     """Pedestrian / toucan aspect: square black fascia with a lit figure."""
     core, edge, glass = UK[colour]
@@ -263,14 +273,14 @@ def walking_man_mask():
 
 # ----------------------------------------------------------------- housings, faceplates, boards
 
-BASES = {"led": (23, 24, 26), "led_tunnel": (27, 28, 31), "classic": (31, 32, 31)}
+BASES = {"led": (23, 24, 26), "led_tunnel": (27, 28, 31), "classic": (31, 32, 31), "classic_large_green": (33, 34, 34)}
 
 
 def housing(style, size=64):
     base = np.array(BASES[style], float)
     yy = np.mgrid[0:size, 0:size][0].astype(float)
     rgb = base + noise((size, size, 1), 2.2) + (6 * (0.5 - yy / size))[..., None]
-    if style == "classic":
+    if style.startswith("classic"):
         # cast aluminium ribs and paint wear
         rib = (yy % 8 < 1.2)
         rgb[rib] -= 8
@@ -347,7 +357,7 @@ def faceplate(style, w, h, lenses, size=128):
     return to_image(rgb)
 
 
-def board(w, h, size=256):
+def board(w, h, size=256, fill=(44, 46, 49)):
     """Backing board w x h block px: dark grey with a white retroreflective border and rounded
     corners (transparent outside; render as cutout). Drawn pre-squashed for non-square boards."""
     sx, sy = size / w, size / h
@@ -360,7 +370,7 @@ def board(w, h, size=256):
         return np.hypot(mx - cx, my - cy) <= radius
 
     outer, inner = rounded(0, 1.7), rounded(0.85, 0.9)
-    rgb = np.zeros((size, size, 3)) + np.array([44, 46, 49.0]) + noise((size, size, 1), 1.6)
+    rgb = np.zeros((size, size, 3)) + np.array(fill, float) + noise((size, size, 1), 1.6)
     rgb += (8 * (0.5 - my / h))[..., None]
     # retroreflective border with a faint micro-prism pattern
     prism = 0.5 + 0.5 * np.sin(xx * 1.9) * np.sin(yy * 1.9)
@@ -424,21 +434,77 @@ def sign(kind, size=128):
     return to_image(arr[..., :3])
 
 
-def push_button_face(size=128):
+def push_button_face(lit, w=5.0, h=8.0, size=128):
+    """Front of a UK pedestrian push-button unit (w x h block px, drawn pre-squashed):
+    instruction panel, WAIT indicator (lit or unlit), wait / cross-with-care diagram, button."""
     ss = 4
     S = size * ss
-    img = Image.new("RGBA", (S, S), (32, 33, 35, 255))
+    img = Image.new("RGBA", (S, S), (24, 25, 27, 255))
     d = ImageDraw.Draw(img)
-    k = S / 64
-    d.rounded_rectangle([2 * k, 2 * k, S - 2 * k, S - 2 * k], radius=3 * k, outline=(50, 51, 53), width=int(k))
-    d.rounded_rectangle([6 * k, 5 * k, S - 6 * k, 23 * k], radius=2 * k, fill=(6, 6, 6))
-    font = ImageFont.truetype(FONT, int(12 * k))
-    tw = d.textlength("WAIT", font=font)
-    d.text((S / 2 - tw / 2, 7 * k), "WAIT", fill=(255, 150, 30), font=font)
-    small = ImageFont.truetype(FONT, int(5.2 * k))
-    for i, line in enumerate(["PUSH BUTTON", "AND WAIT FOR", "SIGNAL"]):
-        tw = d.textlength(line, font=small)
-        d.text((S / 2 - tw / 2, (28 + i * 6.5) * k), line, fill=(228, 228, 228), font=small)
-    d.ellipse([23 * k, 48 * k, 41 * k, 62 * k], fill=(200, 200, 196), outline=(90, 90, 90), width=int(k))
-    d.ellipse([27 * k, 50 * k, 37 * k, 55 * k], fill=(228, 228, 225))
-    return img.resize((size, size), Image.LANCZOS)
+    kx, ky = S / w, S / h          # pixels per block px
+
+    def R(x1, y1, x2, y2):        # rectangle in block px from the top-left
+        return [x1 * kx, y1 * ky, x2 * kx, y2 * ky]
+
+    def text(line, cx, top, height, fill):
+        font = ImageFont.truetype(FONT, max(8, int(height * ky)))
+        tw = d.textlength(line, font=font)
+        # squash horizontally to undo the texture stretch
+        layer = Image.new("RGBA", (int(tw) + 8, int(height * ky * 1.4)), (0, 0, 0, 0))
+        ImageDraw.Draw(layer).text((4, 0), line, fill=fill, font=font)
+        layer = layer.resize((max(1, int(layer.width * ky / kx)), layer.height), Image.LANCZOS)
+        img.alpha_composite(layer, (int(cx * kx - layer.width / 2), int(top * ky)))
+
+    d.rounded_rectangle(R(0.15, 0.15, w - 0.15, h - 0.15), radius=0.3 * kx, outline=(40, 41, 44), width=int(0.08 * kx))
+    d.ellipse(R(w / 2 - 0.15, 0.3, w / 2 + 0.15, 0.6), fill=(150, 150, 146))                    # top screw
+    d.rectangle(R(0.55, 0.85, w - 0.55, 6.25), fill=(8, 8, 9))                                    # window
+    d.rectangle(R(0.65, 0.95, w - 0.65, 2.0), fill=(222, 224, 222))                               # instructions
+    text("PEDESTRIANS", w / 2, 1.0, 0.36, (15, 15, 15))
+    text("push button and wait", w / 2, 1.42, 0.24, (15, 15, 15))
+    text("for signal opposite", w / 2, 1.70, 0.24, (15, 15, 15))
+    wait_bg = (40, 26, 8) if lit else (196, 194, 186)
+    d.rectangle(R(0.65, 2.12, w - 0.65, 3.22), fill=wait_bg)
+    text("WAIT", w / 2, 2.17, 0.85, (255, 196, 70) if lit else (232, 221, 206))
+    # wait / cross with care diagram
+    text("wait", 1.55, 3.4, 0.2, (225, 225, 225))
+    text("cross", 3.45, 3.32, 0.18, (225, 225, 225))
+    text("with care", 3.45, 3.52, 0.18, (225, 225, 225))
+    d.line([2.5 * kx, 3.35 * ky, 2.5 * kx, 6.05 * ky], fill=(210, 210, 210), width=int(0.04 * kx))
+    for cx, man in ((1.55, "red"), (3.45, "green")):
+        d.rectangle(R(cx - 0.45, 3.85, cx + 0.45, 5.75), outline=(220, 220, 220), width=int(0.04 * kx))
+        d.line([(cx - 0.45) * kx, 4.8 * ky, (cx + 0.45) * kx, 4.8 * ky], fill=(220, 220, 220), width=int(0.04 * kx))
+        y0 = 3.95 if man == "red" else 4.9
+        col = (200, 40, 25) if man == "red" else (40, 175, 90)
+        d.ellipse(R(cx - 0.08, y0, cx + 0.08, y0 + 0.16), fill=col)
+        d.rectangle(R(cx - 0.1, y0 + 0.18, cx + 0.1, y0 + 0.5), fill=col)
+        d.rectangle(R(cx - 0.1, y0 + 0.5, cx - 0.02, y0 + 0.75), fill=col)
+        d.rectangle(R(cx + 0.02, y0 + 0.5, cx + 0.1, y0 + 0.75), fill=col)
+    # push button with chrome ring
+    d.ellipse(R(w / 2 - 0.42, 6.75, w / 2 + 0.42, 7.55), fill=(30, 30, 32), outline=(70, 70, 72), width=int(0.05 * kx))
+    d.ellipse(R(w / 2 - 0.28, 6.88, w / 2 + 0.28, 7.42), fill=(212, 212, 208))
+    d.ellipse(R(w / 2 - 0.17, 6.95, w / 2 + 0.05, 7.12), fill=(240, 240, 238))
+    out = img.resize((size, size), Image.LANCZOS)
+    arr = np.asarray(out).astype(float)
+    arr[..., :3] += noise((size, size, 1), 1.0)
+    return to_image(arr[..., :3])
+
+
+def yellow_plastic(size=32):
+    return to_image(np.array([238, 190, 20.0]) + noise((size, size, 1), 4))
+
+def pole(kind, size=64):
+    """Pole surface: satin black paint or spangled galvanised steel, with faint vertical
+    drawing marks."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(float)
+    if kind == "black":
+        rgb = np.array([21, 22, 23.0]) + noise((size, size, 1), 1.6)
+        rgb += (3 * np.sin(xx / 2.3 + rng.normal(0, 0.3, (size, size))))[..., None]
+    elif kind == "galvanised":
+        rgb = np.array([150, 154, 156.0]) + noise((size, size, 1), 4)
+        # zinc spangle: blotches of slightly different brightness
+        spangle = blur(rng.normal(0, 1, (size, size)), 2.2)
+        rgb += (spangle / (np.abs(spangle).max() + 1e-6) * 14)[..., None]
+        rgb += (4 * np.sin(xx / 1.7))[..., None]
+    else:  # black plastic cap / collar
+        rgb = np.array([14, 14, 15.0]) + noise((size, size, 1), 1.2) + (5 * (0.5 - yy / size))[..., None]
+    return to_image(rgb)

@@ -3,6 +3,7 @@ package com.ptmuk.client;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.ptmuk.PtmUk;
+import com.ptmuk.block.SignalAccessory;
 import com.ptmuk.block.UkTrafficSignal;
 import com.rinventor.ptm2.objects.blockentities.traffic_light.TrafficLight;
 import java.io.Reader;
@@ -41,7 +42,12 @@ public final class SignalModels {
 
     private static Map<String, BlockParts> blocks = Map.of();
 
-    private record BlockParts(boolean board, List<String> aspects, Map<String, Map<String, String>> looks) {
+    /** fade: lenses are drawn lit by {@link ClassicLampRenderer} (bulb fade), so the block model keeps them unlit. */
+    record BlockParts(boolean board, boolean fade, boolean waitLamp, List<String> aspects, Map<String, Map<String, String>> looks) {
+    }
+
+    static BlockParts index(String block) {
+        return blocks.get(block);
     }
 
     private SignalModels() {
@@ -55,6 +61,9 @@ public final class SignalModels {
             names.add("body");
             if (parts.board) {
                 names.add("board");
+            }
+            if (parts.waitLamp) {
+                names.add("wait");
             }
             parts.looks.values().forEach(looks -> looks.forEach((aspect, look) -> {
                 if (!names.contains(aspect + "_" + look)) {
@@ -101,27 +110,42 @@ public final class SignalModels {
     }
 
     private static List<ResourceLocation> partsFor(String block, BlockParts parts, BlockState state) {
-        String attachment = state.getValue(TrafficLight.ATTACHMENT).getSerializedName();
-        int rotation = state.getValue(TrafficLight.ROTATION);
-        boolean diagonal = rotation % 2 == 1 && DIAGONAL_ATTACHMENTS.contains(attachment);
-        String geometry = attachment + (diagonal ? "45" : "");
-        int y = 90 * (rotation / 2);
-
+        String geometry = geometry(state);
+        int y = yRotation(state);
         List<ResourceLocation> out = new ArrayList<>();
         out.add(part(block, "body", geometry, y));
         if (parts.board && state.getValue(UkTrafficSignal.BOARD)) {
             out.add(part(block, "board", geometry, y));
         }
+        if (parts.waitLamp && state.getValue(SignalAccessory.WAIT)) {
+            out.add(part(block, "wait", geometry, y));
+        }
         if (!parts.aspects.isEmpty()) {
-            int colour = state.getValue(TrafficLight.STATE).getID();
-            Map<String, String> looks = state.getValue(UkTrafficSignal.RED_AMBER) && parts.looks.containsKey(colour + "+ra")
-                    ? parts.looks.get(colour + "+ra")
-                    : parts.looks.get(String.valueOf(colour));
+            Map<String, String> looks = looks(parts, state);
             for (String aspect : parts.aspects) {
-                out.add(part(block, aspect + "_" + looks.get(aspect), geometry, y));
+                out.add(part(block, aspect + "_" + (parts.fade ? "off" : looks.get(aspect)), geometry, y));
             }
         }
         return out;
+    }
+
+    /** Lens look (on / off / flash) per aspect for this signal state. */
+    static Map<String, String> looks(BlockParts parts, BlockState state) {
+        int colour = state.getValue(TrafficLight.STATE).getID();
+        return state.getValue(UkTrafficSignal.RED_AMBER) && parts.looks.containsKey(colour + "+ra")
+                ? parts.looks.get(colour + "+ra")
+                : parts.looks.get(String.valueOf(colour));
+    }
+
+    static String geometry(BlockState state) {
+        String attachment = state.getValue(TrafficLight.ATTACHMENT).getSerializedName();
+        int rotation = state.getValue(TrafficLight.ROTATION);
+        boolean diagonal = rotation % 2 == 1 && DIAGONAL_ATTACHMENTS.contains(attachment);
+        return attachment + (diagonal ? "45" : "");
+    }
+
+    static int yRotation(BlockState state) {
+        return 90 * (state.getValue(TrafficLight.ROTATION) / 2);
     }
 
     private static List<String> geometries() {
@@ -130,7 +154,7 @@ public final class SignalModels {
         return out;
     }
 
-    private static ResourceLocation part(String block, String name, String geometry, int y) {
+    static ResourceLocation part(String block, String name, String geometry, int y) {
         return PtmUk.id("block/" + block + "/" + name + "_" + geometry + "_y" + y);
     }
 
@@ -149,7 +173,9 @@ public final class SignalModels {
                     looksJson.getAsJsonObject(key).entrySet().forEach(e -> perAspect.put(e.getKey(), e.getValue().getAsString()));
                     looks.put(key, perAspect);
                 }
-                out.put(block, new BlockParts(entry.get("board").getAsBoolean(), aspects, looks));
+                boolean fade = entry.has("fade") && entry.get("fade").getAsBoolean();
+                boolean wait = entry.has("wait") && entry.get("wait").getAsBoolean();
+                out.put(block, new BlockParts(entry.get("board").getAsBoolean(), fade, wait, aspects, looks));
             }
         } catch (Exception e) {
             PtmUk.LOGGER.error("Could not read {}; UK signals will render without models", INDEX, e);

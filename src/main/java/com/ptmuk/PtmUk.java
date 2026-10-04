@@ -1,6 +1,7 @@
 package com.ptmuk;
 
 import com.mojang.logging.LogUtils;
+import com.ptmuk.registry.ModBlockEntities;
 import com.ptmuk.registry.ModBlocks;
 import com.ptmuk.registry.ModCreativeTabs;
 import com.ptmuk.registry.ModItems;
@@ -19,6 +20,7 @@ public class PtmUk {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
+        ModBlockEntities.BLOCK_ENTITIES.register(modBus);
         ModCreativeTabs.TABS.register(modBus);
     }
 
