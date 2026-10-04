@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/bollard_steel"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/bollard_steel",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/bollard_steel",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/bollard_steel",
+   "y": 270
+  }
+ }
+}

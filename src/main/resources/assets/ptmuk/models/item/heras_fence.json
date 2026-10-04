@@ -1,0 +1,545 @@
+{
+ "textures": {
+  "rubber": "ptmuk:block/furniture/rubber",
+  "galv": "ptmuk:block/pole/galvanised",
+  "mesh": "ptmuk:block/furniture/heras_mesh",
+  "particle": "ptmuk:block/furniture/rubber"
+ },
+ "elements": [
+  {
+   "from": [
+    4.5,
+    0,
+    5
+   ],
+   "to": [
+    11.5,
+    2.2,
+    11
+   ],
+   "faces": {
+    "north": {
+     "texture": "#rubber",
+     "uv": [
+      4.5,
+      13.8,
+      11.5,
+      16.0
+     ]
+    },
+    "east": {
+     "texture": "#rubber",
+     "uv": [
+      5,
+      13.8,
+      11,
+      16.0
+     ]
+    },
+    "south": {
+     "texture": "#rubber",
+     "uv": [
+      4.5,
+      13.8,
+      11.5,
+      16.0
+     ]
+    },
+    "west": {
+     "texture": "#rubber",
+     "uv": [
+      5,
+      13.8,
+      11,
+      16.0
+     ]
+    },
+    "up": {
+     "texture": "#rubber",
+     "uv": [
+      4.5,
+      5,
+      11.5,
+      11
+     ]
+    },
+    "down": {
+     "texture": "#rubber",
+     "uv": [
+      4.5,
+      5,
+      11.5,
+      11
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.6,
+    2.2,
+    7.6
+   ],
+   "to": [
+    8.4,
+    31,
+    8.4
+   ],
+   "faces": {
+    "north": {
+     "texture": "#galv",
+     "uv": [
+      7.6,
+      0,
+      8.4,
+      16
+     ]
+    },
+    "east": {
+     "texture": "#galv",
+     "uv": [
+      7.6,
+      0,
+      8.4,
+      16
+     ]
+    },
+    "south": {
+     "texture": "#galv",
+     "uv": [
+      7.6,
+      0,
+      8.4,
+      16
+     ]
+    },
+    "west": {
+     "texture": "#galv",
+     "uv": [
+      7.6,
+      0,
+      8.4,
+      16
+     ]
+    },
+    "up": {
+     "texture": "#galv",
+     "uv": [
+      7.6,
+      7.6,
+      8.4,
+      8.4
+     ]
+    },
+    "down": {
+     "texture": "#galv",
+     "uv": [
+      7.6,
+      7.6,
+      8.4,
+      8.4
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.95,
+    2.6,
+    0
+   ],
+   "to": [
+    8.05,
+    30.6,
+    8
+   ],
+   "faces": {
+    "east": {
+     "texture": "#mesh",
+     "uv": [
+      0,
+      0,
+      8,
+      16
+     ]
+    },
+    "west": {
+     "texture": "#mesh",
+     "uv": [
+      0,
+      0,
+      8,
+      16
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.75,
+    30.6,
+    0
+   ],
+   "to": [
+    8.25,
+    31.2,
+    8
+   ],
+   "faces": {
+    "north": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      0.6
+     ]
+    },
+    "east": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      0,
+      8,
+      0.6
+     ]
+    },
+    "south": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      0.6
+     ]
+    },
+    "west": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      0,
+      8,
+      0.6
+     ]
+    },
+    "up": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    },
+    "down": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.75,
+    2.0,
+    0
+   ],
+   "to": [
+    8.25,
+    2.6,
+    8
+   ],
+   "faces": {
+    "north": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      13.4,
+      8.25,
+      14.0
+     ]
+    },
+    "east": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      13.4,
+      8,
+      14.0
+     ]
+    },
+    "south": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      13.4,
+      8.25,
+      14.0
+     ]
+    },
+    "west": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      13.4,
+      8,
+      14.0
+     ]
+    },
+    "up": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    },
+    "down": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.95,
+    2.6,
+    8
+   ],
+   "to": [
+    8.05,
+    30.6,
+    16
+   ],
+   "faces": {
+    "west": {
+     "texture": "#mesh",
+     "uv": [
+      0,
+      0,
+      8,
+      16
+     ]
+    },
+    "east": {
+     "texture": "#mesh",
+     "uv": [
+      0,
+      0,
+      8,
+      16
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.75,
+    30.6,
+    8
+   ],
+   "to": [
+    8.25,
+    31.2,
+    16
+   ],
+   "faces": {
+    "south": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      0.6
+     ]
+    },
+    "west": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      0,
+      8,
+      0.6
+     ]
+    },
+    "north": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      0.6
+     ]
+    },
+    "east": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      0,
+      8,
+      0.6
+     ]
+    },
+    "up": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    },
+    "down": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    7.75,
+    2.0,
+    8
+   ],
+   "to": [
+    8.25,
+    2.6,
+    16
+   ],
+   "faces": {
+    "south": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      13.4,
+      8.25,
+      14.0
+     ]
+    },
+    "west": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      13.4,
+      8,
+      14.0
+     ]
+    },
+    "north": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      13.4,
+      8.25,
+      14.0
+     ]
+    },
+    "east": {
+     "texture": "#galv",
+     "uv": [
+      0,
+      13.4,
+      8,
+      14.0
+     ]
+    },
+    "up": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    },
+    "down": {
+     "texture": "#galv",
+     "uv": [
+      7.75,
+      0,
+      8.25,
+      8
+     ]
+    }
+   }
+  }
+ ],
+ "render_type": "minecraft:cutout_mipped",
+ "display": {
+  "gui": {
+   "rotation": [
+    30,
+    135,
+    0
+   ],
+   "scale": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  },
+  "ground": {
+   "translation": [
+    0,
+    3,
+    0
+   ],
+   "scale": [
+    0.25,
+    0.25,
+    0.25
+   ]
+  },
+  "fixed": {
+   "scale": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  },
+  "thirdperson_righthand": {
+   "rotation": [
+    75,
+    45,
+    0
+   ],
+   "translation": [
+    0,
+    2.5,
+    0
+   ],
+   "scale": [
+    0.375,
+    0.375,
+    0.375
+   ]
+  },
+  "firstperson_righthand": {
+   "rotation": [
+    0,
+    45,
+    0
+   ],
+   "scale": [
+    0.4,
+    0.4,
+    0.4
+   ]
+  }
+ }
+}

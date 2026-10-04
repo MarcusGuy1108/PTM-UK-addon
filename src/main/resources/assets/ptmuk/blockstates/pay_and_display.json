@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/pay_and_display"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/pay_and_display",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/pay_and_display",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/pay_and_display",
+   "y": 270
+  }
+ }
+}

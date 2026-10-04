@@ -13,18 +13,29 @@ import net.minecraftforge.registries.RegistryObject;
 public final class ModCreativeTabs {
     public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, PtmUk.MOD_ID);
 
-    public static final RegistryObject<CreativeModeTab> MAIN = TABS.register("main", () -> CreativeModeTab.builder()
-            .title(Component.translatable("itemGroup.ptmuk.main"))
-            .icon(() -> new ItemStack(ModBlocks.signal(SignalStyle.LED, SignalType.STANDARD).get()))
-            .displayItems((params, output) -> ModItems.BLOCK_ITEMS.forEach(item -> output.accept(item.get())))
-            .build());
+    public static final RegistryObject<CreativeModeTab> MAIN = tab("main", null,
+            () -> new ItemStack(ModBlocks.signal(SignalStyle.LED, SignalType.STANDARD).get()), ModItems.SIGNAL_ITEMS);
+    public static final RegistryObject<CreativeModeTab> POLES = tab("poles", MAIN,
+            () -> new ItemStack(ModBlocks.POLES.get("signal_pole_black").get()), ModItems.POLE_ITEMS);
+    public static final RegistryObject<CreativeModeTab> SIGNS = tab("signs", POLES,
+            () -> new ItemStack(ModBlocks.ACCESSORIES.get("speed_30_sign").get()), ModItems.SIGN_ITEMS);
+    public static final RegistryObject<CreativeModeTab> STREET = tab("street", SIGNS,
+            () -> new ItemStack(ModBlocks.FURNITURE.get("phone_box").get()), ModItems.STREET_ITEMS);
 
-    public static final RegistryObject<CreativeModeTab> STREET = TABS.register("street", () -> CreativeModeTab.builder()
-            .title(Component.translatable("itemGroup.ptmuk.street"))
-            .icon(() -> new ItemStack(ModBlocks.FURNITURE.get("phone_box").get()))
-            .withTabsBefore(MAIN.getKey())
-            .displayItems((params, output) -> ModItems.STREET_ITEMS.forEach(item -> output.accept(item.get())))
-            .build());
+    private static RegistryObject<CreativeModeTab> tab(String name, RegistryObject<CreativeModeTab> after,
+                                                       java.util.function.Supplier<ItemStack> icon,
+                                                       java.util.List<RegistryObject<net.minecraft.world.item.Item>> items) {
+        return TABS.register(name, () -> {
+            CreativeModeTab.Builder builder = CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.ptmuk." + name))
+                    .icon(icon)
+                    .displayItems((params, output) -> items.forEach(item -> output.accept(item.get())));
+            if (after != null) {
+                builder.withTabsBefore(after.getKey());
+            }
+            return builder.build();
+        });
+    }
 
     private ModCreativeTabs() {
     }

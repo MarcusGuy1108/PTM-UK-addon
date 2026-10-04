@@ -15,16 +15,17 @@ import net.minecraftforge.registries.RegistryObject;
 public final class ModItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, PtmUk.MOD_ID);
 
-    /** Signal tab items: poles, signals, signal accessories. */
-    public static final List<RegistryObject<Item>> BLOCK_ITEMS = new ArrayList<>();
-    /** Street tab items: furniture, fences, road signs. */
+    /** Items per creative tab. */
+    public static final List<RegistryObject<Item>> SIGNAL_ITEMS = new ArrayList<>();
+    public static final List<RegistryObject<Item>> POLE_ITEMS = new ArrayList<>();
+    public static final List<RegistryObject<Item>> SIGN_ITEMS = new ArrayList<>();
     public static final List<RegistryObject<Item>> STREET_ITEMS = new ArrayList<>();
 
     static {
-        register(ModBlocks.POLES, BLOCK_ITEMS);
-        register(ModBlocks.SIGNALS, BLOCK_ITEMS);
+        register(ModBlocks.POLES, POLE_ITEMS);
+        register(ModBlocks.SIGNALS, SIGNAL_ITEMS);
         for (AccessoryType type : AccessoryType.values()) {
-            (type.mount == AccessoryType.Mount.SIGN ? STREET_ITEMS : BLOCK_ITEMS)
+            (type.mount == AccessoryType.Mount.SIGN ? SIGN_ITEMS : SIGNAL_ITEMS)
                     .add(item(type.id(), ModBlocks.ACCESSORIES.get(type.id())));
         }
         register(ModBlocks.FURNITURE, STREET_ITEMS);

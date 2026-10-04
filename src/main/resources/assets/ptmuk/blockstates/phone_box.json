@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/phone_box"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/phone_box",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/phone_box",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/phone_box",
+   "y": 270
+  }
+ }
+}

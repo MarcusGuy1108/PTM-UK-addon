@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/bus_shelter"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/bus_shelter",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/bus_shelter",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/bus_shelter",
+   "y": 270
+  }
+ }
+}

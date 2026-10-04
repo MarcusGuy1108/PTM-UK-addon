@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/ev_charger"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/ev_charger",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/ev_charger",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/ev_charger",
+   "y": 270
+  }
+ }
+}

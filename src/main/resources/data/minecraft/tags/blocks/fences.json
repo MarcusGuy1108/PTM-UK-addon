@@ -1,0 +1,10 @@
+{
+ "replace": false,
+ "values": [
+  "ptmuk:palisade_fence",
+  "ptmuk:black_railings",
+  "ptmuk:pedestrian_guardrail",
+  "ptmuk:close_board_fence",
+  "ptmuk:heras_fence"
+ ]
+}

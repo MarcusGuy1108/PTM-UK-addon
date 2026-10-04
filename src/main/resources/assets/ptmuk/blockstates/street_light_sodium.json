@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/street_light_sodium"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/street_light_sodium",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/street_light_sodium",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/street_light_sodium",
+   "y": 270
+  }
+ }
+}

@@ -41,7 +41,7 @@ UK poles that PTM2 treats as its own streetposts, so UK heads and PTM2's own lig
 - **Traffic signal pole**, black or galvanised (114 mm), with ground collar and domed cap.
 - **Sign pole**, galvanised or black (76 mm), with plastic cap.
 
-Heads mounted on a pole sit a small gap off it on clamp brackets, as on real UK poles. Mount two heads back to back on one pole for primary and secondary signals.
+Heads mounted on a pole sit a small gap off it on clamp brackets, as on real UK poles. Put a head or sign straight on top of a UK pole and the pole carries on up behind it, the UK way. Mount two heads back to back on one pole for primary and secondary signals.
 
 ### Signal furniture
 
@@ -50,6 +50,28 @@ These are decorative and line up with the head above or below:
 - **Illuminated sign plates** that go under a head: No Left Turn, No Right Turn, No U-Turn, Ahead Only, Turn Left, Turn Right, and Except Buses, Taxis & Cycles. Sneak + right-click toggles their board.
 - **Vehicle detector** that sits on top of a head.
 - **Pedestrian push-button unit**: "PEDESTRIANS push button and wait for signal opposite", wait / cross with care diagram and yellow tactile cones. Press it (right-click) and WAIT lights up for 10 seconds.
+
+### Street furniture
+
+In the **UK Street Furniture** tab:
+
+- **Bins:** wheelie bins (black, grey, green, blue, brown), communal 1100 L bin, litter bin, dog waste bin, grit bin.
+- **Street icons:** pillar box, red K6 telephone box, bus shelter, bus stop with timetable case.
+- **Seating and cycles:** benches (steel, wood), cycle stand.
+- **Bollards and crossings:** cast iron and steel bollards, illuminated keep-left bollard, Belisha beacon.
+- **Parking and charging:** pay and display machine, parking meter, EV charging point.
+- **Roadside utilities:** telecoms cabinet, signal controller cabinet, feeder pillar, fire hydrant marker, manhole cover, drain grate.
+- **Street lights:** LED and old sodium lanterns. Put them on top of a UK pole and the arm reaches out over the road.
+- **Fences:** palisade, black railings, pedestrian guardrail, close board, Heras temporary fencing. They connect like vanilla fences.
+
+### Road signs
+
+In the **UK Road Signs** tab, mounted on poles with clamps like the signal heads:
+
+- **Speed limits:** 20 to 70, and national speed limit.
+- **Regulatory:** no entry, give way, stop, one way, keep left.
+- **Parking:** parking, pay at machine, disabled parking.
+- **Warnings:** traffic signals ahead, pedestrian crossing, children, road works.
 
 ## How it works with PTM2
 

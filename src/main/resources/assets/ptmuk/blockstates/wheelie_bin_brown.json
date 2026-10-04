@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/wheelie_bin_brown"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/wheelie_bin_brown",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/wheelie_bin_brown",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/wheelie_bin_brown",
+   "y": 270
+  }
+ }
+}

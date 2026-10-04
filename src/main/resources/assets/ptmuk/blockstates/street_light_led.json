@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/street_light_led"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/street_light_led",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/street_light_led",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/street_light_led",
+   "y": 270
+  }
+ }
+}

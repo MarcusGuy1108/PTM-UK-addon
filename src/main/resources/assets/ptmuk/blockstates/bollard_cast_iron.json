@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/bollard_cast_iron"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/bollard_cast_iron",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/bollard_cast_iron",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/bollard_cast_iron",
+   "y": 270
+  }
+ }
+}

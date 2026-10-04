@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 import signal_textures as T  # noqa: E402
+import furniture  # noqa: E402
 
 MOD_ID = "ptmuk"
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,6 +63,7 @@ ACCESSORIES = {
     "signal_detector": "detector",
     "push_button_unit": "push_button",
 }
+ACCESSORIES.update({name: "roadsign" for name in furniture.ROAD_SIGNS})
 
 STYLE_NAMES = {"led": "LED", "led_tunnel": "LED, Tunnel Hoods", "classic": "Classic Bulb",
                "classic_large_green": "Classic Bulb, Large Green"}
@@ -294,7 +296,12 @@ def place(elements, attachment, diagonal):
         if "rotation" in el:
             el["rotation"]["origin"][0] += dx
             el["rotation"]["origin"][2] += dz
-        out.append(el)
+        # Minecraft only accepts elements within one block either side of their own block;
+        # clip (e.g. the back strap of a clamp on a diagonal post) and drop what is left empty.
+        el["from"] = [min(max(v, -16), 32) for v in el["from"]]
+        el["to"] = [min(max(v, -16), 32) for v in el["to"]]
+        if all(b > a for a, b in zip(el["from"], el["to"])):
+            out.append(el)
     return out
 
 
@@ -739,11 +746,16 @@ def accessory_parts(kind, name, tex):
 
 
 def write_accessory(name, kind, tex):
-    els, textures, board = accessory_parts(kind, name, tex)
-    clamp_heights = {"sign": (12.6,), "push_button": (5.2, 10.0)}.get(kind, ())
+    if kind == "roadsign":
+        els, textures, clamp_heights = furniture.roadsign_parts(name, tex)
+        board = None
+    else:
+        els, textures, board = accessory_parts(kind, name, tex)
+        clamp_heights = {"sign": (12.6,), "push_button": (5.2, 10.0)}.get(kind, ())
     for geometry, diagonal, attachment in GEOMETRIES:
-        mounted = els + clamps(geometry, clamp_heights, half_width=2.5)
-        parts = {"body": model(textures, place(mounted, attachment, diagonal))}
+        mounted = els + clamps(geometry, clamp_heights, half_width=2.5,
+                               back=furniture.SIGN_BACK_Z if kind == "roadsign" else 11.0)
+        parts = {"body": model(textures, place(mounted, attachment, diagonal), cutout=kind == "roadsign")}
         if board:
             parts["board"] = model({"particle": board[1], "board": board[1], "board_back": tex["grey_metal"]},
                                    place(board[0], attachment, diagonal), cutout=True)
@@ -761,7 +773,7 @@ def write_accessory(name, kind, tex):
     if board:
         item_els += board[0]
         item_tex.update({"board": board[1], "board_back": tex["grey_metal"]})
-    write_item(name, model(item_tex, item_els, cutout=bool(board)), small=True)
+    write_item(name, model(item_tex, item_els, cutout=bool(board) or kind == "roadsign"), small=True)
 
 
 # ---- poles
@@ -834,13 +846,20 @@ def write_lang():
     for block, style, type_id, _, _ in all_signal_blocks():
         lang[f"block.{MOD_ID}.{block}"] = f"{TYPE_NAMES[type_id]} ({STYLE_NAMES[style]})"
     for name in ACCESSORIES:
-        lang[f"block.{MOD_ID}.{name}"] = ACCESSORY_NAMES[name]
+        if name in ACCESSORY_NAMES:
+            lang[f"block.{MOD_ID}.{name}"] = ACCESSORY_NAMES[name]
+    lang.update(furniture.lang())
+    lang.update({"itemGroup.ptmuk.main": "UK Traffic Lights", "itemGroup.ptmuk.poles": "UK Poles",
+                 "itemGroup.ptmuk.signs": "UK Road Signs", "itemGroup.ptmuk.street": "UK Street Furniture"})
     write_json(ASSETS / "lang/en_us.json", lang)
 
 
 def write_data():
     signals = [f"{MOD_ID}:{b}" for b, *_ in all_signal_blocks()]
-    everything = [f"{MOD_ID}:{n}" for n in POLES] + signals + [f"{MOD_ID}:{n}" for n in ACCESSORIES]
+    fences = [f"{MOD_ID}:{n}" for n in furniture.FENCES]
+    everything = [f"{MOD_ID}:{n}" for n in POLES] + signals + [f"{MOD_ID}:{n}" for n in ACCESSORIES] + \
+        [f"{MOD_ID}:{n}" for n in furniture.FURNITURE] + fences
+    write_json(DATA / "minecraft/tags/blocks/fences.json", {"replace": False, "values": fences})
     loot = DATA / MOD_ID / "loot_tables"
     if loot.exists():
         shutil.rmtree(loot)
@@ -860,16 +879,27 @@ def main():
         if (ASSETS / d).exists():
             shutil.rmtree(ASSETS / d)
     tex = write_textures()
+    furniture.G = sys.modules[__name__]
     for block, style, _, kind, boardable in all_signal_blocks():
         write_signal(block, style, kind, boardable, tex)
     for name, kind in ACCESSORIES.items():
         write_accessory(name, kind, tex)
     for name, (radius, surface, collar, cap, _) in POLES.items():
         write_pole(name, radius, surface, collar, cap, tex)
+    furniture.generate(sys.modules[__name__], tex)
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)
     write_lang()
     write_data()
+    check_bounds()
     print("assets generated")
+
+
+def check_bounds():
+    """Minecraft refuses models with elements outside -16..32; fail here instead of in game."""
+    for path in (ASSETS / "models").rglob("*.json"):
+        for el in json.loads(path.read_text()).get("elements", []):
+            if min(el["from"] + el["to"]) < -16 or max(el["from"] + el["to"]) > 32:
+                raise SystemExit(f"element out of bounds in {path}: {el['from']} {el['to']}")
 
 
 if __name__ == "__main__":
