@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/slab_top",
+ "textures": {
+  "bottom": "ptmuk:block/building/london_stock_brick",
+  "top": "ptmuk:block/building/london_stock_brick",
+  "side": "ptmuk:block/building/london_stock_brick"
+ }
+}

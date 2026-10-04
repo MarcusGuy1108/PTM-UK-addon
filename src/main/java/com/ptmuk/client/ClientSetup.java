@@ -1,6 +1,8 @@
 package com.ptmuk.client;
 
 import com.ptmuk.PtmUk;
+import com.ptmuk.client.motorway.VmsRenderer;
+import com.ptmuk.client.sign.DirectionSignRenderer;
 import com.ptmuk.registry.ModBlockEntities;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -15,5 +17,7 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModBlockEntities.CLASSIC_LAMP.get(), ClassicLampRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.DIRECTION_SIGN.get(), DirectionSignRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.VMS.get(), VmsRenderer::new);
     }
 }

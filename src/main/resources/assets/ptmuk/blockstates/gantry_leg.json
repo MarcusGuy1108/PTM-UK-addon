@@ -1,0 +1,10 @@
+{
+ "variants": {
+  "base=false": {
+   "model": "ptmuk:block/motorway/gantry_leg_mid"
+  },
+  "base=true": {
+   "model": "ptmuk:block/motorway/gantry_leg_base"
+  }
+ }
+}

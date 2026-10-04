@@ -1,0 +1,21 @@
+{
+ "replace": false,
+ "values": [
+  "ptmuk:paving_slabs_slab",
+  "ptmuk:block_paving_red_slab",
+  "ptmuk:block_paving_grey_slab",
+  "ptmuk:tactile_paving_buff_slab",
+  "ptmuk:tactile_paving_red_slab",
+  "ptmuk:tactile_paving_corduroy_slab",
+  "ptmuk:granite_setts_slab",
+  "ptmuk:concrete_kerb_slab",
+  "ptmuk:tarmac_slab",
+  "ptmuk:tarmac_red_slab",
+  "ptmuk:red_brick_slab",
+  "ptmuk:london_stock_brick_slab",
+  "ptmuk:blue_engineering_brick_slab",
+  "ptmuk:pebbledash_slab",
+  "ptmuk:white_render_slab",
+  "ptmuk:portland_stone_slab"
+ ]
+}

@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/slab",
+ "textures": {
+  "bottom": "ptmuk:block/building/pebbledash",
+  "top": "ptmuk:block/building/pebbledash",
+  "side": "ptmuk:block/building/pebbledash"
+ }
+}

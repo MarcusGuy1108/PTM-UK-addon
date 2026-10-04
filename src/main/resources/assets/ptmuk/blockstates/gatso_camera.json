@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/gatso_camera"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/gatso_camera",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/gatso_camera",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/gatso_camera",
+   "y": 270
+  }
+ }
+}

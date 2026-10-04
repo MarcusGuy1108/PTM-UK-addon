@@ -62,7 +62,22 @@ In the **UK Street Furniture** tab:
 - **Parking and charging:** pay and display machine, parking meter, EV charging point.
 - **Roadside utilities:** telecoms cabinet, signal controller cabinet, feeder pillar, fire hydrant marker, manhole cover, drain grate.
 - **Street lights:** LED and old sodium lanterns. Put them on top of a UK pole and the arm reaches out over the road.
+- **Speed cameras:**
+  - Gatso: rear facing; put it on top of a UK sign pole.
+  - Truvelo: forward facing, on its own post.
+  - SPECS average-speed camera: on an arm; put it on top of a pole.
+  - The matching speed camera sign is in the road signs tab.
+- **Road works:** traffic cone, red and white barrier, ROAD CLOSED sign.
+- **Motorway roadside:** concrete step barrier, Armco crash barrier (connects like a fence), orange SOS emergency phone, marker post.
 - **Fences:** palisade, black railings, pedestrian guardrail, close board, Heras temporary fencing. They connect like vanilla fences.
+
+### Building blocks
+
+In the **UK Building Blocks** tab, each as a full block and a slab:
+
+- **Paving:** concrete paving slabs, red and grey block paving, buff and red blister tactile paving, corduroy tactile paving, granite setts, concrete kerb.
+- **Tarmac:** standard and red (bus and cycle lanes).
+- **Walls:** red brick, London stock brick, blue engineering brick, pebbledash, white render, Portland stone.
 
 ### Road signs
 
@@ -70,8 +85,64 @@ In the **UK Road Signs** tab, mounted on poles with clamps like the signal heads
 
 - **Speed limits:** 20 to 70, and national speed limit.
 - **Regulatory:** no entry, give way, stop, one way, keep left.
+- **Speed camera** sign.
 - **Parking:** parking, pay at machine, disabled parking.
 - **Warnings:** traffic signals ahead, pedestrian crossing, children, road works.
+
+### Direction signs (editable)
+
+Also in **UK Road Signs**: direction signs you write yourself. Place one and right-click it to open the editor.
+
+- **Colour scheme:**
+  - Local (white)
+  - Primary route (green, with yellow route numbers)
+  - Motorway (blue)
+  - Tourist (brown)
+  - Temporary / diversion (yellow)
+  - Street name plate
+
+  You can change the scheme later in the editor.
+- **Size:** 1–8 blocks wide and 1–6 blocks tall. The block you place is the bottom middle of the panel.
+- **Junction diagram:** ahead, left, right, crossroads, T-junction, ahead + left/right, roundabout (3 or 4 arms), or 2–4 lane arrows for overhead signs. Or no diagram, for stacked destinations.
+- **Text:** a header bar (e.g. *HANGMAN'S CROSSROADS*), the ahead destinations above the diagram, and left/right destinations beside it. One destination per line. In commands, `|` also starts a new line.
+- **Route patches** inside the text:
+  - `[A34]` gives a green patch with yellow numbers.
+  - `{M1}` gives a blue motorway patch.
+  - `<B1043>` gives a black-bordered white patch.
+  - On green signs, plain A/B road numbers turn yellow automatically.
+- **Legs:** galvanised posts reach down to the ground. Turn them off for wall-mounted signs, or for overhead signs hung from a gantry beam, which get hanger brackets instead.
+
+The text uses a Transport-style typeface (bundled DejaVu Sans), heavy for black-on-white and medium for white-on-colour, as on real UK signs.
+
+### Motorway gantries
+
+In the **UK Motorway** tab:
+
+- **Gantry beam:** a box-truss beam with a maintenance walkway. It runs across the way you're looking when you place it.
+- **Gantry leg:** a lattice leg that gets a concrete plinth at the bottom.
+- **Lane signal (MS4):** hangs under the beam, one per lane.
+  - Right-click to change the whole gantry at once: blank, 70, 60, 50, 40, 30, 20 in a red ring, end of restriction, red X, move left/right arrows, QUEUE, FOG.
+  - Sneak + right-click changes just that lane, e.g. to close it with a red X.
+  - A redstone signal shows a red X.
+  - Amber lanterns flash in pairs for speeds and warnings; red lamps flash with the red X.
+  - The dot-matrix pictures are baked into the block textures, so they show in Distant Horizons too.
+- **Variable message sign:** right-click to write up to three lines of amber dot-matrix text. You can set its width (2–8 blocks), turn the flashing amber lanterns on or off, and pick from preset messages.
+- **Overhead direction signs:** use a blue motorway direction sign with *lane arrows*, legs off, and hang it under the beam.
+
+### Power lines
+
+In the **UK Power** tab, each builder places a whole tower made of real blocks, so towers show up in **Distant Horizons**' LODs. The line runs the way you're facing.
+
+- **400 kV suspension pylon:** about 46 blocks tall, 3 cross-arms per side, glass insulator strings, twin conductors.
+- **400 kV tension pylon:** heavier, for angles. Insulator strings run along the line, with jumper loops.
+- **400 kV terminal pylon:** the line ends here and comes down to cable sealing ends on a platform.
+- **132 kV pylon:** the smaller lattice tower.
+- **T-pylon:** a white tubular mast with diamond "earring" insulators.
+- **11 kV wooden pole** and **33 kV H pole.**
+
+Breaking any part removes the whole tower. In survival you get the builder back.
+
+**Overhead Line Tool:** right-click a tower, then the next one, to string the conductors between them. Spans can be up to 256 blocks. Each conductor connects to its partner on the other tower, with a realistic sag; 400 kV lines are drawn as twin bundles, plus the earth wire. Sneak + right-click a tower to take down its spans. The wires are drawn by the client, so Distant Horizons doesn't show them beyond your normal render distance.
 
 ## How it works with PTM2
 
@@ -110,4 +181,3 @@ python3 tools/generate_assets.py
 
 - Speed cameras (Gatso, Truvelo, SPECS average-speed, HADECS) that detect PTM2 vehicles
 - Belisha beacons and zebra crossings
-- UK road signs, keep-left bollards, motorway gantries and matrix signs

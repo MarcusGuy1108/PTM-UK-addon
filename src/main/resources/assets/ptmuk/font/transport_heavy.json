@@ -1,0 +1,5 @@
+{
+  "providers": [
+    {"type": "ttf", "file": "ptmuk:dejavu_sans_bold.ttf", "size": 11.0, "oversample": 6.0, "shift": [0.0, 1.0]}
+  ]
+}

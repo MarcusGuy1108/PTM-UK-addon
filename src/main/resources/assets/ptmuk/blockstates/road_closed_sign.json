@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/road_closed_sign"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/road_closed_sign",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/road_closed_sign",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/road_closed_sign",
+   "y": 270
+  }
+ }
+}

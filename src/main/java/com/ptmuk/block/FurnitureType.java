@@ -37,7 +37,16 @@ public enum FurnitureType {
     MANHOLE_COVER("manhole_cover", 0, 0, 0, 16, 0.6, 16, 0, SoundType.METAL),
     DRAIN_GRATE("drain_grate", 1, 0, 0, 15, 0.6, 7, 0, SoundType.METAL),
     STREET_LIGHT_LED("street_light_led", 5, 0, 5, 11, 4, 11, 15, SoundType.METAL),
-    STREET_LIGHT_SODIUM("street_light_sodium", 5, 0, 5, 11, 4, 11, 15, SoundType.METAL);
+    STREET_LIGHT_SODIUM("street_light_sodium", 5, 0, 5, 11, 4, 11, 15, SoundType.METAL),
+    GATSO_CAMERA("gatso_camera", 3, 0, 1.5, 13, 15, 14.5, 0, SoundType.METAL),
+    TRUVELO_CAMERA("truvelo_camera", 4, 0, 3, 12, 24, 13, 0, SoundType.METAL),
+    SPECS_CAMERA("specs_camera", 5, 0, 0, 11, 8, 10, 0, SoundType.METAL),
+    TRAFFIC_CONE("traffic_cone", 3, 0, 3, 13, 12.5, 13, 0, SoundType.STONE),
+    CHAPTER8_BARRIER("chapter8_barrier", 0, 0, 4, 16, 14, 12, 0, SoundType.STONE),
+    ROAD_CLOSED_SIGN("road_closed_sign", 1, 0, 6, 15, 18, 11, 0, SoundType.METAL),
+    CONCRETE_BARRIER("concrete_barrier", 0, 0, 3, 16, 14, 13, 0, SoundType.STONE),
+    EMERGENCY_PHONE("emergency_phone", 4, 0, 5, 12, 22, 11, 0, SoundType.METAL),
+    MARKER_POST("marker_post", 6.5, 0, 7, 9.5, 18, 9, 0, SoundType.STONE);
 
     private final String id;
     public final double[] box;

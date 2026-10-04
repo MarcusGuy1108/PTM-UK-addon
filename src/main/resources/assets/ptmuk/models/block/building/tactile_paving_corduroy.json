@@ -1,0 +1,6 @@
+{
+ "parent": "minecraft:block/cube_all",
+ "textures": {
+  "all": "ptmuk:block/building/tactile_paving_corduroy"
+ }
+}

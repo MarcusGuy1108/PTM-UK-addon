@@ -2,6 +2,7 @@ package com.ptmuk.registry;
 
 import com.ptmuk.PtmUk;
 import com.ptmuk.block.AccessoryType;
+import com.ptmuk.block.BuildingMaterial;
 import com.ptmuk.block.FurnitureBlock;
 import com.ptmuk.block.FurnitureType;
 import com.ptmuk.block.PoleType;
@@ -11,11 +12,20 @@ import com.ptmuk.block.SignalType;
 import com.ptmuk.block.UkFence;
 import com.ptmuk.block.UkPole;
 import com.ptmuk.block.UkTrafficSignal;
+import com.ptmuk.motorway.GantryBeamBlock;
+import com.ptmuk.motorway.GantryLegBlock;
+import com.ptmuk.motorway.LaneSignalBlock;
+import com.ptmuk.motorway.VmsBlock;
+import com.ptmuk.power.PylonBlock;
+import com.ptmuk.power.PylonCells;
+import com.ptmuk.sign.DirectionSignBlock;
+import com.ptmuk.sign.SignScheme;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -34,6 +44,15 @@ public final class ModBlocks {
     public static final Map<String, RegistryObject<Block>> FENCES = new LinkedHashMap<>();
     /** Every accessory, in creative-tab order. */
     public static final Map<String, RegistryObject<Block>> ACCESSORIES = new LinkedHashMap<>();
+    /** Editable direction signs, one per colour scheme (the scheme can be changed in the editor). */
+    public static final Map<String, RegistryObject<Block>> DIRECTION_SIGNS = new LinkedHashMap<>();
+    /** Motorway gantry parts and signals. */
+    public static final Map<String, RegistryObject<Block>> MOTORWAY = new LinkedHashMap<>();
+    public static final RegistryObject<Block> VMS;
+    /** UK building materials: full blocks, then their slabs. */
+    public static final Map<String, RegistryObject<Block>> BUILDING = new LinkedHashMap<>();
+    /** Transmission towers, one block per tower type (each cell of the tower is a state). */
+    public static final Map<String, RegistryObject<Block>> PYLONS = new LinkedHashMap<>();
 
     static {
         for (PoleType type : PoleType.values()) {
@@ -53,8 +72,27 @@ public final class ModBlocks {
         fence("pedestrian_guardrail", SoundType.METAL);
         fence("close_board_fence", SoundType.WOOD);
         fence("heras_fence", SoundType.METAL);
+        fence("armco_barrier", SoundType.METAL);
         for (AccessoryType type : AccessoryType.values()) {
             ACCESSORIES.put(type.id(), BLOCKS.register(type.id(), () -> new SignalAccessory(type)));
+        }
+        for (SignScheme scheme : SignScheme.values()) {
+            String id = scheme == SignScheme.STREET_NAME ? "street_name_sign" : "direction_sign_" + scheme.name().toLowerCase();
+            DIRECTION_SIGNS.put(id, BLOCKS.register(id, () -> new DirectionSignBlock(scheme)));
+        }
+        MOTORWAY.put("gantry_beam", BLOCKS.register("gantry_beam", GantryBeamBlock::new));
+        MOTORWAY.put("gantry_leg", BLOCKS.register("gantry_leg", GantryLegBlock::new));
+        MOTORWAY.put("lane_signal", BLOCKS.register("lane_signal", LaneSignalBlock::new));
+        VMS = BLOCKS.register("matrix_sign", VmsBlock::new);
+        MOTORWAY.put("matrix_sign", VMS);
+        for (BuildingMaterial m : BuildingMaterial.values()) {
+            BUILDING.put(m.id(), BLOCKS.register(m.id(), () -> new Block(m.properties())));
+        }
+        for (BuildingMaterial m : BuildingMaterial.values()) {
+            BUILDING.put(m.id() + "_slab", BLOCKS.register(m.id() + "_slab", () -> new SlabBlock(m.properties())));
+        }
+        for (String name : PylonCells.COUNTS.keySet()) {
+            PYLONS.put(name, BLOCKS.register(name, () -> new PylonBlock(name)));
         }
     }
 

@@ -22,6 +22,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 import signal_textures as T  # noqa: E402
 import furniture  # noqa: E402
+import signs  # noqa: E402
+import motorway  # noqa: E402
+import pylons  # noqa: E402
+import building  # noqa: E402
 
 MOD_ID = "ptmuk"
 ROOT = Path(__file__).resolve().parent.parent
@@ -849,8 +853,13 @@ def write_lang():
         if name in ACCESSORY_NAMES:
             lang[f"block.{MOD_ID}.{name}"] = ACCESSORY_NAMES[name]
     lang.update(furniture.lang())
+    lang.update(signs.lang(sys.modules[__name__]))
+    lang.update(motorway.lang(sys.modules[__name__]))
+    lang.update(pylons.lang(sys.modules[__name__]))
+    lang.update(building.lang(sys.modules[__name__]))
     lang.update({"itemGroup.ptmuk.main": "UK Traffic Lights", "itemGroup.ptmuk.poles": "UK Poles",
-                 "itemGroup.ptmuk.signs": "UK Road Signs", "itemGroup.ptmuk.street": "UK Street Furniture"})
+                 "itemGroup.ptmuk.signs": "UK Road Signs", "itemGroup.ptmuk.street": "UK Street Furniture",
+                 "itemGroup.ptmuk.motorway": "UK Motorway"})
     write_json(ASSETS / "lang/en_us.json", lang)
 
 
@@ -858,15 +867,29 @@ def write_data():
     signals = [f"{MOD_ID}:{b}" for b, *_ in all_signal_blocks()]
     fences = [f"{MOD_ID}:{n}" for n in furniture.FENCES]
     everything = [f"{MOD_ID}:{n}" for n in POLES] + signals + [f"{MOD_ID}:{n}" for n in ACCESSORIES] + \
-        [f"{MOD_ID}:{n}" for n in furniture.FURNITURE] + fences
+        [f"{MOD_ID}:{n}" for n in furniture.FURNITURE] + fences + \
+        [f"{MOD_ID}:{n}" for n in signs.SIGNS] + [f"{MOD_ID}:{n}" for n in motorway.NAMES]
     write_json(DATA / "minecraft/tags/blocks/fences.json", {"replace": False, "values": fences})
     loot = DATA / MOD_ID / "loot_tables"
     if loot.exists():
         shutil.rmtree(loot)
     write_json(DATA / "ptm2/tags/blocks/traffic_lights.json", {"replace": False, "values": signals})
-    write_json(DATA / "minecraft/tags/blocks/mineable/pickaxe.json", {"replace": False, "values": everything})
+    write_json(DATA / "minecraft/tags/blocks/mineable/pickaxe.json",
+               {"replace": False, "values": everything + [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" not in n]})
+    write_json(DATA / "minecraft/tags/blocks/mineable/axe.json",
+               {"replace": False, "values": [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" in n]})
+    everything += [f"{MOD_ID}:{n}" for n in building.block_ids()]
+    write_json(DATA / "minecraft/tags/blocks/mineable/pickaxe.json",
+               {"replace": False, "values": everything + [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" not in n]})
+    write_json(DATA / "minecraft/tags/blocks/slabs.json",
+               {"replace": False, "values": [f"{MOD_ID}:{n}_slab" for n in building.MATERIALS]})
+    write_json(DATA / "minecraft/tags/items/slabs.json",
+               {"replace": False, "values": [f"{MOD_ID}:{n}_slab" for n in building.MATERIALS]})
     for full in everything:
         name = full.split(":")[1]
+        if name.endswith("_slab") and name[:-5] in building.MATERIALS:
+            write_json(loot / f"blocks/{name}.json", building.slab_loot(full))
+            continue
         write_json(loot / f"blocks/{name}.json", {
             "type": "minecraft:block",
             "pools": [{"rolls": 1, "entries": [{"type": "minecraft:item", "name": full}],
@@ -887,6 +910,10 @@ def main():
     for name, (radius, surface, collar, cap, _) in POLES.items():
         write_pole(name, radius, surface, collar, cap, tex)
     furniture.generate(sys.modules[__name__], tex)
+    signs.generate(sys.modules[__name__])
+    motorway.generate(sys.modules[__name__])
+    pylons.generate(sys.modules[__name__])
+    building.generate(sys.modules[__name__])
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)
     write_lang()
     write_data()

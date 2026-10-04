@@ -1,0 +1,48 @@
+{
+ "multipart": [
+  {
+   "apply": {
+    "model": "ptmuk:block/fence/armco_barrier_post"
+   }
+  },
+  {
+   "when": {
+    "north": "true"
+   },
+   "apply": {
+    "model": "ptmuk:block/fence/armco_barrier_side",
+    "uvlock": false
+   }
+  },
+  {
+   "when": {
+    "east": "true"
+   },
+   "apply": {
+    "model": "ptmuk:block/fence/armco_barrier_side",
+    "uvlock": false,
+    "y": 90
+   }
+  },
+  {
+   "when": {
+    "south": "true"
+   },
+   "apply": {
+    "model": "ptmuk:block/fence/armco_barrier_side",
+    "uvlock": false,
+    "y": 180
+   }
+  },
+  {
+   "when": {
+    "west": "true"
+   },
+   "apply": {
+    "model": "ptmuk:block/fence/armco_barrier_side",
+    "uvlock": false,
+    "y": 270
+   }
+  }
+ ]
+}

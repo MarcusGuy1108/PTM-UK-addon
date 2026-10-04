@@ -33,7 +33,8 @@ public enum AccessoryType {
     TRAFFIC_SIGNALS_AHEAD_SIGN("traffic_signals_ahead_sign", Mount.SIGN),
     PEDESTRIAN_CROSSING_SIGN("pedestrian_crossing_sign", Mount.SIGN),
     CHILDREN_SIGN("children_sign", Mount.SIGN),
-    ROADWORKS_SIGN("roadworks_sign", Mount.SIGN);
+    ROADWORKS_SIGN("roadworks_sign", Mount.SIGN),
+    SPEED_CAMERA_SIGN("speed_camera_sign", Mount.SIGN);
 
     public enum Mount { BELOW_HEAD, ABOVE_HEAD, POLE, SIGN }
 

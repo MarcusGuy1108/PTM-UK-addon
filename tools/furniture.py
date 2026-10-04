@@ -97,6 +97,18 @@ def make_textures():
         "mesh": s(F.mesh(), p + "heras_mesh"),
         "shelter_glass": s(shelter_glass(), p + "shelter_glass"),
         "keep_left_lit": s(F.keep_left(), p + "keep_left_lit"),
+        "gatso_front": s(F.camera_front("gatso"), p + "gatso_front"),
+        "truvelo_front": s(F.camera_front("truvelo"), p + "truvelo_front"),
+        "specs_front": s(F.specs_front(), p + "specs_front"),
+        "camera_yellow": s(F.paint((232, 186, 28), gloss=0.3, wear=0.03), p + "camera_yellow"),
+        "camera_grey": s(F.paint((120, 124, 128), wear=0.05), p + "camera_grey"),
+        "cone": s(F.cone_bands(), p + "cone_bands"),
+        "orange": s(F.paint(F.ORANGE, gloss=0.3), p + "orange_paint"),
+        "chapter8": s(F.chapter8(), p + "chapter8"),
+        "road_closed": s(F.road_closed(), p + "road_closed"),
+        "sos": s(F.sos_panel(), p + "sos_panel"),
+        "marker_plate": s(F.marker_plate(), p + "marker_plate"),
+        "w_beam": s(F.w_beam(), p + "w_beam"),
     })
     for name, colour in BIN_COLOURS.items():
         TEX[f"bin_{name}"] = s(F.plastic(colour), p + f"bin_{name}")
@@ -390,6 +402,79 @@ def street_light(kind):
     return els, {"galv": t("galv"), "grey_cab": t("grey_cab"), "sodium": t("sodium")}, {}
 
 
+
+# ----------------------------------------------------------------- cameras, roadworks, motorway
+
+def gatso_camera():
+    """Rear-facing Gatso: yellow box on top of a pole (put it on a UK sign pole)."""
+    els = cyl(8, 8, 2.2, 0, 2, "#camera_grey", top=True)
+    els += [box((3, 2, 1.5), (13, 14.5, 14.5), "#camera_yellow", front="#gatso_front", full_front_uv=True),
+            box((2.6, 14.5, 1), (13.4, 15.2, 15), "#camera_grey")]
+    return els, {"camera_yellow": t("camera_yellow"), "camera_grey": t("camera_grey"), "gatso_front": t("gatso_front")}, {}
+
+
+def truvelo_camera():
+    """Forward-facing Truvelo on its own post: tall yellow housing with two lenses."""
+    els = cyl(8, 8, 1.4, 0, 8, "#camera_grey") + cyl(8, 8, 2.0, 0, 0.8, "#camera_grey", top=True)
+    els += [box((4, 8, 3), (12, 24, 13), "#camera_yellow", front="#truvelo_front", full_front_uv=True),
+            box((3.6, 24, 2.6), (12.4, 24.6, 13.4), "#camera_grey")]
+    return els, {"camera_yellow": t("camera_yellow"), "camera_grey": t("camera_grey"),
+                 "truvelo_front": t("truvelo_front")}, {}
+
+
+def specs_camera():
+    """Average-speed camera on an arm off the top of a pole."""
+    els = cyl(8, 8, 1.6, 0, 3, "#camera_grey", top=True)
+    els += [box((7, 3, 0), (9, 5, 9), "#camera_grey"),
+            box((4.5, 1.5, -6), (11.5, 7.5, 1), "#camera_yellow", front="#specs_front", full_front_uv=True),
+            box((4.2, 7.5, -6.6), (11.8, 8.1, 1.2), "#camera_grey")]
+    return els, {"camera_yellow": t("camera_yellow"), "camera_grey": t("camera_grey"), "specs_front": t("specs_front")}, {}
+
+
+def traffic_cone():
+    els = [box((3, 0, 3), (13, 1, 13), "#rubber")]
+    steps = [(4.2, 1, 3), (3.6, 3, 5), (3.0, 5, 7), (2.4, 7, 9), (1.8, 9, 11), (1.2, 11, 12.5)]
+    for r, y1, y2 in steps:
+        els += cyl(8, 8, r, y1, y2, "#cone", top=True)
+    return els, {"rubber": t("rubber"), "cone": t("cone")}, {}
+
+
+def chapter8_barrier():
+    els = [box((0, 10, 7.4), (16, 14, 8.6), "#chapter8"),
+           box((1, 0, 4), (4, 1.2, 12), "#rubber"), box((12, 0, 4), (15, 1.2, 12), "#rubber"),
+           box((2.1, 1.2, 7.5), (2.9, 10, 8.5), "#rubber"), box((13.1, 1.2, 7.5), (13.9, 10, 8.5), "#rubber")]
+    return els, {"chapter8": t("chapter8"), "rubber": t("rubber")}, {}
+
+
+def road_closed_sign():
+    els = [face(1, 6, 15, 18, 7.3, "road_closed"),
+           box((1, 6, 7.32), (15, 18, 7.6), "#galv", faces=("south", "up", "down", "east", "west")),
+           box((2, 0, 9), (3, 17, 10), "#galv", rotation=("x", -22.5, (2.5, 8, 9.5))),
+           box((13, 0, 9), (14, 17, 10), "#galv", rotation=("x", -22.5, (13.5, 8, 9.5))),
+           box((1.5, 0, 6.5), (3.5, 1, 8.5), "#rubber"), box((12.5, 0, 6.5), (14.5, 1, 8.5), "#rubber")]
+    return els, {"road_closed": t("road_closed"), "galv": t("galv"), "rubber": t("rubber")}, {}
+
+
+def concrete_barrier():
+    """Concrete step barrier, as used in motorway central reserves."""
+    els = [box((0, 0, 3), (16, 3, 13), "#concrete"), box((0, 3, 4.5), (16, 9, 11.5), "#concrete"),
+           box((0, 9, 5.5), (16, 14, 10.5), "#concrete")]
+    return els, {"concrete": t("concrete")}, {}
+
+
+def emergency_phone():
+    els = cyl(8, 8, 1.0, 0, 12, "#orange")
+    els += [box((4, 12, 5), (12, 22, 11), "#orange"), face(5, 15, 11, 21, 4.97, "sos"),
+            box((3.7, 22, 4.7), (12.3, 22.6, 11.3), "#dark")]
+    return els, {"orange": t("orange"), "sos": t("sos"), "dark": t("dark")}, {}
+
+
+def marker_post():
+    els = [box((6.5, 0, 7), (9.5, 18, 9), "#white"), face(6.6, 12, 9.4, 15, 6.97, "marker_plate"),
+           box((6.8, 16, 6.95), (9.2, 17.2, 7.0), "#red", faces=("north",), emissive=True)]
+    return els, {"white": t("white"), "marker_plate": t("marker_plate"), "red": t("red")}, {}
+
+
 FURNITURE = {
     "wheelie_bin_black": (lambda: wheelie_bin("black"), "Wheelie Bin (Black)"),
     "wheelie_bin_grey": (lambda: wheelie_bin("grey"), "Wheelie Bin (Grey)"),
@@ -422,6 +507,15 @@ FURNITURE = {
     "drain_grate": (drain_grate, "Drain Grate"),
     "street_light_led": (lambda: street_light("led"), "Street Light Lantern (LED)"),
     "street_light_sodium": (lambda: street_light("sodium"), "Street Light Lantern (Sodium)"),
+    "gatso_camera": (gatso_camera, "Speed Camera (Gatso)"),
+    "truvelo_camera": (truvelo_camera, "Speed Camera (Truvelo, forward facing)"),
+    "specs_camera": (specs_camera, "Average Speed Camera (SPECS)"),
+    "traffic_cone": (traffic_cone, "Traffic Cone"),
+    "chapter8_barrier": (chapter8_barrier, "Road Works Barrier"),
+    "road_closed_sign": (road_closed_sign, "Road Closed Sign"),
+    "concrete_barrier": (concrete_barrier, "Concrete Step Barrier"),
+    "emergency_phone": (emergency_phone, "Motorway Emergency Phone"),
+    "marker_post": (marker_post, "Motorway Marker Post"),
 }
 
 
@@ -483,6 +577,11 @@ def fence_parts(kind):
                 box((7.5, 2.5, 0), (8.5, 28, 8), "#wood_vertical"),
                 box((7.2, 28, 0), (8.8, 28.6, 8), "#wood")]
         return post, side, {"concrete": t("concrete"), "wood_vertical": t("wood_vertical"), "wood": t("wood")}
+    if kind == "armco_barrier":
+        post = [box((7, 0, 7), (9, 11, 9), "#galv")]
+        side = [box((6.2, 5.5, 0), (6.8, 10.5, 8), "#w_beam", faces=("east", "west", "up", "down")),
+                box((6.8, 7, 0), (7.2, 9, 8), "#galv")]
+        return post, side, {"galv": t("galv"), "w_beam": t("w_beam")}
     # heras temporary fencing
     post = [box((4.5, 0, 5), (11.5, 2.2, 11), "#rubber"), box((7.6, 2.2, 7.6), (8.4, 31, 8.4), "#galv")]
     mesh = box((7.95, 2.6, 0), (8.05, 30.6, 8), "#mesh", faces=("east", "west"))
@@ -496,6 +595,7 @@ FENCES = {
     "pedestrian_guardrail": "Pedestrian Guardrail",
     "close_board_fence": "Close Board Fence",
     "heras_fence": "Heras Temporary Fencing",
+    "armco_barrier": "Armco Crash Barrier",
 }
 
 
@@ -545,6 +645,7 @@ ROAD_SIGNS = {
     "pedestrian_crossing_sign": (lambda: F.warning("pedestrian_crossing"), 12, "Pedestrian Crossing Sign"),
     "children_sign": (lambda: F.warning("children"), 12, "Children Crossing Sign"),
     "roadworks_sign": (lambda: F.warning("roadworks"), 12, "Road Works Sign"),
+    "speed_camera_sign": (F.speed_camera_sign, 12, "Speed Camera Sign"),
 }
 
 SIGN_FACE_Z = 10.2

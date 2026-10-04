@@ -19,8 +19,14 @@ public final class ModCreativeTabs {
             () -> new ItemStack(ModBlocks.POLES.get("signal_pole_black").get()), ModItems.POLE_ITEMS);
     public static final RegistryObject<CreativeModeTab> SIGNS = tab("signs", POLES,
             () -> new ItemStack(ModBlocks.ACCESSORIES.get("speed_30_sign").get()), ModItems.SIGN_ITEMS);
-    public static final RegistryObject<CreativeModeTab> STREET = tab("street", SIGNS,
+    public static final RegistryObject<CreativeModeTab> MOTORWAY = tab("motorway", SIGNS,
+            () -> new ItemStack(ModBlocks.MOTORWAY.get("lane_signal").get()), ModItems.MOTORWAY_ITEMS);
+    public static final RegistryObject<CreativeModeTab> POWER = tab("power", MOTORWAY,
+            () -> new ItemStack(ModItems.PYLON_BUILDERS.get("pylon_400kv").get()), ModItems.POWER_ITEMS);
+    public static final RegistryObject<CreativeModeTab> STREET = tab("street", POWER,
             () -> new ItemStack(ModBlocks.FURNITURE.get("phone_box").get()), ModItems.STREET_ITEMS);
+    public static final RegistryObject<CreativeModeTab> BUILDING = tab("building", STREET,
+            () -> new ItemStack(ModBlocks.BUILDING.get("red_brick").get()), ModItems.BUILDING_ITEMS);
 
     private static RegistryObject<CreativeModeTab> tab(String name, RegistryObject<CreativeModeTab> after,
                                                        java.util.function.Supplier<ItemStack> icon,

@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/slab",
+ "textures": {
+  "bottom": "ptmuk:block/building/tarmac_red",
+  "top": "ptmuk:block/building/tarmac_red",
+  "side": "ptmuk:block/building/tarmac_red"
+ }
+}

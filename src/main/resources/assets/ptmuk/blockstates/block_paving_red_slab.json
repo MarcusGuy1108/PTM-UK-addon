@@ -1,0 +1,13 @@
+{
+ "variants": {
+  "type=bottom": {
+   "model": "ptmuk:block/building/block_paving_red_slab"
+  },
+  "type=top": {
+   "model": "ptmuk:block/building/block_paving_red_slab_top"
+  },
+  "type=double": {
+   "model": "ptmuk:block/building/block_paving_red"
+  }
+ }
+}

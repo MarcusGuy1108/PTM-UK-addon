@@ -3,6 +3,8 @@ package com.ptmuk.registry;
 import com.ptmuk.PtmUk;
 import com.ptmuk.block.ClassicLampBlockEntity;
 import com.ptmuk.block.UkTrafficSignal;
+import com.ptmuk.motorway.VmsBlockEntity;
+import com.ptmuk.sign.DirectionSignBlockEntity;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.registries.DeferredRegister;
@@ -19,6 +21,15 @@ public final class ModBlockEntities {
                     .map(o -> (Block) o.get())
                     .filter(b -> b instanceof UkTrafficSignal s && s.getStyle().isBulb())
                     .toArray(Block[]::new)).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<DirectionSignBlockEntity>> DIRECTION_SIGN = BLOCK_ENTITIES.register(
+            "direction_sign", () -> BlockEntityType.Builder.of(DirectionSignBlockEntity::new, ModBlocks.DIRECTION_SIGNS.values().stream()
+                    .map(o -> (Block) o.get()).toArray(Block[]::new)).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<VmsBlockEntity>> VMS = BLOCK_ENTITIES.register(
+            "matrix_sign", () -> BlockEntityType.Builder.of(VmsBlockEntity::new, ModBlocks.VMS.get()).build(null));
 
     private ModBlockEntities() {
     }

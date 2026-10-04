@@ -520,3 +520,104 @@ def sign_back(shape):
     else:
         d.rounded_rectangle([0, 0, S, S], radius=S * 0.06, fill=grey)
     return _finish(img)
+
+
+# ----------------------------------------------------------------- cameras, roadworks, motorway
+
+ORANGE = (236, 106, 22)
+
+
+def camera_front(kind, size=64):
+    """Front of a speed camera: dark recessed panel with lens and flash windows."""
+    ss = 4
+    S = size * ss
+    img = Image.new("RGBA", (S, S), (232, 186, 28, 255))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([S * 0.08, S * 0.08, S * 0.92, S * 0.92], radius=S * 0.05, fill=(30, 31, 33, 255))
+    if kind == "gatso":
+        d.rounded_rectangle([S * 0.16, S * 0.16, S * 0.84, S * 0.46], radius=S * 0.03, fill=(55, 60, 66, 255))
+        d.ellipse([S * 0.36, S * 0.2, S * 0.64, S * 0.44], fill=(12, 12, 14, 255))
+        d.ellipse([S * 0.44, S * 0.27, S * 0.52, S * 0.33], fill=(120, 140, 170, 255))
+        d.rounded_rectangle([S * 0.16, S * 0.54, S * 0.84, S * 0.84], radius=S * 0.03, fill=(200, 200, 196, 255))
+        for i in range(6):
+            x = S * (0.2 + i * 0.105)
+            d.line([x, S * 0.56, x, S * 0.82], fill=(170, 170, 166, 255), width=ss)
+    else:
+        for cy in (0.3, 0.7):
+            d.ellipse([S * 0.28, S * (cy - 0.17), S * 0.72, S * (cy + 0.17)], fill=(14, 14, 16, 255))
+            d.ellipse([S * 0.42, S * (cy - 0.06), S * 0.54, S * (cy + 0.04)], fill=(110, 125, 160, 255))
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def specs_front(size=64):
+    ss = 4
+    S = size * ss
+    img = Image.new("RGBA", (S, S), (232, 186, 28, 255))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([S * 0.1, S * 0.12, S * 0.62, S * 0.88], radius=S * 0.04, fill=(28, 28, 30, 255))
+    d.ellipse([S * 0.2, S * 0.3, S * 0.52, S * 0.7], fill=(10, 10, 12, 255))
+    d.ellipse([S * 0.32, S * 0.44, S * 0.4, S * 0.52], fill=(110, 125, 160, 255))
+    # infrared illuminator: grid of dark red LEDs
+    d.rounded_rectangle([S * 0.66, S * 0.2, S * 0.92, S * 0.8], radius=S * 0.03, fill=(40, 16, 16, 255))
+    for i in range(4):
+        for j in range(8):
+            x, y = S * (0.69 + i * 0.058), S * (0.24 + j * 0.068)
+            d.ellipse([x, y, x + S * 0.035, y + S * 0.035], fill=(120, 30, 30, 255))
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def speed_camera_sign():
+    img, d, S = rect_sign(WHITE, BLACK, 0.7, 1.0)
+    k = S / 100
+    # camera body, lens and the flash on top, as on diagram 880
+    d.rounded_rectangle([30 * k, 38 * k, 70 * k, 64 * k], radius=3 * k, fill=BLACK)
+    d.rectangle([38 * k, 32 * k, 50 * k, 38 * k], fill=BLACK)
+    d.ellipse([42 * k, 42 * k, 58 * k, 58 * k], fill=WHITE)
+    d.ellipse([46 * k, 46 * k, 54 * k, 54 * k], fill=BLACK)
+    return _finish(img)
+
+
+def cone_bands(size=64):
+    rgb = np.zeros((size, size, 3)) + np.array(ORANGE, float) + noise((size, size, 1), 2)
+    yy = np.mgrid[0:size, 0:size][0]
+    band = ((yy > size * 0.18) & (yy < size * 0.36)) | ((yy > size * 0.48) & (yy < size * 0.62))
+    rgb[band] = np.array([238, 240, 240.0]) + noise((int(band.sum()), 1), 2)
+    return to_image(rgb)
+
+
+def chapter8(size=64):
+    """Red and white diagonal barrier stripes."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(float)
+    stripe = ((xx + yy) // (size / 4)) % 2 == 0
+    rgb = np.where(stripe[..., None], np.array([200, 24, 30.0]), np.array([240, 240, 236.0]))
+    rgb += noise((size, size, 1), 2)
+    return to_image(rgb)
+
+
+def road_closed(size=128):
+    img, d, S = rect_sign(WHITE, RED, 1.0, 0.6, radius=0.03)
+    centred_text(d, S, "ROAD", S * 0.42, S * 0.15, BLACK, max_w=0.7)
+    centred_text(d, S, "CLOSED", S * 0.6, S * 0.15, BLACK, max_w=0.8)
+    return _finish(img, 128)
+
+
+def sos_panel(size=64):
+    return text_panel(["SOS"], size=(size, size), bg=ORANGE, fg=(250, 250, 250), heights=[0.38])
+
+
+def marker_plate(size=64):
+    img = Image.new("RGBA", (size, size), (0, 82, 160, 255))
+    d = ImageDraw.Draw(img)
+    f = ImageFont.truetype(BOLD, int(size * 0.32))
+    for i, line in enumerate(["A", "123.4"]):
+        tw = d.textlength(line, font=f)
+        d.text(((size - tw) / 2, size * (0.1 + i * 0.42)), line, fill=(250, 250, 250), font=f)
+    return img
+
+
+def w_beam(size=64):
+    """Galvanised W-profile crash barrier rail: two ridges seen face on."""
+    yy = np.mgrid[0:size, 0:size][0].astype(float)
+    shade = 18 * np.cos(yy / size * 4 * math.pi)
+    rgb = np.array([170, 174, 176.0]) + shade[..., None] + noise((size, size, 1), 3)
+    return to_image(rgb)

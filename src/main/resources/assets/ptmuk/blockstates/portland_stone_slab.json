@@ -1,0 +1,13 @@
+{
+ "variants": {
+  "type=bottom": {
+   "model": "ptmuk:block/building/portland_stone_slab"
+  },
+  "type=top": {
+   "model": "ptmuk:block/building/portland_stone_slab_top"
+  },
+  "type=double": {
+   "model": "ptmuk:block/building/portland_stone"
+  }
+ }
+}

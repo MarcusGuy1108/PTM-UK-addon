@@ -1,0 +1,13 @@
+{
+ "variants": {
+  "type=bottom": {
+   "model": "ptmuk:block/building/white_render_slab"
+  },
+  "type=top": {
+   "model": "ptmuk:block/building/white_render_slab_top"
+  },
+  "type=double": {
+   "model": "ptmuk:block/building/white_render"
+  }
+ }
+}

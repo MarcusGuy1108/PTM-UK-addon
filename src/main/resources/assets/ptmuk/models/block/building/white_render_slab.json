@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/slab",
+ "textures": {
+  "bottom": "ptmuk:block/building/white_render",
+  "top": "ptmuk:block/building/white_render",
+  "side": "ptmuk:block/building/white_render"
+ }
+}

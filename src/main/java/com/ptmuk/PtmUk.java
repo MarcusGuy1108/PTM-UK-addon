@@ -1,6 +1,7 @@
 package com.ptmuk;
 
 import com.mojang.logging.LogUtils;
+import com.ptmuk.network.PtmUkNetwork;
 import com.ptmuk.registry.ModBlockEntities;
 import com.ptmuk.registry.ModBlocks;
 import com.ptmuk.registry.ModCreativeTabs;
@@ -22,6 +23,7 @@ public class PtmUk {
         ModItems.ITEMS.register(modBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modBus);
         ModCreativeTabs.TABS.register(modBus);
+        PtmUkNetwork.register();
     }
 
     public static ResourceLocation id(String path) {

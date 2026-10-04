@@ -24,3 +24,4 @@ logs/
 
 # local copies of other mods (never commit these)
 libs/
+__pycache__/

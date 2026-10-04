@@ -2,6 +2,9 @@ package com.ptmuk.registry;
 
 import com.ptmuk.PtmUk;
 import com.ptmuk.block.AccessoryType;
+import com.ptmuk.power.CableToolItem;
+import com.ptmuk.power.PylonBuilderItem;
+import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,12 @@ public final class ModItems {
     public static final List<RegistryObject<Item>> POLE_ITEMS = new ArrayList<>();
     public static final List<RegistryObject<Item>> SIGN_ITEMS = new ArrayList<>();
     public static final List<RegistryObject<Item>> STREET_ITEMS = new ArrayList<>();
+    public static final List<RegistryObject<Item>> MOTORWAY_ITEMS = new ArrayList<>();
+    public static final List<RegistryObject<Item>> POWER_ITEMS = new ArrayList<>();
+    public static final List<RegistryObject<Item>> BUILDING_ITEMS = new ArrayList<>();
+    /** Tower name -> the item that builds it. */
+    public static final Map<String, RegistryObject<Item>> PYLON_BUILDERS = new LinkedHashMap<>();
+    public static final RegistryObject<Item> CABLE_TOOL;
 
     static {
         register(ModBlocks.POLES, POLE_ITEMS);
@@ -28,8 +37,18 @@ public final class ModItems {
             (type.mount == AccessoryType.Mount.SIGN ? SIGN_ITEMS : SIGNAL_ITEMS)
                     .add(item(type.id(), ModBlocks.ACCESSORIES.get(type.id())));
         }
+        register(ModBlocks.DIRECTION_SIGNS, SIGN_ITEMS);
+        register(ModBlocks.MOTORWAY, MOTORWAY_ITEMS);
+        ModBlocks.PYLONS.forEach((name, block) -> {
+            RegistryObject<Item> item = ITEMS.register(name + "_builder", () -> new PylonBuilderItem(block));
+            PYLON_BUILDERS.put(name, item);
+            POWER_ITEMS.add(item);
+        });
+        CABLE_TOOL = ITEMS.register("cable_tool", CableToolItem::new);
+        POWER_ITEMS.add(CABLE_TOOL);
         register(ModBlocks.FURNITURE, STREET_ITEMS);
         register(ModBlocks.FENCES, STREET_ITEMS);
+        register(ModBlocks.BUILDING, BUILDING_ITEMS);
     }
 
     private static void register(Map<String, RegistryObject<Block>> blocks, List<RegistryObject<Item>> tab) {

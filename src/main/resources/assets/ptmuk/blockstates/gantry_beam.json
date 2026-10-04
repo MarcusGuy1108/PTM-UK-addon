@@ -1,0 +1,11 @@
+{
+ "variants": {
+  "axis=x": {
+   "model": "ptmuk:block/motorway/gantry_beam"
+  },
+  "axis=z": {
+   "model": "ptmuk:block/motorway/gantry_beam",
+   "y": 90
+  }
+ }
+}

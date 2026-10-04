@@ -1,0 +1,394 @@
+{
+ "variants": {
+  "facing=north,aspect=off,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_off"
+  },
+  "facing=north,aspect=off,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=speed_70,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_70"
+  },
+  "facing=north,aspect=speed_70,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=speed_60,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_60"
+  },
+  "facing=north,aspect=speed_60,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=speed_50,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_50"
+  },
+  "facing=north,aspect=speed_50,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=speed_40,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_40"
+  },
+  "facing=north,aspect=speed_40,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=speed_30,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_30"
+  },
+  "facing=north,aspect=speed_30,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=speed_20,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_20"
+  },
+  "facing=north,aspect=speed_20,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=nsl,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_nsl"
+  },
+  "facing=north,aspect=nsl,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=red_x,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=red_x,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=merge_left,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_left"
+  },
+  "facing=north,aspect=merge_left,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=merge_right,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_right"
+  },
+  "facing=north,aspect=merge_right,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=queue,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_queue"
+  },
+  "facing=north,aspect=queue,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=north,aspect=fog,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_fog"
+  },
+  "facing=north,aspect=fog,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x"
+  },
+  "facing=east,aspect=off,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_off",
+   "y": 90
+  },
+  "facing=east,aspect=off,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=speed_70,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_70",
+   "y": 90
+  },
+  "facing=east,aspect=speed_70,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=speed_60,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_60",
+   "y": 90
+  },
+  "facing=east,aspect=speed_60,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=speed_50,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_50",
+   "y": 90
+  },
+  "facing=east,aspect=speed_50,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=speed_40,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_40",
+   "y": 90
+  },
+  "facing=east,aspect=speed_40,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=speed_30,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_30",
+   "y": 90
+  },
+  "facing=east,aspect=speed_30,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=speed_20,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_20",
+   "y": 90
+  },
+  "facing=east,aspect=speed_20,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=nsl,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_nsl",
+   "y": 90
+  },
+  "facing=east,aspect=nsl,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=red_x,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=red_x,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=merge_left,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_left",
+   "y": 90
+  },
+  "facing=east,aspect=merge_left,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=merge_right,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_right",
+   "y": 90
+  },
+  "facing=east,aspect=merge_right,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=queue,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_queue",
+   "y": 90
+  },
+  "facing=east,aspect=queue,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=east,aspect=fog,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_fog",
+   "y": 90
+  },
+  "facing=east,aspect=fog,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 90
+  },
+  "facing=south,aspect=off,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_off",
+   "y": 180
+  },
+  "facing=south,aspect=off,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=speed_70,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_70",
+   "y": 180
+  },
+  "facing=south,aspect=speed_70,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=speed_60,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_60",
+   "y": 180
+  },
+  "facing=south,aspect=speed_60,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=speed_50,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_50",
+   "y": 180
+  },
+  "facing=south,aspect=speed_50,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=speed_40,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_40",
+   "y": 180
+  },
+  "facing=south,aspect=speed_40,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=speed_30,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_30",
+   "y": 180
+  },
+  "facing=south,aspect=speed_30,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=speed_20,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_20",
+   "y": 180
+  },
+  "facing=south,aspect=speed_20,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=nsl,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_nsl",
+   "y": 180
+  },
+  "facing=south,aspect=nsl,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=red_x,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=red_x,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=merge_left,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_left",
+   "y": 180
+  },
+  "facing=south,aspect=merge_left,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=merge_right,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_right",
+   "y": 180
+  },
+  "facing=south,aspect=merge_right,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=queue,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_queue",
+   "y": 180
+  },
+  "facing=south,aspect=queue,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=south,aspect=fog,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_fog",
+   "y": 180
+  },
+  "facing=south,aspect=fog,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 180
+  },
+  "facing=west,aspect=off,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_off",
+   "y": 270
+  },
+  "facing=west,aspect=off,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=speed_70,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_70",
+   "y": 270
+  },
+  "facing=west,aspect=speed_70,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=speed_60,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_60",
+   "y": 270
+  },
+  "facing=west,aspect=speed_60,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=speed_50,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_50",
+   "y": 270
+  },
+  "facing=west,aspect=speed_50,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=speed_40,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_40",
+   "y": 270
+  },
+  "facing=west,aspect=speed_40,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=speed_30,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_30",
+   "y": 270
+  },
+  "facing=west,aspect=speed_30,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=speed_20,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_speed_20",
+   "y": 270
+  },
+  "facing=west,aspect=speed_20,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=nsl,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_nsl",
+   "y": 270
+  },
+  "facing=west,aspect=nsl,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=red_x,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=red_x,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=merge_left,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_left",
+   "y": 270
+  },
+  "facing=west,aspect=merge_left,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=merge_right,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_merge_right",
+   "y": 270
+  },
+  "facing=west,aspect=merge_right,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=queue,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_queue",
+   "y": 270
+  },
+  "facing=west,aspect=queue,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  },
+  "facing=west,aspect=fog,powered=false": {
+   "model": "ptmuk:block/motorway/lane_signal_fog",
+   "y": 270
+  },
+  "facing=west,aspect=fog,powered=true": {
+   "model": "ptmuk:block/motorway/lane_signal_red_x",
+   "y": 270
+  }
+ }
+}

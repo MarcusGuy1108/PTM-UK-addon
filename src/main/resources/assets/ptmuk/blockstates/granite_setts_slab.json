@@ -1,0 +1,13 @@
+{
+ "variants": {
+  "type=bottom": {
+   "model": "ptmuk:block/building/granite_setts_slab"
+  },
+  "type=top": {
+   "model": "ptmuk:block/building/granite_setts_slab_top"
+  },
+  "type=double": {
+   "model": "ptmuk:block/building/granite_setts"
+  }
+ }
+}
