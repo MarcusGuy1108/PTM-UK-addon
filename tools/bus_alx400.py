@@ -127,6 +127,38 @@ def tx(m):
     return int(round(m * TPM))
 
 
+ADVERTS = {"near": (-3.6, DOOR1[0] - 0.4), "off": (-3.9, 1.6)}     # x span of the side adverts
+ADVERT_Y = (2.08, 2.56)
+# regions holding text: mirrored in place in the _left texture, because PTM2 mirrors the whole
+# bus in left-hand traffic worlds and loads <texture>_left.png if there is one
+TEXT_REGIONS = ["advert_near", "advert_off", "stopping_off", "stopping_on"]
+
+
+def advert_image(which):
+    xa, xb = ADVERTS[which]
+    img = Image.new("RGBA", (tx(xb - xa) * 2, tx(ADVERT_Y[1] - ADVERT_Y[0]) * 2), (0, 0, 0, 0))
+    advert(img, 2, 2, img.width - 3, img.height - 3, which)
+    return img
+
+
+def advert(img, x0, y0, x1, y1, which):
+    """A made-up bus-side advert in a grey frame."""
+    d = ImageDraw.Draw(img)
+    x0, x1 = min(x0, x1), max(x0, x1)
+    d.rectangle((x0 - 2, y0 - 2, x1 + 2, y1 + 2), fill=(170, 172, 176, 255))
+    if which == "near":
+        bg, fg, text, sub = (36, 60, 140), (250, 250, 250), "CUBE FM 101.4", "the sound of the city"
+    else:
+        bg, fg, text, sub = (250, 200, 40), (30, 30, 30), "VISIT BRICKFORD ZOO", "open every day"
+    d.rectangle((x0, y0, x1, y1), fill=bg + (255,))
+    hgt = y1 - y0
+    f = ImageFont.truetype(FONT, max(8, int(hgt * 0.5)))
+    d.text((x0 + 8, y0 + hgt * 0.12), text, fill=fg + (255,), font=f)
+    f2 = ImageFont.truetype(FONT, max(6, int(hgt * 0.22)))
+    tw = d.textlength(sub, font=f2)
+    d.text((x1 - tw - 8, y0 + hgt * 0.68), sub, fill=fg + (255,), font=f2)
+
+
 def side_panel(nearside, inside):
     """One side of the bus (outside or inside face), drawn as seen looking at that face, front
     of the bus to the viewer's right for the nearside outside. Windows and door openings are
@@ -187,7 +219,12 @@ def side_panel(nearside, inside):
         # fuel flap, tail lights edge, hazard strip
         if not nearside:
             d.rectangle((X(-2.0), Y(0.9), X(-1.7), Y(0.65)), outline=(120, 10, 16, 255), width=2)
+            # engine louvres behind the rear wheel (as on TA19)
+            for i in range(9):
+                lx = X(-4.55) + i * 4
+                d.rectangle((lx, Y(1.7), lx + 2, Y(1.15)), fill=(110, 10, 16, 255))
         d.rectangle((X(X0), Y(1.6), X(X0) + 6, Y(0.8)), fill=(180, 20, 20, 255))
+
     img = noise(img, 2)
     # the inside faces are seen from inside, i.e. mirrored
     flip_x = (not nearside) ^ inside
@@ -235,12 +272,15 @@ def front_panel(inside):
     # upper deck: one big pane, strongly rounded top corners, black rubber surround, a top-light bar
     d.rounded_rectangle((Z(ZO), Y(FRONT_WIN[1] + 0.04), Z(ZN), Y(FRONT_WIN[0] - 0.03)), radius=R(0.34), fill=(20, 20, 22, 255))
     d.rounded_rectangle((Z(ZO - 0.04), Y(FRONT_WIN[1]), Z(ZN + 0.04), Y(FRONT_WIN[0])), radius=R(0.3), fill=clear)
-    d.rectangle((Z(ZO - 0.04), Y(3.8), Z(ZN + 0.04), Y(3.775)), fill=(20, 20, 22, 255))
+    # slim pillar between the two upper panes, just offside of centre
+    d.rectangle((Z(0.13), Y(FRONT_WIN[1] + 0.02), Z(0.09), Y(FRONT_WIN[0] - 0.02)), fill=(20, 20, 22, 255))
     # destination display: a big black box with rounded corners (the LEDs are a separate bone)
     d.rounded_rectangle((Z(ZO), Y(DEST[1]), Z(ZN), Y(DEST[0])), radius=R(0.07), fill=(14, 14, 16, 255))
     # slim red band, then the big windscreen with rounded top corners
     d.rounded_rectangle((Z(ZO), Y(SCREEN[1] + 0.035), Z(ZN), Y(SCREEN[0] - 0.035)), radius=R(0.14), fill=(20, 20, 22, 255))
     d.rounded_rectangle((Z(ZO - 0.03), Y(SCREEN[1]), Z(ZN + 0.03), Y(SCREEN[0])), radius=R(0.11), fill=clear)
+    # windscreen split, nearside of centre (as on TA19)
+    d.rectangle((Z(-0.2), Y(SCREEN[1] + 0.02), Z(-0.235), Y(SCREEN[0] - 0.02)), fill=(20, 20, 22, 255))
     # route number card in the windscreen corner (yellow, like the "156" in the photo)
     d.rectangle((Z(ZO - 0.1), Y(1.22), Z(ZO - 0.34), Y(1.1)), fill=(250, 220, 60, 255))
     # single round headlights in chrome rings, small amber indicators just inboard and above
@@ -253,8 +293,12 @@ def front_panel(inside):
     # disabled access sticker and small chrome badge (no logos)
     d.rectangle((Z(-0.2), Y(0.86), Z(-0.4), Y(0.74)), fill=(240, 240, 240, 255))
     d.rectangle((Z(-0.24), Y(0.84), Z(-0.36), Y(0.76)), fill=(30, 80, 170, 255))
-    # dark wraparound bumper with the number plate (text drawn live)
+    # dark wraparound bumper with the number plate (text drawn live) and small fog lamps
     d.rectangle((0, Y(0.43), w, Y(SKIRT)), fill=(26, 30, 40, 255))
+    for side in (1, -1):
+        cx, cy = Z(side * HEADLIGHT_Z), Y(0.355)
+        d.ellipse((cx - R(0.045), cy - R(0.045), cx + R(0.045), cy + R(0.045)), fill=(190, 192, 194, 255))
+        d.ellipse((cx - R(0.035), cy - R(0.035), cx + R(0.035), cy + R(0.035)), fill=(236, 238, 232, 255))
     d.rectangle((Z(0.27), Y(0.42), Z(-0.27), Y(0.3)), fill=(242, 242, 238, 255))
     return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
 
@@ -372,6 +416,8 @@ def build_textures():
     a.add("corner_front", corner_strip("front"))
     a.add("corner_rear", corner_strip("rear"))
     a.add("cove", cove_texture())
+    a.add("advert_near", advert_image("near"))
+    a.add("advert_off", advert_image("off"))
     a.add("moquette", moquette())
     a.add("carpet", carpet())
     a.add("stopping_off", lit_panel("BUS STOPPING", (160, 24), (70, 20, 20), (20, 20, 22)))
@@ -467,6 +513,7 @@ def sub_rect(region, frac):
 
 # GeckoLib rotation senses (flip if a test render shows arcs bending the wrong way)
 RX, RY = 1, 1
+ADVERT_OFF_FLIP = False     # flip if the offside advert reads backwards in game
 R_CORNER = 0.4         # plan radius of the four vertical corners (the ALX400 is very rounded)
 R_ROOF = 0.36          # radius of the roof edges and the front dome
 
@@ -816,6 +863,11 @@ def details():
     bone("PlateFront", "Vehicle", (X1 + 0.014, 0.36, 0))
     bone("FrontID", "Vehicle", (X1 + 0.014, 0.88, 0))
     bone("PlateBack", "Vehicle", (X0 - 0.014, 1.385, 0))
+    # side adverts as thin decals just proud of the panels
+    xa, xb = ADVERTS["near"]
+    cube("Body", (xa, ADVERT_Y[0], ZN - 0.006), (xb, ADVERT_Y[1], ZN - 0.002), {"north": face_uv("advert_near")})
+    xa, xb = ADVERTS["off"]
+    cube("Body", (xa, ADVERT_Y[0], ZO + 0.002), (xb, ADVERT_Y[1], ZO + 0.006), {"south": face_uv("advert_off", flip_u=ADVERT_OFF_FLIP)})
     # "bunny ear" mirrors hanging from the front upper corners
     bone("Mirrors")
     for name, z, s in (("LeftMirror", ZO, 1), ("RightMirror", ZN, -1)):
@@ -932,6 +984,11 @@ def write_texture():
     path = ASSETS / "textures/entity/bus/alx400.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     ATL.img.save(path)
+    left = ATL.img.copy()
+    for name in TEXT_REGIONS:
+        x, y, w, h = ATL.regions[name]
+        left.paste(left.crop((x, y, x + w, y + h)).transpose(Image.Transpose.FLIP_LEFT_RIGHT), (x, y))
+    left.save(ASSETS / "textures/entity/bus/alx400_left.png")
 
 
 def write_icon():
