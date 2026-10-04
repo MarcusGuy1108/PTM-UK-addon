@@ -48,6 +48,7 @@ public final class ModItems {
         });
         CABLE_TOOL = ITEMS.register("cable_tool", CableToolItem::new);
         POWER_ITEMS.add(CABLE_TOOL);
+        POWER_ITEMS.add(ITEMS.register("pylon_dismantler", com.ptmuk.power.PylonDismantlerItem::new));
         ALX400 = ITEMS.register("alx400", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.ALX400_CODE));
         BUS_ITEMS.add(ALX400);
         register(ModBlocks.FURNITURE, STREET_ITEMS);

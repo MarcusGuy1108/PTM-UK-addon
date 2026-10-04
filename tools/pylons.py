@@ -518,11 +518,18 @@ def generate(gmod):
         textures = dict(tex)
         textures["particle"] = tex["white"] if name == "t_pylon" else tex["wood"] if "pole" in name else tex["steel"]
         variants = {}
+        boxes = []
         for i, key in enumerate(keys):
             els = cells[key]
             for el in els:
                 for k in ("from", "to"):
                     el[k] = [min(32.0, max(-16.0, v)) for v in el[k]]
+            # collision / outline box: the cell's steelwork bounds, clipped to the block
+            lo = [min(min(e["from"][a], e["to"][a]) for e in els) for a in range(3)]
+            hi = [max(max(e["from"][a], e["to"][a]) for e in els) for a in range(3)]
+            lo = [max(0.0, min(15.0, v)) for v in lo]
+            hi = [min(16.0, max(lo[a] + 1.0, hi[a])) for a, v in enumerate(hi)]
+            boxes.append([round(v, 2) for v in lo + hi])
             G.write_json(G.ASSETS / f"models/block/power/{name}/{i}.json", G.model(textures, els), compact=True)
             for facing, y in (("north", 0), ("east", 90), ("south", 180), ("west", 270)):
                 v = {"model": f"{G.MOD_ID}:block/power/{name}/{i}"}
@@ -531,7 +538,7 @@ def generate(gmod):
                 variants[f"cell={i},facing={facing}"] = v
         G.write_json(G.ASSETS / f"blockstates/{name}.json", {"variants": variants}, compact=True)
         G.write_json(G.DATA / G.MOD_ID / f"pylons/{name}.json",
-                     {"cells": [list(k) for k in keys], "attach": tower.attach}, compact=True)
+                     {"cells": [list(k) for k in keys], "boxes": boxes, "attach": tower.attach}, compact=True)
         item_tex = G.ASSETS / "textures/item"
         item_tex.mkdir(parents=True, exist_ok=True)
         icon(tower).save(item_tex / f"{name}_builder.png")
@@ -541,6 +548,7 @@ def generate(gmod):
         print(f"  {name}: {len(keys)} cells, {len(tower.elements)} elements, {len(tower.attach)} attachment points")
     write_java(counts)
     write_cable_icon()
+    write_dismantler_icon()
 
 
 def write_cable_icon():
@@ -553,6 +561,19 @@ def write_cable_icon():
     img.resize((16, 16), Image.LANCZOS).save(G.ASSETS / "textures/item/cable_tool.png")
     G.write_json(G.ASSETS / "models/item/cable_tool.json",
                  {"parent": "minecraft:item/handheld", "textures": {"layer0": f"{G.MOD_ID}:item/cable_tool"}})
+
+
+def write_dismantler_icon():
+    s = 8
+    img = Image.new("RGBA", (16 * s, 16 * s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.line((24, 104, 92, 36), fill=(150, 154, 158, 255), width=14)          # spanner handle
+    d.ellipse((76, 12, 120, 56), fill=(150, 154, 158, 255))
+    d.rectangle((92, 12, 104, 34), fill=(0, 0, 0, 0))
+    d.rectangle((14, 96, 40, 122), fill=(200, 30, 30, 255))
+    img.resize((16, 16), Image.LANCZOS).save(G.ASSETS / "textures/item/pylon_dismantler.png")
+    G.write_json(G.ASSETS / "models/item/pylon_dismantler.json",
+                 {"parent": "minecraft:item/handheld", "textures": {"layer0": f"{G.MOD_ID}:item/pylon_dismantler"}})
 
 
 def write_java(counts):
@@ -584,5 +605,6 @@ def lang(gmod):
     out = {f"block.{gmod.MOD_ID}.{n}": title for n, (_, title) in TOWERS.items()}
     out.update({f"item.{gmod.MOD_ID}.{n}_builder": title for n, (_, title) in TOWERS.items()})
     out[f"item.{gmod.MOD_ID}.cable_tool"] = "Overhead Line Tool"
+    out[f"item.{gmod.MOD_ID}.pylon_dismantler"] = "Pylon Dismantling Tool"
     out["itemGroup.ptmuk.power"] = "UK Power"
     return out

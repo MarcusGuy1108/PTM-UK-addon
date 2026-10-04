@@ -296,6 +296,19 @@ def roof_panel(inside):
     return noise(img, 3)
 
 
+def cove_texture():
+    """Ceiling cove: light blue panels with advert frames along the bus."""
+    w, h = tx(L), 24
+    img = Image.new("RGBA", (w, h), WALL + (255,))
+    d = ImageDraw.Draw(img)
+    cols = [(230, 230, 220), (240, 200, 60), (90, 160, 210), (220, 90, 80), (120, 190, 120)]
+    for i, x in enumerate(range(20, w - 60, 70)):
+        d.rectangle((x, 3, x + 56, h - 4), fill=(200, 205, 210, 255))
+        d.rectangle((x + 2, 5, x + 54, h - 6), fill=cols[i % len(cols)] + (255,))
+        d.rectangle((x + 6, 8, x + 30, 11), fill=(40, 40, 40, 255))
+    return noise(img, 2)
+
+
 def lit_panel(text, size, fg, bg):
     img = Image.new("RGBA", size, bg + (255,))
     d = ImageDraw.Draw(img)
@@ -319,6 +332,7 @@ def build_textures():
     a.add("roof_in", roof_panel(True))
     a.add("corner_front", corner_strip("front"))
     a.add("corner_rear", corner_strip("rear"))
+    a.add("cove", cove_texture())
     a.add("moquette", moquette())
     a.add("carpet", carpet())
     a.add("stopping_off", lit_panel("BUS STOPPING", (160, 24), (70, 20, 20), (20, 20, 22)))
@@ -567,17 +581,31 @@ def wheels():
 
 
 def seat(name, x, z, floor, facing=1, width=0.44):
-    """Forward (facing=1), rearward (-1) or sideways ('in' handled by caller) bus seat."""
+    """High-back bus seat: moquette cushion and back, blue plastic shell behind, orange grab
+    loop on top, pedestal leg. facing 1 = towards the front."""
     f = facing
-    cush = (floor + 0.40, floor + 0.50)
+    w2 = width / 2 - 0.01
+    cush = (floor + 0.42, floor + 0.52)
     back_x = x - f * 0.22
-    cube(name, (x - 0.2, cush[0], z - width / 2), (x + 0.22, cush[1], z + width / 2),
-         {"up": "moquette", "north": "shell", "south": "shell", "east": "moquette", "west": "moquette", "down": "shell"})
-    cube(name, (back_x - 0.045, cush[1], z - width / 2), (back_x + 0.045, floor + 1.05, z + width / 2),
-         {"east" if f > 0 else "west": "moquette", "west" if f > 0 else "east": "shell", "up": "shell", "north": "shell",
-          "south": "shell"})
-    solid(name, (back_x - 0.03, floor + 1.05, z - width / 2 + 0.05), (back_x + 0.03, floor + 1.11, z + width / 2 - 0.05), "orange")
+    front, rear = ("east", "west") if f > 0 else ("west", "east")
+    # cushion: moquette top and front edge, plastic underneath
+    cube(name, (x - 0.21, cush[0], z - w2), (x + 0.23, cush[1], z + w2),
+         {"up": "moquette", front: "moquette", rear: "shell", "north": "shell", "south": "shell", "down": "shell"})
+    # back: moquette facing the passenger, blue shell behind, slightly taller in the middle
+    cube(name, (back_x - 0.035, cush[1], z - w2), (back_x + 0.035, floor + 1.08, z + w2),
+         {front: "moquette", rear: "shell", "up": "shell", "north": "shell", "south": "shell"})
+    cube(name, (back_x - 0.03, floor + 1.08, z - w2 + 0.05), (back_x + 0.03, floor + 1.13, z + w2 - 0.05),
+         {f2: "shell" for f2 in ALL})
+    # shell lip round the back edge
+    cube(name, (back_x - f * 0.05, cush[1] + 0.05, z - w2 - 0.005), (back_x - f * 0.035, floor + 1.1, z + w2 + 0.005),
+         {f2: "shell" for f2 in ALL})
+    # orange grab loop: two uprights and a top rail
+    for zz in (z - w2 + 0.07, z + w2 - 0.07):
+        solid(name, (back_x - 0.016, floor + 1.13, zz - 0.016), (back_x + 0.016, floor + 1.2, zz + 0.016), "orange")
+    solid(name, (back_x - 0.018, floor + 1.2, z - w2 + 0.054), (back_x + 0.018, floor + 1.235, z + w2 - 0.054), "orange")
+    # pedestal leg and foot
     solid(name, (x - 0.03, floor, z - 0.03), (x + 0.03, cush[0], z + 0.03), "grey")
+    solid(name, (x - 0.12, floor, z - 0.03), (x + 0.12, floor + 0.03, z + 0.03), "grey")
 
 
 def pole(name, x, z, y0, y1, thick=0.04):
@@ -654,9 +682,26 @@ def interior():
         for z in (-0.3, 0.3):
             if z > 0 and STAIRS[0] - 0.2 < x < STAIRS[1] + 0.25:
                 continue
-            pole("Interior", x - 0.22, z, UPPER_FLOOR + 1.05, UPPER_CEIL)
-            bell("Interior", x - 0.22, z, UPPER_FLOOR + 1.35)
+            # curved poles: up from the seat-back handle, then bending out towards the cove
+            top = UPPER_CEIL - 0.32
+            pole("Interior", x - 0.22, z, UPPER_FLOOR + 1.2, top)
+            sz = 1 if z > 0 else -1
+            cube("Interior", (x - 0.24, top - 0.02, z - 0.02), (x - 0.2, top + 0.38, z + 0.02), {f2: "orange" for f2 in ALL},
+                 rotation=[-sz * RX * 35, 0, 0], pivot=(x - 0.22, top, z))
+            bell("Interior", x - 0.22, z, UPPER_FLOOR + 1.45)
     solid("Interior", (X1 - 0.35, UPPER_FLOOR + 0.85, ZN + 0.1), (X1 - 0.3, UPPER_FLOOR + 0.9, ZO - 0.1), "orange")
+    # ceiling coves both sides, both decks: angled panels with advert frames and a light strip
+    for y_top, y_low, xa, xb in ((LOWER_CEIL, LOW_WIN[1] + 0.06, X0 + 0.3, CAB[0]), (UPPER_CEIL, UP_WIN[1] + 0.06, X0 + 0.3, X1 - 0.3)):
+        for z, sign in ((ZN, 1), (ZO, -1)):
+            depth = 0.26
+            cy = (y_top + y_low) / 2
+            cz = z + sign * (0.035 + depth / 2)
+            cube("Interior", (xa, cy - 0.17, cz - 0.012), (xb, cy + 0.17, cz + 0.012),
+                 {"north": "cove", "south": "cove", "up": "wall", "down": "wall"}, rotation=[sign * RX * 45, 0, 0],
+                 pivot=(0, cy, cz))
+            ly = y_top - 0.03
+            lz = z + sign * (0.035 + depth + 0.05)
+            cube("Interior", (xa, ly - 0.03, lz - 0.05), (xb, ly, lz + 0.05), {"down": "lamp_on", "north": "wall", "south": "wall"})
     # inside displays: next stop screens facing the rear, lower and upper deck
     for name, x, y in (("Display5", CAB[0] - 0.02, 2.05), ("Display6", X1 - 0.12, UPPER_CEIL - 0.04)):
         w, h = 0.62, 0.3

@@ -29,6 +29,8 @@ public final class PylonData {
 
     public final List<BlockPos> cells = new ArrayList<>();
     public final List<Attach> attach = new ArrayList<>();
+    /** Per cell: steelwork bounds in block pixels (x0, y0, z0, x1, y1, z1), facing north. */
+    public final List<double[]> boxes = new ArrayList<>();
 
     public static PylonData get(String name) {
         return CACHE.computeIfAbsent(name, PylonData::load);
@@ -46,6 +48,16 @@ public final class PylonData {
             for (JsonElement e : json.getAsJsonArray("cells")) {
                 JsonArray a = e.getAsJsonArray();
                 data.cells.add(new BlockPos(a.get(0).getAsInt(), a.get(1).getAsInt(), a.get(2).getAsInt()));
+            }
+            if (json.has("boxes")) {
+                for (JsonElement e : json.getAsJsonArray("boxes")) {
+                    JsonArray a = e.getAsJsonArray();
+                    double[] b = new double[6];
+                    for (int i = 0; i < 6; i++) {
+                        b[i] = a.get(i).getAsDouble();
+                    }
+                    data.boxes.add(b);
+                }
             }
             for (JsonElement e : json.getAsJsonArray("attach")) {
                 JsonArray a = e.getAsJsonArray();

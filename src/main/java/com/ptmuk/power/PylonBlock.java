@@ -14,14 +14,19 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * One block cell of a transmission tower. Towers are real blocks so they show up in Distant
  * Horizons' LODs; each cell's model holds the members whose centres fall inside it. Placed as a
- * whole by {@link PylonBuilderItem}, and breaking any cell removes the whole tower.
+ * whole by {@link PylonBuilderItem}; they can't be broken by hand, explosions or pistons, only
+ * taken down as a whole with the {@link PylonDismantlerItem}.
  */
 public class PylonBlock extends HorizontalDirectionalBlock {
     private static final ThreadLocal<Integer> CELLS = new ThreadLocal<>();
@@ -40,8 +45,9 @@ public class PylonBlock extends HorizontalDirectionalBlock {
     private static Properties props(String name) {
         CELLS.set(PylonCells.COUNTS.get(name));
         boolean wood = name.contains("pole");
-        return Properties.of().strength(3.0F, 8.0F).sound(wood ? SoundType.WOOD : SoundType.METAL).noOcclusion().noCollission()
-                .dynamicShape();
+        // unbreakable by hand and immune to explosions and pistons: use the Pylon Dismantling Tool
+        return Properties.of().mapColor(wood ? MapColor.WOOD : MapColor.METAL).strength(-1.0F, 3600000.0F)
+                .sound(wood ? SoundType.WOOD : SoundType.METAL).noOcclusion().pushReaction(PushReaction.BLOCK).noLootTable();
     }
 
     @Override
@@ -49,9 +55,32 @@ public class PylonBlock extends HorizontalDirectionalBlock {
         builder.add(FACING, IntegerProperty.create("cell", 0, Math.max(1, CELLS.get()) - 1));
     }
 
+    private final Map<Integer, VoxelShape> shapes = new ConcurrentHashMap<>();
+
+    /** The steelwork bounds of this cell, so towers are solid (and Distant Horizons draws them). */
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return Shapes.block();
+        int i = state.getValue(cell);
+        Direction facing = state.getValue(FACING);
+        return shapes.computeIfAbsent(i * 4 + facing.get2DDataValue(), k -> {
+            PylonData data = PylonData.get(name);
+            if (i >= data.boxes.size()) {
+                return Shapes.block();
+            }
+            double[] b = data.boxes.get(i);
+            double x0 = b[0], z0 = b[2], x1 = b[3], z1 = b[5];
+            return switch (facing) {
+                case EAST -> Block.box(16 - z1, b[1], x0, 16 - z0, b[4], x1);
+                case SOUTH -> Block.box(16 - x1, b[1], 16 - z1, 16 - x0, b[4], 16 - z0);
+                case WEST -> Block.box(z0, b[1], 16 - x1, z1, b[4], 16 - x0);
+                default -> Block.box(x0, b[1], z0, x1, b[4], z1);
+            };
+        });
+    }
+
+    /** Removes the whole tower this cell belongs to (used by the dismantling tool). */
+    public void dismantle(ServerLevel level, BlockState state, BlockPos pos) {
+        level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
     }
 
     @Override
@@ -72,14 +101,6 @@ public class PylonBlock extends HorizontalDirectionalBlock {
             return pos;
         }
         return pos.subtract(PylonData.rotate(data.cells.get(i), state.getValue(FACING)));
-    }
-
-    @Override
-    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
-        if (!level.isClientSide && !player.isCreative()) {
-            popResource(level, pos, new ItemStack(ModItems.PYLON_BUILDERS.get(name).get()));
-        }
-        super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override
