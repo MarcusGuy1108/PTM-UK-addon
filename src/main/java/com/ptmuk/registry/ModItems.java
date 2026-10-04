@@ -29,6 +29,8 @@ public final class ModItems {
     /** Tower name -> the item that builds it. */
     public static final Map<String, RegistryObject<Item>> PYLON_BUILDERS = new LinkedHashMap<>();
     public static final RegistryObject<Item> CABLE_TOOL;
+    public static final List<RegistryObject<Item>> BUS_ITEMS = new ArrayList<>();
+    public static final RegistryObject<Item> ALX400;
 
     static {
         register(ModBlocks.POLES, POLE_ITEMS);
@@ -46,6 +48,8 @@ public final class ModItems {
         });
         CABLE_TOOL = ITEMS.register("cable_tool", CableToolItem::new);
         POWER_ITEMS.add(CABLE_TOOL);
+        ALX400 = ITEMS.register("alx400", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.ALX400_CODE));
+        BUS_ITEMS.add(ALX400);
         register(ModBlocks.FURNITURE, STREET_ITEMS);
         register(ModBlocks.FENCES, STREET_ITEMS);
         register(ModBlocks.BUILDING, BUILDING_ITEMS);

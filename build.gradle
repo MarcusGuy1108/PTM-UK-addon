@@ -23,6 +23,8 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            // hooks that let PTM2 know about our buses (see src/main/java/com/ptmuk/mixin)
+            args '-mixin.config=ptmuk.mixins.json'
             mods {
                 "${mod_id}" {
                     source sourceSets.main
@@ -97,6 +99,7 @@ tasks.named('jar', Jar).configure {
                 'Specification-Version'   : '1',
                 'Implementation-Title'    : project.name,
                 'Implementation-Version'  : project.jar.archiveVersion,
+                'MixinConfigs'            : 'ptmuk.mixins.json',
                 'Implementation-Vendor'   : mod_authors,
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])

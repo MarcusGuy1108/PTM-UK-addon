@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.ptmuk.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "TransportModelDataMixin",
+    "VehicleUtilsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

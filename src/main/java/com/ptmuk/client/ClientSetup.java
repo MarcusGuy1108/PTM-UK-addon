@@ -19,5 +19,6 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.CLASSIC_LAMP.get(), ClassicLampRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.DIRECTION_SIGN.get(), DirectionSignRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.VMS.get(), VmsRenderer::new);
+        event.registerEntityRenderer(com.ptmuk.bus.UkBuses.ALX400_TYPE.get(), com.ptmuk.client.bus.ALX400Renderer::new);
     }
 }

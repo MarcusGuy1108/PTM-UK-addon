@@ -25,7 +25,9 @@ public final class ModCreativeTabs {
             () -> new ItemStack(ModItems.PYLON_BUILDERS.get("pylon_400kv").get()), ModItems.POWER_ITEMS);
     public static final RegistryObject<CreativeModeTab> STREET = tab("street", POWER,
             () -> new ItemStack(ModBlocks.FURNITURE.get("phone_box").get()), ModItems.STREET_ITEMS);
-    public static final RegistryObject<CreativeModeTab> BUILDING = tab("building", STREET,
+    public static final RegistryObject<CreativeModeTab> BUSES = tab("buses", STREET,
+            () -> new ItemStack(ModItems.ALX400.get()), ModItems.BUS_ITEMS);
+    public static final RegistryObject<CreativeModeTab> BUILDING = tab("building", BUSES,
             () -> new ItemStack(ModBlocks.BUILDING.get("red_brick").get()), ModItems.BUILDING_ITEMS);
 
     private static RegistryObject<CreativeModeTab> tab(String name, RegistryObject<CreativeModeTab> after,
