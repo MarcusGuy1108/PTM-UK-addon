@@ -25,4 +25,11 @@ public final class ClientHooks {
             mc.setScreen(new VmsEditScreen(vms));
         }
     }
+
+    public static void openBusStopEditor(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.level.getBlockEntity(pos) instanceof com.ptmuk.sign.BusStopBlockEntity stop) {
+            mc.setScreen(new com.ptmuk.client.sign.BusStopEditScreen(stop));
+        }
+    }
 }

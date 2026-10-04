@@ -31,6 +31,10 @@ public final class ModBlockEntities {
     public static final RegistryObject<BlockEntityType<VmsBlockEntity>> VMS = BLOCK_ENTITIES.register(
             "matrix_sign", () -> BlockEntityType.Builder.of(VmsBlockEntity::new, ModBlocks.VMS.get()).build(null));
 
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<com.ptmuk.sign.BusStopBlockEntity>> BUS_STOP = BLOCK_ENTITIES.register(
+            "bus_stop_flag", () -> BlockEntityType.Builder.of(com.ptmuk.sign.BusStopBlockEntity::new, ModBlocks.BUS_STOP.get()).build(null));
+
     private ModBlockEntities() {
     }
 }

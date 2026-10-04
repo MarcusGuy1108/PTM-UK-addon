@@ -538,7 +538,8 @@ def shell():
     solid("Floor", (X0 + 0.1, 0.18, ZN + 0.1), (X1 - 0.1, 0.30, ZO - 0.1), "black")
     for ax in (FRONT_AXLE, REAR_AXLE):
         for z0, z1 in ((ZN + t, ZN + 0.32), (ZO - 0.32, ZO - t)):
-            solid("Interior", (ax - 0.62, LOWER_FLOOR, z0), (ax + 0.62, 1.0, z1), "wall_dark")
+            cube("Interior", (ax - 0.62, LOWER_FLOOR, z0), (ax + 0.62, 1.0, z1),
+                 {"up": "wall_dark", "north": "black", "south": "black", "east": "black", "west": "black", "down": "black"})
             # black arch liner visible through the cut-out
             solid("Floor", (ax - 0.62, 0.95, z0), (ax + 0.62, 1.02, z1), "black")
 
@@ -553,17 +554,18 @@ def wheels():
         za, zb = z - zw / 2, z + zw / 2
         r = WHEEL_R
         side = -1 if z < 0 else 1
+        # four squares turned 22.5 degrees apart make a solid 16-sided tyre
+        a = r * 0.985
         for rot in (0, 22.5, 45, 67.5):
-            cube(name, (ax - r, r - r * 0.2, za), (ax + r, r + r * 0.2, zb), {f: "tyre" for f in ALL},
+            cube(name, (ax - a, r - a, za), (ax + a, r + a, zb), {f: "tyre" for f in ALL},
                  rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
         if twin:   # groove between the two tyres
             solid(name, (ax - r - 0.002, r - 0.06, z - 0.01), (ax + r + 0.002, r + 0.06, z + 0.01), "black", parent="Wheels")
         face_z = z + side * zw / 2
         # rim (octagonal steel disc), recessed hub, 8 studs
-        for rot in (0, 45):
-            cube(name, (ax - 0.33, r - 0.135, min(face_z, face_z + side * 0.012)), (ax + 0.33, r + 0.135, max(face_z, face_z + side * 0.012)),
-                 {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
-            cube(name, (ax - 0.135, r - 0.33, min(face_z, face_z + side * 0.012)), (ax + 0.135, r + 0.33, max(face_z, face_z + side * 0.012)),
+        rr = 0.29
+        for rot in (0, 22.5, 45, 67.5):
+            cube(name, (ax - rr, r - rr, min(face_z, face_z + side * 0.012)), (ax + rr, r + rr, max(face_z, face_z + side * 0.012)),
                  {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
         hz = face_z + side * 0.012
         cube(name, (ax - 0.12, r - 0.12, min(hz, hz + side * 0.03)), (ax + 0.12, r + 0.12, max(hz, hz + side * 0.03)),

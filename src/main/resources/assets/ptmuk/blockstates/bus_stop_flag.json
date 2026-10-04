@@ -1,19 +1,7 @@
 {
  "variants": {
-  "facing=north": {
-   "model": "ptmuk:block/furniture/bus_stop_flag"
-  },
-  "facing=east": {
-   "model": "ptmuk:block/furniture/bus_stop_flag",
-   "y": 90
-  },
-  "facing=south": {
-   "model": "ptmuk:block/furniture/bus_stop_flag",
-   "y": 180
-  },
-  "facing=west": {
-   "model": "ptmuk:block/furniture/bus_stop_flag",
-   "y": 270
+  "": {
+   "model": "ptmuk:block/bus_stop_flag"
   }
  }
 }
