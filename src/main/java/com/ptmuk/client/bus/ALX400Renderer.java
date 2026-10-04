@@ -59,8 +59,13 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
             case "Display1" -> {      // front: route number and destination
                 if (!lit || !bus.outsideDisplays) return false;
                 float[] d = ALX400Layout.DISPLAY_FRONT;
-                label(ps, buffers, number, d[0] * 0.24, d[1], 0, 0, LED, true, d[2]);
-                label(ps, buffers, bus.getDestination(), d[0] * 0.76, d[1], d[0] * 0.24, 0, LED, true, d[2]);
+                String dest = bus.getDestination();
+                if (number.isBlank() && (dest == null || dest.isBlank())) {
+                    label(ps, buffers, "NOT IN SERVICE", d[0], d[1], 0, 0, LED, true, d[2]);
+                } else {
+                    label(ps, buffers, number, d[0] * 0.24, d[1], 0, 0, LED, true, d[2]);
+                    label(ps, buffers, dest, d[0] * 0.76, d[1], d[0] * 0.24, 0, LED, true, d[2]);
+                }
                 return true;
             }
             case "Display2" -> {      // nearside: number and via points

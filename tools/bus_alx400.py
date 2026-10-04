@@ -317,6 +317,8 @@ def build_textures():
     a.add("rear_in", rear_panel(True))
     a.add("roof_out", roof_panel(False))
     a.add("roof_in", roof_panel(True))
+    a.add("corner_front", corner_strip("front"))
+    a.add("corner_rear", corner_strip("rear"))
     a.add("moquette", moquette())
     a.add("carpet", carpet())
     a.add("stopping_off", lit_panel("BUS STOPPING", (160, 24), (70, 20, 20), (20, 20, 22)))
@@ -327,7 +329,7 @@ def build_textures():
                       ("glass_door", (60, 70, 76)), ("lamp_on", (255, 252, 220)), ("lamp_off", (120, 120, 112)),
                       ("brake_on", (255, 40, 30)), ("brake_off", (110, 14, 16)), ("amber_on", (255, 170, 30)),
                       ("amber_off", (120, 70, 20)), ("white", (240, 240, 236)), ("bell", (210, 30, 30)),
-                      ("cab", (60, 90, 150)), ("dash", (40, 42, 46))):
+                      ("cab", (60, 90, 150)), ("dash", (40, 42, 46)), ("rim", (150, 152, 156))):
         swatch(name, col)
     # door leaves: glass with a frame, transparent glazing
     leaf = Image.new("RGBA", (40, 110), BLACK + (255,))
@@ -410,20 +412,107 @@ def sub_rect(region, frac):
 
 # ------------------------------------------------------------------ the bus
 
+# GeckoLib rotation senses (flip if a test render shows arcs bending the wrong way)
+RX, RY = 1, 1
+R_CORNER = 0.24        # plan radius of the four vertical corners
+R_ROOF = 0.26          # radius of the roof edges and the front dome
+
+
+def corner_strip(kind):
+    """Vertical strip texture for the rounded corners: body colour with dark wrap-round glass
+    at window heights, so the window bands carry round the corner."""
+    w, h = 24, tx(H)
+    img = Image.new("RGBA", (w, h), RED + (255,))
+    d = ImageDraw.Draw(img)
+
+    def Y(y):
+        return h - tx(y)
+    if kind == "front":
+        bands = ((UP_WIN[0] - 0.08, UP_WIN[1] + 0.06), (2.06, 2.5), (0.95, 2.1))
+    else:
+        bands = ((UP_WIN[0], UP_WIN[1]),)
+    for a, b in bands:
+        d.rectangle((0, Y(b), w, Y(a)), fill=(22, 26, 30, 255))
+        d.line((0, Y(b) + 2, w, Y(b) + 2), fill=(70, 80, 90, 255), width=1)
+    d.rectangle((0, Y(SKIRT + 0.22), w, Y(SKIRT)), fill=(40, 40, 44, 255))
+    if kind == "front":
+        d.rectangle((0, Y(0.62), w, Y(SKIRT)), fill=(34, 34, 36, 255))
+    return noise(img, 2)
+
+
+def arc_x(bone_name, x0, x1, cy, cz, r, phi0, phi1, n, region, t=0.035):
+    """Curved panel running along x: quarter arc in the y-z plane around (cy, cz).
+    phi measured from the -z (nearside) direction towards +y."""
+    for i in range(n):
+        a0 = phi0 + (phi1 - phi0) * i / n
+        a1 = phi0 + (phi1 - phi0) * (i + 1) / n
+        am = math.radians((a0 + a1) / 2)
+        chord = 2 * r * math.sin(math.radians(abs(a1 - a0)) / 2) + 0.01
+        py, pz = cy + r * math.sin(am), cz - r * math.cos(am)
+        cube(bone_name, (x0, py - chord / 2, pz - t / 2), (x1, py + chord / 2, pz + t / 2),
+             {f: region for f in ("north", "south", "up", "down")}, rotation=[RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
+
+
+def corner(bone_name, cx, cz, sx, sz, y0, y1, region):
+    """Quarter-round vertical corner centred on (cx, cz); sx/sz give the outward directions."""
+    n = 3
+    for i in range(n):
+        a = math.radians(90 * (i + 0.5) / n)
+        chord = 2 * R_CORNER * math.sin(math.radians(90 / n) / 2) + 0.012
+        px, pz = cx + sx * R_CORNER * math.sin(a), cz + sz * R_CORNER * math.cos(a)
+        ang = math.degrees(a) * sx * sz
+        cube(bone_name, (px - chord / 2, y0, pz - 0.0175), (px + chord / 2, y1, pz + 0.0175),
+             {f: region for f in ("north", "south", "east", "west")}, rotation=[0, RY * ang, 0], pivot=(px, 0, pz))
+
+
 def shell():
     t = 0.035
-    # sides: outer and inner faces painted separately (north = nearside outer face)
-    cube("Body", (X0, SKIRT, ZN), (X1, H, ZN + t), {"north": face_uv("side_near_out"), "south": face_uv("side_near_in")})
-    cube("Body", (X0, SKIRT, ZO - t), (X1, H, ZO), {"south": face_uv("side_off_out"), "north": face_uv("side_off_in")})
-    cube("Body", (X1 - t, SKIRT, ZN), (X1, H, ZO), {"east": face_uv("front_out"), "west": face_uv("front_in")})
-    cube("Body", (X0, SKIRT, ZN), (X0 + t, H, ZO), {"west": face_uv("rear_out"), "east": face_uv("rear_in")})
-    cube("Roof", (X0, H - t, ZN), (X1, H, ZO), {"up": face_uv("roof_out"), "down": face_uv("roof_in")})
-    # rounded roof edges and front / rear corners
-    for z, sign in ((ZN, -1), (ZO, 1)):
-        solid("Roof", (X0 + 0.02, H - 0.16, z - 0.03 * sign), (X1 - 0.02, H - 0.02, z + 0.11 * sign), "red", rotation=[45 * sign, 0, 0])
-    for x in (X0, X1):
-        for z in (ZN, ZO):
-            solid("Body", (x - 0.06, SKIRT + 0.3, z - 0.06), (x + 0.06, H - 0.1, z + 0.06), "red", rotation=[0, 45, 0])
+    rc = R_CORNER
+    # flat panels stop short of the rounded corners and roof edges; textures are cropped to match
+    cut_u = tx(rc)
+    cut_top = tx(R_ROOF)
+
+    def crop(region, left, right, top):
+        x, y, w, h = ATL.regions[region]
+        return face_uv(region, sub=(left, top, w - left - right, h - top))
+    cube("Body", (X0 + rc, SKIRT, ZN), (X1 - rc, H - R_ROOF, ZN + t),
+         {"north": crop("side_near_out", cut_u, cut_u, cut_top), "south": crop("side_near_in", cut_u, cut_u, cut_top)})
+    cube("Body", (X0 + rc, SKIRT, ZO - t), (X1 - rc, H - R_ROOF, ZO),
+         {"south": crop("side_off_out", cut_u, cut_u, cut_top), "north": crop("side_off_in", cut_u, cut_u, cut_top)})
+    cube("Body", (X1 - t, SKIRT, ZN + rc), (X1, H - R_ROOF, ZO - rc),
+         {"east": crop("front_out", cut_u, cut_u, cut_top), "west": crop("front_in", cut_u, cut_u, cut_top)})
+    cube("Body", (X0, SKIRT, ZN + rc), (X0 + t, H - R_ROOF, ZO - rc),
+         {"west": crop("rear_out", cut_u, cut_u, cut_top), "east": crop("rear_in", cut_u, cut_u, cut_top)})
+    cube("Roof", (X0 + R_ROOF, H - t, ZN + R_ROOF), (X1 - R_ROOF, H, ZO - R_ROOF),
+         {"up": face_uv("roof_out"), "down": face_uv("roof_in")})
+    # rounded corners (dark glass bands wrap round them) and roof edges
+    for x, sx, kind in ((X1, 1, "corner_front"), (X0, -1, "corner_rear")):
+        for z, sz in ((ZN, -1), (ZO, 1)):
+            corner("Body", x - sx * rc, z - sz * rc, sx, sz, SKIRT, H - R_ROOF, kind)
+    arc_x("Roof", X0 + R_ROOF, X1 - R_ROOF, H - R_ROOF, ZN + R_ROOF, R_ROOF, 0, 90, 3, "red")
+    # offside edge: same arc mirrored in z
+    for i in range(3):
+        a0, a1 = 90 * i / 3, 90 * (i + 1) / 3
+        am = math.radians((a0 + a1) / 2)
+        chord = 2 * R_ROOF * math.sin(math.radians(15)) + 0.01
+        py, pz = H - R_ROOF + R_ROOF * math.sin(am), ZO - R_ROOF + R_ROOF * math.cos(am)
+        cube("Roof", (X0 + R_ROOF, py - chord / 2, pz - t / 2), (X1 - R_ROOF, py + chord / 2, pz + t / 2),
+             {f: "red" for f in ("north", "south", "up", "down")}, rotation=[-RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
+    # front and rear domes: the roof curving down onto the front and back across the width
+    for x, sx in ((X1, 1), (X0, -1)):
+        for i in range(3):
+            a0, a1 = 90 * i / 3, 90 * (i + 1) / 3
+            am = math.radians((a0 + a1) / 2)
+            chord = 2 * R_ROOF * math.sin(math.radians(15)) + 0.01
+            px, py = x - sx * R_ROOF + sx * R_ROOF * math.cos(am), H - R_ROOF + R_ROOF * math.sin(am)
+            cube("Roof", (px - t / 2, py - chord / 2, ZN + R_ROOF), (px + t / 2, py + chord / 2, ZO - R_ROOF),
+                 {f: "red" for f in ("east", "west", "up", "down")}, rotation=[0, 0, -sx * math.degrees(am)], pivot=(px, py, 0))
+    # roof corner caps (small pieces where the domes meet the side edges)
+    for x, sx in ((X1, 1), (X0, -1)):
+        for z, sz in ((ZN, -1), (ZO, 1)):
+            cx, cz = x - sx * R_ROOF * 0.7, z - sz * R_ROOF * 0.7
+            solid("Roof", (cx - 0.13, H - R_ROOF * 0.75, cz - 0.13), (cx + 0.13, H - 0.07, cz + 0.13), "red",
+                  rotation=[0, 45, 0], pivot=(cx, 0, cz))
     # floors and decks
     cube("Floor", (X0 + t, 0.30, ZN + t), (X1 - t, LOWER_FLOOR, ZO - t), {"up": "carpet", "down": "black"})
     # upper floor / lower ceiling, with the stairwell opening on the offside
@@ -431,30 +520,49 @@ def shell():
                              (STAIRS[0], STAIRS[1], ZN + t, STAIR_Z[0]), (CAB[0], X1 - t, ZN + t, ZO - t)):
         cube("Floor", (xa, LOWER_CEIL, za), (xb, UPPER_FLOOR, zb), {"up": "carpet", "down": "ceiling", "north": "wall_dark",
                                                                       "south": "wall_dark", "east": "wall_dark", "west": "wall_dark"})
-    # skirt underneath, wheel arch housings inside
+    # chassis underneath, wheel arch housings inside
     solid("Floor", (X0 + 0.1, 0.18, ZN + 0.1), (X1 - 0.1, 0.30, ZO - 0.1), "black")
     for ax in (FRONT_AXLE, REAR_AXLE):
         for z0, z1 in ((ZN + t, ZN + 0.32), (ZO - 0.32, ZO - t)):
             solid("Interior", (ax - 0.62, LOWER_FLOOR, z0), (ax + 0.62, 1.0, z1), "wall_dark")
+            # black arch liner visible through the cut-out
+            solid("Floor", (ax - 0.62, 0.95, z0), (ax + 0.62, 1.02, z1), "black")
 
 
 def wheels():
+    """16-sided tyres, steel rims with an 8-stud hub; twin wheels at the rear."""
     for name, ax, z in (("FrontLeftWheel", FRONT_AXLE, ZO - 0.2), ("FrontRightWheel", FRONT_AXLE, ZN + 0.2),
-                        ("BackLeftWheel", REAR_AXLE, ZO - 0.2), ("BackRightWheel", REAR_AXLE, ZN + 0.2)):
-        b = bone(name, "Wheels", (ax, WHEEL_R, z))
+                        ("BackLeftWheel", REAR_AXLE, ZO - 0.24), ("BackRightWheel", REAR_AXLE, ZN + 0.24)):
+        bone(name, "Wheels", (ax, WHEEL_R, z))
         twin = name.startswith("Back")
-        zw = 0.55 if twin else 0.3
-        za, zb = (z - zw / 2, z + zw / 2)
+        zw = 0.56 if twin else 0.29
+        za, zb = z - zw / 2, z + zw / 2
         r = WHEEL_R
-        # octagonal tyre: two boxes rotated 45 degrees about the axle (z)
-        for rot in (0, 45):
-            cube(name, (ax - r * 0.92, r - r * 0.38, za), (ax + r * 0.92, r + r * 0.38, zb), {f: "tyre" for f in ALL},
-                 rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
-            cube(name, (ax - r * 0.38, r - r * 0.92, za), (ax + r * 0.38, r + r * 0.92, zb), {f: "tyre" for f in ALL},
-                 rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
         side = -1 if z < 0 else 1
-        hub_z = (z + side * zw / 2, z + side * (zw / 2 + 0.02))
-        cube(name, (ax - 0.22, r - 0.22, min(hub_z)), (ax + 0.22, r + 0.22, max(hub_z)), {f: "hub" for f in ALL}, parent="Wheels")
+        for rot in (0, 22.5, 45, 67.5):
+            cube(name, (ax - r, r - r * 0.2, za), (ax + r, r + r * 0.2, zb), {f: "tyre" for f in ALL},
+                 rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
+        if twin:   # groove between the two tyres
+            solid(name, (ax - r - 0.002, r - 0.06, z - 0.01), (ax + r + 0.002, r + 0.06, z + 0.01), "black", parent="Wheels")
+        face_z = z + side * zw / 2
+        # rim (octagonal steel disc), recessed hub, 8 studs
+        for rot in (0, 45):
+            cube(name, (ax - 0.33, r - 0.135, min(face_z, face_z + side * 0.012)), (ax + 0.33, r + 0.135, max(face_z, face_z + side * 0.012)),
+                 {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
+            cube(name, (ax - 0.135, r - 0.33, min(face_z, face_z + side * 0.012)), (ax + 0.135, r + 0.33, max(face_z, face_z + side * 0.012)),
+                 {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
+        hz = face_z + side * 0.012
+        cube(name, (ax - 0.12, r - 0.12, min(hz, hz + side * 0.03)), (ax + 0.12, r + 0.12, max(hz, hz + side * 0.03)),
+             {f: "hub" for f in ALL}, rotation=[0, 0, 45], pivot=(ax, r, z), parent="Wheels")
+        for k in range(8):
+            a = math.radians(k * 45)
+            sxp, syp = ax + 0.16 * math.cos(a), r + 0.16 * math.sin(a)
+            cube(name, (sxp - 0.018, syp - 0.018, min(hz, hz + side * 0.045)), (sxp + 0.018, syp + 0.018, max(hz, hz + side * 0.045)),
+                 {f: "chrome" for f in ALL}, parent="Wheels")
+        # wheel-nut cover ring on the rear twins
+        if twin:
+            cube(name, (ax - 0.05, r - 0.05, min(hz, hz + side * 0.07)), (ax + 0.05, r + 0.05, max(hz, hz + side * 0.07)),
+                 {f: "chrome" for f in ALL}, parent="Wheels")
     bone("Wheels")
 
 
