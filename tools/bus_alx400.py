@@ -45,9 +45,9 @@ DOOR_TOP = 2.02
 STAIRS = (1.2, 3.3)                    # offside, rising towards the rear
 STAIR_Z = (0.25, 1.22)
 CAB = (3.65, X1)
-DISPLAY_FRONT = (0.96, 2.42, 1.92, 0.34)   # half-width z, top y, width, height
+DISPLAY_FRONT = (0.92, 2.5, 1.84, 0.4)     # half-width z, top y, width, height
 DISPLAY_SIDE = (4.75, 2.38, 1.5, 0.26)     # front x, top y, width, height (nearside)
-DISPLAY_REAR = (0.35, 4.12, 0.7, 0.28)     # half-width, top y, width, height
+DISPLAY_REAR = (1.0, 3.98, 0.65, 0.3)      # offside edge z, top y, width, height
 
 # ------------------------------------------------------------------ colours
 RED = (196, 18, 26)
@@ -194,91 +194,134 @@ def side_panel(nearside, inside):
     return img.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if flip_x else img
 
 
+FPM = 128          # texels per metre on the front and rear (finer detail)
+FRONT_WIN = (2.62, 3.95)      # upper deck front windows
+SCREEN = (0.95, 2.05)         # lower windscreen
+DEST_TOP = 2.55               # black glazed destination area above the windscreen
+
+
+def fx(m):
+    return int(round(m * FPM))
+
+
 def front_panel(inside):
-    w, h = tx(W), tx(H)
+    """ALX400 front, drawn as seen from in front (offside / driver on the viewer's left)."""
+    ss = 2
+    w, h = fx(W) * ss, fx(H) * ss
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    def Z(z):          # seen from the front: offside (+z, driver) on the viewer's left
-        return tx(ZO - z)
+    def Z(z):
+        return int((ZO - z) * FPM * ss)
 
     def Y(y):
-        return h - tx(y)
+        return h - int(y * FPM * ss)
 
+    def R(m):
+        return int(m * FPM * ss)
+    clear = (0, 0, 0, 0)
     if inside:
         d.rectangle((0, 0, w, h), fill=WALL + (255,))
-        d.rectangle((Z(ZO - 0.05), Y(UP_WIN[1] + 0.08), Z(ZN + 0.05), Y(UP_WIN[0] - 0.12)), fill=(0, 0, 0, 0))
-        d.rectangle((Z(ZO - 0.08), Y(2.12), Z(ZN + 0.08), Y(0.95)), fill=(0, 0, 0, 0))
-        return noise(img, 2)
-    d.rectangle((0, Y(H - 0.02), w, Y(SKIRT)), fill=RED + (255,))
-    # upper deck front windows (two panes) with black surround
-    d.rounded_rectangle((Z(ZO - 0.04), Y(UP_WIN[1] + 0.12), Z(ZN + 0.04), Y(UP_WIN[0] - 0.14)), radius=10, fill=BLACK + (255,))
-    mid = 0
-    for a, b in ((ZO - 0.1, mid + 0.03), (mid - 0.03, ZN + 0.1)):
-        d.rounded_rectangle((Z(a), Y(UP_WIN[1] + 0.06), Z(b), Y(UP_WIN[0] - 0.08)), radius=8, fill=(0, 0, 0, 0))
-    # between-deck black band holding the destination display
-    d.rectangle((Z(ZO - 0.04), Y(2.5), Z(ZN + 0.04), Y(2.06)), fill=BLACK + (255,))
-    # lower windscreen (split) with black surround
-    d.rounded_rectangle((Z(ZO - 0.04), Y(2.12), Z(ZN + 0.04), Y(0.9)), radius=12, fill=BLACK + (255,))
-    for a, b in ((ZO - 0.09, 0.02), (-0.02, ZN + 0.09)):
-        d.rounded_rectangle((Z(a), Y(2.04), Z(b), Y(0.97)), radius=10, fill=(0, 0, 0, 0))
-    # bumper, grille, headlights, indicators
-    d.rectangle((0, Y(0.62), w, Y(SKIRT)), fill=(34, 34, 36, 255))
-    d.rectangle((Z(0.45), Y(0.86), Z(-0.45), Y(0.66)), fill=(26, 26, 28, 255))
-    for i in range(5):
-        y = Y(0.84) + i * 3
-        d.line((Z(0.42), y, Z(-0.42), y), fill=(60, 60, 64, 255), width=1)
+        d.rounded_rectangle((Z(ZO - 0.1), Y(FRONT_WIN[1]), Z(ZN + 0.1), Y(FRONT_WIN[0])), radius=R(0.2), fill=clear)
+        d.rectangle((Z(ZO - 0.1), Y(SCREEN[1]), Z(ZN + 0.1), Y(SCREEN[0])), fill=clear)
+        d.rectangle((Z(ZO - 0.05), Y(DEST_TOP), Z(ZN + 0.05), Y(SCREEN[1])), fill=(30, 30, 32, 255))
+        return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
+    d.rectangle((0, Y(H), w, Y(SKIRT)), fill=RED + (255,))
+    # upper deck: two big panes with rounded outer top corners and a slim centre pillar
+    d.rounded_rectangle((Z(ZO - 0.05), Y(FRONT_WIN[1] + 0.05), Z(ZN + 0.05), Y(FRONT_WIN[0] - 0.04)), radius=R(0.26), fill=BLACK + (255,))
+    for a, b in ((ZO - 0.1, 0.03), (-0.03, ZN + 0.1)):
+        d.rounded_rectangle((Z(a), Y(FRONT_WIN[1]), Z(b), Y(FRONT_WIN[0])), radius=R(0.2), fill=clear)
+    # destination area and windscreen: one continuous black glazed panel with a red surround
+    d.rounded_rectangle((Z(ZO - 0.05), Y(DEST_TOP), Z(ZN + 0.05), Y(SCREEN[0] - 0.05)), radius=R(0.12), fill=BLACK + (255,))
+    d.rounded_rectangle((Z(ZO - 0.1), Y(SCREEN[1]), Z(ZN + 0.1), Y(SCREEN[0])), radius=R(0.08), fill=clear)
+    # destination glass shading (the LED display itself is a separate bone)
+    d.rectangle((Z(ZO - 0.1), Y(DEST_TOP - 0.04), Z(ZN + 0.1), Y(SCREEN[1] + 0.03)), fill=(14, 16, 20, 255))
+    # lower front: red panel, slot grille, headlight pods, indicators
+    d.rounded_rectangle((Z(0.48), Y(0.86), Z(-0.48), Y(0.66)), radius=R(0.03), fill=(24, 24, 26, 255))
+    for i in range(6):
+        y = Y(0.84) + i * R(0.03)
+        d.line((Z(0.45), y, Z(-0.45), y), fill=(70, 70, 74, 255), width=ss * 2)
     for side in (1, -1):
-        cz = side * (W / 2 - 0.3)
-        for k, (zz, col) in enumerate(((cz + side * 0.08, (235, 235, 225)), (cz - side * 0.08, (235, 235, 225)))):
-            r = tx(0.075)
-            d.ellipse((Z(zz) - r, Y(0.5) - r, Z(zz) + r, Y(0.5) + r), fill=(60, 60, 60, 255))
-            d.ellipse((Z(zz) - r + 2, Y(0.5) - r + 2, Z(zz) + r - 2, Y(0.5) + r - 2), fill=col + (255,))
-        d.rectangle((Z(cz + side * 0.2) - 4, Y(0.56), Z(cz + side * 0.2) + 4, Y(0.44)), fill=(240, 150, 30, 255))
-    # number plate area (text drawn live)
-    d.rectangle((Z(0.26), Y(0.47), Z(-0.26), Y(0.36)), fill=(240, 240, 236, 255))
-    return noise(img, 2)
+        outer = side * (W / 2 - 0.06)
+        inner = side * (W / 2 - 0.62)
+        d.rounded_rectangle((min(Z(outer), Z(inner)), Y(0.68), max(Z(outer), Z(inner)), Y(0.38)), radius=R(0.08), fill=(22, 22, 24, 255))
+        for zc, rad in ((side * (W / 2 - 0.2), 0.085), (side * (W / 2 - 0.42), 0.07)):
+            cx, cy = Z(zc), Y(0.53)
+            d.ellipse((cx - R(rad), cy - R(rad), cx + R(rad), cy + R(rad)), fill=(90, 92, 96, 255))
+            d.ellipse((cx - R(rad * 0.8), cy - R(rad * 0.8), cx + R(rad * 0.8), cy + R(rad * 0.8)), fill=(232, 234, 228, 255))
+            d.ellipse((cx - R(rad * 0.3), cy - R(rad * 0.3), cx + R(rad * 0.15), cy + R(rad * 0.15)), fill=(255, 255, 250, 255))
+        ix = Z(side * (W / 2 - 0.56))
+        d.rounded_rectangle((ix - R(0.035), Y(0.6), ix + R(0.035), Y(0.46)), radius=R(0.01), fill=(240, 150, 30, 255))
+    # bumper with the number plate (text drawn live)
+    d.rectangle((0, Y(0.37), w, Y(SKIRT)), fill=(30, 30, 32, 255))
+    d.rectangle((Z(0.27), Y(0.47), Z(-0.27), Y(0.36)), fill=(30, 30, 32, 255))
+    d.rectangle((Z(0.26), Y(0.465), Z(-0.26), Y(0.365)), fill=(242, 242, 238, 255))
+    # front corner marker lamps under the roof dome
+    for side in (1, -1):
+        cx = Z(side * (W / 2 - 0.25))
+        d.ellipse((cx - R(0.03), Y(4.05) - R(0.03), cx + R(0.03), Y(4.05) + R(0.03)), fill=(240, 240, 230, 255))
+    return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
+
+
+REAR_WIN = (2.75, 3.55)
+REAR_BOX = (0.35, 1.0, 3.68, 3.98)      # route number box: z from, z to (offside), y from, y to
 
 
 def rear_panel(inside):
-    w, h = tx(W), tx(H)
+    """ALX400 rear, as seen from behind (nearside on the viewer's left): upper deck window,
+    route number box top offside, engine bay with advert, slatted intakes, light clusters."""
+    ss = 2
+    w, h = fx(W) * ss, fx(H) * ss
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    def Z(z):          # seen from behind: nearside (-z) on the viewer's left
-        return tx(z - ZN)
+    def Z(z):
+        return int((z - ZN) * FPM * ss)
 
     def Y(y):
-        return h - tx(y)
+        return h - int(y * FPM * ss)
 
+    def R(m):
+        return int(m * FPM * ss)
+    clear = (0, 0, 0, 0)
     if inside:
         d.rectangle((0, 0, w, h), fill=WALL + (255,))
-        d.rectangle((Z(ZN + 0.25), Y(UP_WIN[1]), Z(ZO - 0.25), Y(UP_WIN[0] + 0.05)), fill=(0, 0, 0, 0))
-        d.rectangle((Z(ZN + 0.5), Y(1.75), Z(ZO - 0.5), Y(1.45)), fill=(0, 0, 0, 0))
-        return noise(img, 2)
-    d.rectangle((0, Y(H - 0.02), w, Y(SKIRT)), fill=RED + (255,))
-    d.rounded_rectangle((Z(ZN + 0.22), Y(UP_WIN[1] + 0.05), Z(ZO - 0.22), Y(UP_WIN[0])), radius=10, fill=BLACK + (255,))
-    d.rounded_rectangle((Z(ZN + 0.27), Y(UP_WIN[1]), Z(ZO - 0.27), Y(UP_WIN[0] + 0.05)), radius=8, fill=(0, 0, 0, 0))
-    # small lower rear window
-    d.rounded_rectangle((Z(ZN + 0.45), Y(1.8), Z(ZO - 0.45), Y(1.4)), radius=6, fill=BLACK + (255,))
-    d.rounded_rectangle((Z(ZN + 0.5), Y(1.75), Z(ZO - 0.5), Y(1.45)), radius=5, fill=(0, 0, 0, 0))
-    # route number box above the rear window
-    d.rectangle((Z(-DISPLAY_REAR[0]) - 3, Y(DISPLAY_REAR[1]) - 3, Z(DISPLAY_REAR[0]) + 3, Y(DISPLAY_REAR[1] - DISPLAY_REAR[3]) + 3),
-                fill=BLACK + (255,))
-    # engine bay grilles and lights
-    for gy in (0.75, 1.1):
-        d.rectangle((Z(ZN + 0.3), Y(gy + 0.2), Z(ZO - 0.3), Y(gy)), fill=(60, 14, 18, 255))
-        for i in range(8):
-            y = Y(gy + 0.2) + 2 + i * 3
-            d.line((Z(ZN + 0.32), y, Z(ZO - 0.32), y), fill=(30, 8, 10, 255), width=1)
+        d.rounded_rectangle((Z(ZN + 0.33), Y(REAR_WIN[1]), Z(ZO - 0.33), Y(REAR_WIN[0])), radius=R(0.12), fill=clear)
+        return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
+    d.rectangle((0, Y(H), w, Y(SKIRT)), fill=RED + (255,))
+    # upper deck rear window
+    d.rounded_rectangle((Z(ZN + 0.28), Y(REAR_WIN[1] + 0.05), Z(ZO - 0.28), Y(REAR_WIN[0] - 0.05)), radius=R(0.16), fill=BLACK + (255,))
+    d.rounded_rectangle((Z(ZN + 0.33), Y(REAR_WIN[1]), Z(ZO - 0.33), Y(REAR_WIN[0])), radius=R(0.12), fill=clear)
+    # route number box, top offside
+    za, zb, ya, yb = REAR_BOX
+    d.rounded_rectangle((Z(za) - R(0.03), Y(yb) - R(0.03), Z(zb) + R(0.03), Y(ya) + R(0.03)), radius=R(0.03), fill=BLACK + (255,))
+    # slatted engine air intake up the offside
+    d.rectangle((Z(0.42), Y(2.3), Z(1.05), Y(1.5)), fill=(150, 14, 20, 255))
+    for i in range(14):
+        y = Y(2.28) + i * R(0.055)
+        d.rectangle((Z(0.45), y, Z(1.02), y + R(0.025)), fill=(40, 8, 12, 255))
+    # registration plate above the engine cover
+    d.rectangle((Z(-0.26), Y(1.44), Z(0.26), Y(1.33)), fill=YELLOW + (255,))
+    # engine cover with an advert frame (generic advert)
+    d.rounded_rectangle((Z(-0.92), Y(1.3), Z(0.92), Y(0.52)), radius=R(0.04), fill=(170, 14, 20, 255))
+    d.rectangle((Z(-0.8), Y(1.2), Z(0.8), Y(0.6)), fill=(236, 236, 230, 255))
+    d.rectangle((Z(-0.78), Y(1.18), Z(0.78), Y(0.62)), fill=(250, 214, 60, 255))
+    d.rectangle((Z(-0.78), Y(0.8), Z(0.78), Y(0.62)), fill=(30, 110, 190, 255))
+    d.ellipse((Z(0.2), Y(1.12), Z(0.62), Y(0.7)), fill=(240, 240, 236, 255))
+    d.rectangle((Z(-0.7), Y(1.08), Z(-0.05), Y(1.0)), fill=(30, 30, 30, 255))
+    d.rectangle((Z(-0.7), Y(0.95), Z(-0.2), Y(0.89)), fill=(30, 30, 30, 255))
+    # light clusters at both corners: tail/stop, indicator, reverse, fog
     for side in (-1, 1):
-        cz = side * (W / 2 - 0.14)
-        d.rectangle((Z(cz) - 6, Y(1.55), Z(cz) + 6, Y(0.7)), fill=(140, 10, 16, 255))
-        d.rectangle((Z(cz) - 5, Y(1.5), Z(cz) + 5, Y(1.35)), fill=(240, 150, 30, 255))
-        d.rectangle((Z(cz) - 5, Y(0.95), Z(cz) + 5, Y(0.82)), fill=(230, 230, 230, 255))
-    d.rectangle((0, Y(0.5), w, Y(SKIRT)), fill=(34, 34, 36, 255))
-    d.rectangle((Z(-0.26), Y(0.62), Z(0.26), Y(0.51)), fill=YELLOW + (255,))
-    return noise(img, 2)
+        a, b = side * (W / 2 - 0.04), side * (W / 2 - 0.2)
+        x0, x1 = min(Z(a), Z(b)), max(Z(a), Z(b))
+        d.rounded_rectangle((x0, Y(1.5), x1, Y(0.55)), radius=R(0.03), fill=(40, 40, 42, 255))
+        for (y0, y1, col) in ((1.47, 1.2, (170, 16, 20)), (1.18, 1.0, (240, 150, 30)), (0.98, 0.82, (236, 236, 236)), (0.8, 0.58, (150, 14, 18))):
+            d.rounded_rectangle((x0 + R(0.015), Y(y0), x1 - R(0.015), Y(y1)), radius=R(0.02), fill=col + (255,))
+    # bumper
+    d.rectangle((0, Y(0.5), w, Y(SKIRT)), fill=(30, 30, 32, 255))
+    # high-level brake light under the roof
+    d.rectangle((Z(-0.3), Y(4.1), Z(0.3), Y(4.05)), fill=(170, 16, 20, 255))
+    return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
 
 
 def roof_panel(inside):
@@ -442,7 +485,7 @@ def corner_strip(kind):
     def Y(y):
         return h - tx(y)
     if kind == "front":
-        bands = ((UP_WIN[0] - 0.08, UP_WIN[1] + 0.06), (2.06, 2.5), (0.95, 2.1))
+        bands = ((2.58, 3.98), (0.9, 2.55))
     else:
         bands = ((UP_WIN[0], UP_WIN[1]),)
     for a, b in bands:
@@ -483,20 +526,22 @@ def shell():
     t = 0.035
     rc = R_CORNER
     # flat panels stop short of the rounded corners and roof edges; textures are cropped to match
-    cut_u = tx(rc)
-    cut_top = tx(R_ROOF)
 
-    def crop(region, left, right, top):
+    def crop(region, span):
+        """Trim the rounded corners and roof edge off a painted panel (span: its width in metres)."""
         x, y, w, h = ATL.regions[region]
-        return face_uv(region, sub=(left, top, w - left - right, h - top))
+        cut = int(round(w * rc / span))
+        top = int(round(h * R_ROOF / H))
+        bottom = int(round(h * SKIRT / H))
+        return face_uv(region, sub=(cut, top, w - 2 * cut, h - top - bottom))
     cube("Body", (X0 + rc, SKIRT, ZN), (X1 - rc, H - R_ROOF, ZN + t),
-         {"north": crop("side_near_out", cut_u, cut_u, cut_top), "south": crop("side_near_in", cut_u, cut_u, cut_top)})
+         {"north": crop("side_near_out", L), "south": crop("side_near_in", L)})
     cube("Body", (X0 + rc, SKIRT, ZO - t), (X1 - rc, H - R_ROOF, ZO),
-         {"south": crop("side_off_out", cut_u, cut_u, cut_top), "north": crop("side_off_in", cut_u, cut_u, cut_top)})
+         {"south": crop("side_off_out", L), "north": crop("side_off_in", L)})
     cube("Body", (X1 - t, SKIRT, ZN + rc), (X1, H - R_ROOF, ZO - rc),
-         {"east": crop("front_out", cut_u, cut_u, cut_top), "west": crop("front_in", cut_u, cut_u, cut_top)})
+         {"east": crop("front_out", W), "west": crop("front_in", W)})
     cube("Body", (X0, SKIRT, ZN + rc), (X0 + t, H - R_ROOF, ZO - rc),
-         {"west": crop("rear_out", cut_u, cut_u, cut_top), "east": crop("rear_in", cut_u, cut_u, cut_top)})
+         {"west": crop("rear_out", W), "east": crop("rear_in", W)})
     cube("Roof", (X0 + R_ROOF, H - t, ZN + R_ROOF), (X1 - R_ROOF, H, ZO - R_ROOF),
          {"up": face_uv("roof_out"), "down": face_uv("roof_in")})
     # rounded corners (dark glass bands wrap round them) and roof edges
@@ -712,7 +757,7 @@ def interior():
     # inside displays: next stop screens facing the rear, lower and upper deck
     for name, x, y in (("Display5", CAB[0] - 0.02, 2.05), ("Display6", X1 - 0.12, UPPER_CEIL - 0.04)):
         w, h = 0.62, 0.3
-        bone(name, "Interior", (x - 0.01, y, -w / 2))
+        bone(name, "Interior", (x - 0.012, y, w / 2))
         solid(name, (x, y - h - 0.02, -w / 2 - 0.02), (x + 0.04, y + 0.02, w / 2 + 0.02), "black", parent="Interior")
     # BUS STOPPING signs (unlit face; the lit one slides forward when the bell has been rung)
     for x, y, z in ((CAB[0] - 0.015, 1.72, -0.55), (X1 - 0.13, UPPER_CEIL - 0.42, 0.0)):
@@ -761,17 +806,19 @@ def lights():
 
 def details():
     # destination displays (text drawn by the renderer at these bones' pivots)
+    # labels run from the bone pivot towards +z (front), +x (side) and -z (rear and inside),
+    # so each pivot sits at the end of its screen where the text starts
     zf, top, w, h = DISPLAY_FRONT
-    bone("Display1", "Vehicle", (X1 + 0.012, top, zf))
-    solid("Display1", (X1 - 0.01, top - h, -zf), (X1 + 0.01, top, zf), "black")
+    bone("Display1", "Vehicle", (X1 + 0.014, top, -zf))
+    solid("Display1", (X1 - 0.01, top - h, -zf), (X1 + 0.012, top, zf), "black")
     sx, sy, sw, sh = DISPLAY_SIDE
-    bone("Display2", "Vehicle", (sx, sy, ZN - 0.012))
-    solid("Display2", (sx - sw, sy - sh, ZN - 0.01), (sx, sy, ZN + 0.01), "black")
+    bone("Display2", "Vehicle", (sx - sw, sy, ZN - 0.014))
+    solid("Display2", (sx - sw, sy - sh, ZN - 0.012), (sx, sy, ZN + 0.01), "black")
     rz, rt, rw, rh = DISPLAY_REAR
-    bone("Display3", "Vehicle", (X0 - 0.012, rt, -rz))
-    solid("Display3", (X0 - 0.01, rt - rh, -rz), (X0 + 0.01, rt, rz), "black")
-    bone("PlateFront", "Vehicle", (X1 + 0.012, 0.415, 0))
-    bone("PlateBack", "Vehicle", (X0 - 0.012, 0.565, 0))
+    bone("Display3", "Vehicle", (X0 - 0.014, rt, rz))
+    solid("Display3", (X0 - 0.012, rt - rh, rz - rw), (X0 + 0.01, rt, rz), "black")
+    bone("PlateFront", "Vehicle", (X1 + 0.014, 0.415, 0))
+    bone("PlateBack", "Vehicle", (X0 - 0.014, 1.385, 0))
     # "bunny ear" mirrors hanging from the front upper corners
     bone("Mirrors")
     for name, z, s in (("LeftMirror", ZO, 1), ("RightMirror", ZN, -1)):
@@ -947,11 +994,11 @@ public final class ALX400Layout {{
     public static final double DOOR2_FORWARD = {f(sum(DOOR2) / 2)};
     public static final double[] TICKET_MACHINE = {{-0.12, 1.3, 4.35}};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
-    // label yaws: PTM2's own buses face -z in model space, ours face +x, so ours are theirs - 90
-    public static final float[] DISPLAY_FRONT = {{{f(DISPLAY_FRONT[2])}f, {f(DISPLAY_FRONT[3])}f, 270.0f}};
+    // label yaws measured in game: 90 faces the front, 180 the nearside, 270 the rear
+    public static final float[] DISPLAY_FRONT = {{{f(DISPLAY_FRONT[2])}f, {f(DISPLAY_FRONT[3])}f, 90.0f}};
     public static final float[] DISPLAY_SIDE = {{{f(DISPLAY_SIDE[2])}f, {f(DISPLAY_SIDE[3])}f, 180.0f}};
-    public static final float[] DISPLAY_REAR = {{{f(DISPLAY_REAR[2])}f, {f(DISPLAY_REAR[3])}f, 90.0f}};
-    public static final float[] DISPLAY_INSIDE = {{0.62f, 0.3f, 90.0f}};
+    public static final float[] DISPLAY_REAR = {{{f(DISPLAY_REAR[2])}f, {f(DISPLAY_REAR[3])}f, 270.0f}};
+    public static final float[] DISPLAY_INSIDE = {{0.62f, 0.3f, 270.0f}};
     public static final int SEAT_COUNT = {len(SEATS)};
 
     private ALX400Layout() {{

@@ -17,10 +17,10 @@ public final class ALX400Layout {
     public static final double[] TICKET_MACHINE = {-0.12, 1.3, 4.35};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
     // label yaws: PTM2's own buses face -z in model space, ours face +x, so ours are theirs - 90
-    public static final float[] DISPLAY_FRONT = {1.920f, 0.340f, 270.0f};
+    public static final float[] DISPLAY_FRONT = {1.840f, 0.400f, 90.0f};
     public static final float[] DISPLAY_SIDE = {1.500f, 0.260f, 180.0f};
-    public static final float[] DISPLAY_REAR = {0.700f, 0.280f, 90.0f};
-    public static final float[] DISPLAY_INSIDE = {0.62f, 0.3f, 90.0f};
+    public static final float[] DISPLAY_REAR = {0.650f, 0.300f, 270.0f};
+    public static final float[] DISPLAY_INSIDE = {0.62f, 0.3f, 270.0f};
     public static final int SEAT_COUNT = 74;
 
     private ALX400Layout() {

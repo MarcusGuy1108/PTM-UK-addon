@@ -60,13 +60,6 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
             com.ptmuk.PtmUk.LOGGER.info("ALX400 text bone {} at {} ignition={} outside={} dest='{}' num='{}'", name, t, bus.ignition,
                     bus.outsideDisplays, bus.getDestination(), bus.getLineNumber());
         }
-        if (DEBUG && ("Display6".equals(name) || "Display1".equals(name))) {
-            int[] cols = {0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFFFFFF00};
-            for (int k = 0; k < 4; k++) {
-                new ScaledWorldLabel(0.6, 0.15, "Y" + (k * 90), cols[k], true).render(ps, buffers, 0xF000F0, 0, -0.16 * k, 0, k * 90f, 0f);
-            }
-            return true;
-        }
         String number = bus.getLineNumber();
         number = "D".equals(number) ? "" : number;
         boolean lit = bus.ignition || DEBUG;
