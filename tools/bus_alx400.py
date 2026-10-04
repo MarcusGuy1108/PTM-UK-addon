@@ -275,7 +275,7 @@ def rear_panel(inside):
     img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    def Z(z):
+    def Z(z):        # drawn nearside-left, then mirrored to match the face's UV (checked in game)
         return int((z - ZN) * FPM * ss)
 
     def Y(y):
@@ -321,7 +321,7 @@ def rear_panel(inside):
     d.rectangle((0, Y(0.5), w, Y(SKIRT)), fill=(30, 30, 32, 255))
     # high-level brake light under the roof
     d.rectangle((Z(-0.3), Y(4.1), Z(0.3), Y(4.05)), fill=(170, 16, 20, 255))
-    return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
+    return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2).transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 
 
 def roof_panel(inside):

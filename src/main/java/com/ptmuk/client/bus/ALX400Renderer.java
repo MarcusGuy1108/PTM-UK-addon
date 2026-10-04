@@ -74,8 +74,9 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
                 if (number.isBlank() && (dest == null || dest.isBlank())) {
                     label(ps, buffers, "NOT IN SERVICE", d[0], d[1], 0, 0, LED, true, d[2]);
                 } else {
-                    label(ps, buffers, number, d[0] * 0.24, d[1], 0, 0, LED, true, d[2]);
-                    label(ps, buffers, dest, d[0] * 0.76, d[1], d[0] * 0.24, 0, LED, true, d[2]);
+                    // route number on the left, a gap, then the destination
+                    label(ps, buffers, number, d[0] * 0.2, d[1] * 0.85, d[0] * 0.02, d[1] * 0.075, LED, true, d[2]);
+                    label(ps, buffers, dest, d[0] * 0.72, d[1] * 0.7, d[0] * 0.26, d[1] * 0.15, LED, true, d[2]);
                 }
                 return true;
             }
