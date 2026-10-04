@@ -871,7 +871,7 @@ def write_data():
     fences = [f"{MOD_ID}:{n}" for n in furniture.FENCES]
     everything = [f"{MOD_ID}:{n}" for n in POLES] + signals + [f"{MOD_ID}:{n}" for n in ACCESSORIES] + \
         [f"{MOD_ID}:{n}" for n in furniture.FURNITURE] + fences + \
-        [f"{MOD_ID}:{n}" for n in signs.SIGNS] + [f"{MOD_ID}:bus_stop_flag"] + [f"{MOD_ID}:{n}" for n in motorway.NAMES]
+        [f"{MOD_ID}:{n}" for n in signs.SIGNS] + [f"{MOD_ID}:london_bus_stop"] + [f"{MOD_ID}:{n}" for n in motorway.NAMES]
     write_json(DATA / "minecraft/tags/blocks/fences.json", {"replace": False, "values": fences})
     write_json(DATA / "ptm2/tags/items/vehicles.json", {"replace": False, "values": [f"{MOD_ID}:alx400"]})
     loot = DATA / MOD_ID / "loot_tables"

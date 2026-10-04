@@ -49,7 +49,7 @@ public final class ModBlocks {
     /** Motorway gantry parts and signals. */
     public static final Map<String, RegistryObject<Block>> MOTORWAY = new LinkedHashMap<>();
     public static final RegistryObject<Block> VMS;
-    public static final RegistryObject<Block> BUS_STOP = BLOCKS.register("bus_stop_flag", com.ptmuk.sign.BusStopBlock::new);
+    public static final RegistryObject<Block> BUS_STOP = BLOCKS.register("london_bus_stop", com.ptmuk.sign.BusStopBlock::new);
     /** UK building materials: full blocks, then their slabs. */
     public static final Map<String, RegistryObject<Block>> BUILDING = new LinkedHashMap<>();
     /** Transmission towers, one block per tower type (each cell of the tower is a state). */

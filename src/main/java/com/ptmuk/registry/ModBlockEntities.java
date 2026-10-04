@@ -33,7 +33,7 @@ public final class ModBlockEntities {
 
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<BlockEntityType<com.ptmuk.sign.BusStopBlockEntity>> BUS_STOP = BLOCK_ENTITIES.register(
-            "bus_stop_flag", () -> BlockEntityType.Builder.of(com.ptmuk.sign.BusStopBlockEntity::new, ModBlocks.BUS_STOP.get()).build(null));
+            "london_bus_stop", () -> BlockEntityType.Builder.of(com.ptmuk.sign.BusStopBlockEntity::new, ModBlocks.BUS_STOP.get()).build(null));
 
     private ModBlockEntities() {
     }

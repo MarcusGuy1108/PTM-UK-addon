@@ -45,11 +45,11 @@ def icon(name, bg, fg):
 def generate(G):
     item_tex = G.ASSETS / "textures/item"
     item_tex.mkdir(parents=True, exist_ok=True)
-    bus_stop_icon().save(item_tex / "bus_stop_flag.png")
-    G.write_json(G.ASSETS / "models/block/bus_stop_flag.json", {"textures": {"particle": f"{G.MOD_ID}:block/pole/galvanised"}})
-    G.write_json(G.ASSETS / "blockstates/bus_stop_flag.json", {"variants": {"": {"model": f"{G.MOD_ID}:block/bus_stop_flag"}}})
-    G.write_json(G.ASSETS / "models/item/bus_stop_flag.json",
-                 {"parent": "minecraft:item/generated", "textures": {"layer0": f"{G.MOD_ID}:item/bus_stop_flag"}})
+    bus_stop_icon().save(item_tex / "london_bus_stop.png")
+    G.write_json(G.ASSETS / "models/block/london_bus_stop.json", {"textures": {"particle": f"{G.MOD_ID}:block/pole/galvanised"}})
+    G.write_json(G.ASSETS / "blockstates/london_bus_stop.json", {"variants": {"": {"model": f"{G.MOD_ID}:block/london_bus_stop"}}})
+    G.write_json(G.ASSETS / "models/item/london_bus_stop.json",
+                 {"parent": "minecraft:item/generated", "textures": {"layer0": f"{G.MOD_ID}:item/london_bus_stop"}})
     for name, (_, bg, fg) in SIGNS.items():
         icon(name, bg, fg).save(item_tex / f"{name}.png")
         G.write_json(G.ASSETS / f"models/block/{name}.json",
@@ -78,5 +78,5 @@ def bus_stop_icon():
 
 def lang(G):
     out = {f"block.{G.MOD_ID}.{n}": title for n, (title, _, _) in SIGNS.items()}
-    out[f"block.{G.MOD_ID}.bus_stop_flag"] = "Bus Stop (London style)"
+    out[f"block.{G.MOD_ID}.london_bus_stop"] = "London Bus Stop (editable)"
     return out

@@ -19,6 +19,7 @@ public enum FurnitureType {
     PILLAR_BOX("pillar_box", 3, 0, 3, 13, 24, 13, 0, SoundType.METAL),
     PHONE_BOX("phone_box", 1, 0, 1, 15, 24, 15, 6, SoundType.METAL),
     BUS_SHELTER("bus_shelter", 0, 0, 2, 16, 24, 16, 9, SoundType.METAL),
+    BUS_SHELTER_LONDON("bus_shelter_london", 0, 0, 2, 16, 24, 16, 9, SoundType.METAL),
     BUS_STOP_FLAG("bus_stop_flag", 6, 0, 6, 10, 24, 10, 0, SoundType.METAL),
     BENCH_METAL("bench_metal", 0, 0, 3, 16, 9, 13, 0, SoundType.METAL),
     BENCH_WOOD("bench_wood", 0, 0, 3, 16, 9, 13, 0, SoundType.WOOD),

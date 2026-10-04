@@ -51,7 +51,7 @@ public final class ModItems {
         POWER_ITEMS.add(ITEMS.register("pylon_dismantler", com.ptmuk.power.PylonDismantlerItem::new));
         ALX400 = ITEMS.register("alx400", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.ALX400_CODE));
         BUS_ITEMS.add(ALX400);
-        BUS_ITEMS.add(item("bus_stop_flag", ModBlocks.BUS_STOP));
+        BUS_ITEMS.add(item("london_bus_stop", ModBlocks.BUS_STOP));
         register(ModBlocks.FURNITURE, STREET_ITEMS);
         register(ModBlocks.FENCES, STREET_ITEMS);
         register(ModBlocks.BUILDING, BUILDING_ITEMS);

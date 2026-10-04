@@ -248,6 +248,18 @@ def bus_shelter():
                  "stainless": t("stainless")}, {"cutout": True}
 
 
+def bus_shelter_london():
+    """London style: black frame and a red fascia band along the front of the roof."""
+    els, textures, opts = bus_shelter()
+    for el in els:
+        if el["faces"] and "#galv" in json.dumps(el):
+            for f in el["faces"].values():
+                f["texture"] = "#black"
+    els.append(box((-16, 27.4, 0.9), (32, 29.8, 1.5), "#red", faces=("north", "up", "down", "east", "west")))
+    textures = dict(textures, black=t("black"), red=t("red"))
+    return els, textures, opts
+
+
 def bus_stop_flag():
     els = cyl(8, 8, 1.0, 0, 32, "#galv", top=True)
     flag = box((9, 24, 7.8), (16.2, 31.2, 8.2), "#black", faces=("north", "south", "east", "up", "down"),
@@ -489,6 +501,7 @@ FURNITURE = {
     "phone_box": (phone_box, "Red Telephone Box"),
     "bus_shelter": (bus_shelter, "Bus Shelter"),
     "bus_stop_flag": (bus_stop_flag, "Bus Stop"),
+    "bus_shelter_london": (bus_shelter_london, "Bus Shelter (London)"),
     "bench_metal": (lambda: bench("metal"), "Bench (Steel)"),
     "bench_wood": (lambda: bench("wood"), "Bench (Wood)"),
     "bollard_cast_iron": (lambda: bollard("cast_iron"), "Bollard (Cast Iron)"),
