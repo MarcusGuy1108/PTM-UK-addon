@@ -1,1 +1,1 @@
-{"textures":{"particle":"ptmuk:block/signal/classic_amber_off","glass":"ptmuk:block/signal/classic_amber_off","lens":"ptmuk:block/signal/classic_amber_off"},"elements":[{"from":[17.5,6,6],"to":[18.0,10,10],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}}}]}
+{"textures":{"particle":"ptmuk:block/signal/classic_amber_off","glass":"ptmuk:block/signal/classic_amber_off","lens":"ptmuk:block/signal/classic_amber_off"},"elements":[{"from":[17.8,5.8,5.8],"to":[17.85,10.2,10.2],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}}}],"render_type":"minecraft:cutout_mipped"}

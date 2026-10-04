@@ -1,1 +1,1 @@
-{"textures":{"particle":"ptmuk:block/signal/led_green_cycle_off","glass":"ptmuk:block/signal/led_green_cycle_off","lens":"ptmuk:block/signal/led_green_cycle_off"},"elements":[{"from":[11.5,3.5,3.5],"to":[12.0,7.75,7.75],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}}}]}
+{"textures":{"particle":"ptmuk:block/signal/led_green_cycle_off","glass":"ptmuk:block/signal/led_green_cycle_off","lens":"ptmuk:block/signal/led_green_cycle_off"},"elements":[{"from":[11.8,3.8,3.5],"to":[11.85,8.0,7.7],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}}}]}

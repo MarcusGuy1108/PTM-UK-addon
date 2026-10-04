@@ -3,38 +3,167 @@
   "particle": "ptmuk:block/signal/housing_led",
   "housing": "ptmuk:block/signal/housing_led",
   "inside": "ptmuk:block/signal/hood_inside",
+  "metal": "ptmuk:block/signal/grey_metal",
+  "face": "ptmuk:block/signal/face_7",
   "sign": "ptmuk:block/signal/sign_except_buses",
-  "board": "ptmuk:block/signal/board_sign",
-  "board_edge": "ptmuk:block/signal/grey_metal"
+  "board": "ptmuk:block/signal/board_2",
+  "board_back": "ptmuk:block/signal/grey_metal"
  },
  "elements": [
   {
    "from": [
-    5.0,
-    10.0,
+    5.12,
+    10.05,
     7.0
    ],
    "to": [
-    11.0,
-    16.0,
+    10.88,
+    15.95,
+    10.5
+   ],
+   "faces": {
+    "east": {
+     "texture": "#housing",
+     "uv": [
+      7.0,
+      0.05,
+      10.5,
+      5.95
+     ]
+    },
+    "west": {
+     "texture": "#housing",
+     "uv": [
+      7.0,
+      0.05,
+      10.5,
+      5.95
+     ]
+    },
+    "up": {
+     "texture": "#housing",
+     "uv": [
+      5.12,
+      7.0,
+      10.88,
+      10.5
+     ]
+    },
+    "down": {
+     "texture": "#housing",
+     "uv": [
+      5.12,
+      7.0,
+      10.88,
+      10.5
+     ]
+    },
+    "south": {
+     "texture": "#housing",
+     "uv": [
+      5.12,
+      0.05,
+      10.88,
+      5.95
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    5.45,
+    10.35,
+    10.5
+   ],
+   "to": [
+    10.55,
+    15.65,
     11.0
    ],
    "faces": {
     "north": {
      "texture": "#housing",
      "uv": [
-      5.0,
-      0.0,
-      11.0,
-      6.0
+      5.45,
+      0.35,
+      10.55,
+      5.65
      ]
     },
     "east": {
      "texture": "#housing",
      "uv": [
-      7.0,
-      0.0,
+      10.5,
+      0.35,
       11.0,
+      5.65
+     ]
+    },
+    "south": {
+     "texture": "#housing",
+     "uv": [
+      5.45,
+      0.35,
+      10.55,
+      5.65
+     ]
+    },
+    "west": {
+     "texture": "#housing",
+     "uv": [
+      10.5,
+      0.35,
+      11.0,
+      5.65
+     ]
+    },
+    "up": {
+     "texture": "#housing",
+     "uv": [
+      5.45,
+      10.5,
+      10.55,
+      11.0
+     ]
+    },
+    "down": {
+     "texture": "#housing",
+     "uv": [
+      5.45,
+      10.5,
+      10.55,
+      11.0
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    5.0,
+    10.0,
+    6.9
+   ],
+   "to": [
+    11.0,
+    16.0,
+    7.0
+   ],
+   "faces": {
+    "north": {
+     "texture": "#face",
+     "uv": [
+      0,
+      0,
+      16,
+      16
+     ]
+    },
+    "east": {
+     "texture": "#housing",
+     "uv": [
+      6.9,
+      0.0,
+      7.0,
       6.0
      ]
     },
@@ -50,9 +179,9 @@
     "west": {
      "texture": "#housing",
      "uv": [
-      7.0,
+      6.9,
       0.0,
-      11.0,
+      7.0,
       6.0
      ]
     },
@@ -60,41 +189,18 @@
      "texture": "#housing",
      "uv": [
       5.0,
-      7.0,
+      6.9,
       11.0,
-      11.0
+      7.0
      ]
     },
     "down": {
      "texture": "#housing",
      "uv": [
       5.0,
-      7.0,
+      6.9,
       11.0,
-      11.0
-     ]
-    }
-   }
-  },
-  {
-   "from": [
-    5.2,
-    10.2,
-    6.9
-   ],
-   "to": [
-    10.8,
-    15.8,
-    7.0
-   ],
-   "faces": {
-    "north": {
-     "texture": "#inside",
-     "uv": [
-      5.2,
-      0.2,
-      10.8,
-      5.8
+      7.0
      ]
     }
    }
@@ -103,12 +209,12 @@
    "from": [
     5.5,
     10.5,
-    6.6
+    6.8
    ],
    "to": [
     10.5,
     15.5,
-    6.9
+    6.85
    ],
    "faces": {
     "north": {
@@ -129,139 +235,359 @@
   },
   {
    "from": [
-    4.6,
-    15.6,
-    5.0
+    10.85,
+    12.293,
+    5.07
    ],
    "to": [
-    11.4,
-    16.0,
-    7.0
+    11.15,
+    13.707,
+    6.9
    ],
    "faces": {
     "north": {
      "texture": "#housing",
      "uv": [
-      4.6,
-      0.0,
-      11.4,
-      0.4
+      10.85,
+      2.293,
+      11.15,
+      3.707
+     ]
+    },
+    "west": {
+     "texture": "#inside",
+     "uv": [
+      5.07,
+      2.293,
+      6.9,
+      3.707
      ]
     },
     "east": {
      "texture": "#housing",
      "uv": [
-      5.0,
-      0.0,
-      7.0,
-      0.4
-     ]
-    },
-    "south": {
-     "texture": "#housing",
-     "uv": [
-      4.6,
-      0.0,
-      11.4,
-      0.4
-     ]
-    },
-    "west": {
-     "texture": "#housing",
-     "uv": [
-      5.0,
-      0.0,
-      7.0,
-      0.4
-     ]
-    },
-    "up": {
-     "texture": "#housing",
-     "uv": [
-      4.6,
-      5.0,
-      11.4,
-      7.0
-     ]
-    },
-    "down": {
-     "texture": "#housing",
-     "uv": [
-      4.6,
-      5.0,
-      11.4,
-      7.0
+      5.07,
+      2.293,
+      6.9,
+      3.707
      ]
     }
+   },
+   "rotation": {
+    "angle": 22.5,
+    "axis": "z",
+    "origin": [
+     8.0,
+     13.0,
+     6.9
+    ],
+    "rescale": false
    }
   },
   {
    "from": [
-    2.8,
-    9.2,
-    11.0
+    7.293,
+    15.85,
+    4.876
    ],
    "to": [
-    13.2,
-    15.0,
-    11.4
+    8.707,
+    16.15,
+    6.9
    ],
    "faces": {
-    "east": {
-     "texture": "#board_edge",
+    "north": {
+     "texture": "#housing",
      "uv": [
-      11.0,
-      1.0,
-      11.4,
-      6.8
-     ]
-    },
-    "west": {
-     "texture": "#board_edge",
-     "uv": [
-      11.0,
-      1.0,
-      11.4,
-      6.8
-     ]
-    },
-    "up": {
-     "texture": "#board_edge",
-     "uv": [
-      2.8,
-      11.0,
-      13.2,
-      11.4
+      7.293,
+      0,
+      8.707,
+      0.3
      ]
     },
     "down": {
-     "texture": "#board_edge",
+     "texture": "#inside",
      "uv": [
-      2.8,
-      11.0,
-      13.2,
-      11.4
+      7.293,
+      4.876,
+      8.707,
+      6.9
      ]
     },
-    "south": {
-     "texture": "#board_edge",
+    "up": {
+     "texture": "#housing",
      "uv": [
-      2.8,
-      1.0,
-      13.2,
-      6.8
+      7.293,
+      4.876,
+      8.707,
+      6.9
+     ]
+    }
+   },
+   "rotation": {
+    "angle": -45.0,
+    "axis": "z",
+    "origin": [
+     8.0,
+     13.0,
+     6.9
+    ],
+    "rescale": false
+   }
+  },
+  {
+   "from": [
+    7.293,
+    15.85,
+    4.746
+   ],
+   "to": [
+    8.707,
+    16.15,
+    6.9
+   ],
+   "faces": {
+    "north": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      0,
+      8.707,
+      0.3
+     ]
+    },
+    "down": {
+     "texture": "#inside",
+     "uv": [
+      7.293,
+      4.746,
+      8.707,
+      6.9
+     ]
+    },
+    "up": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      4.746,
+      8.707,
+      6.9
+     ]
+    }
+   },
+   "rotation": {
+    "angle": -22.5,
+    "axis": "z",
+    "origin": [
+     8.0,
+     13.0,
+     6.9
+    ],
+    "rescale": false
+   }
+  },
+  {
+   "from": [
+    7.293,
+    15.85,
+    4.7
+   ],
+   "to": [
+    8.707,
+    16.15,
+    6.9
+   ],
+   "faces": {
+    "north": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      0,
+      8.707,
+      0.3
+     ]
+    },
+    "down": {
+     "texture": "#inside",
+     "uv": [
+      7.293,
+      4.7,
+      8.707,
+      6.9
+     ]
+    },
+    "up": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      4.7,
+      8.707,
+      6.9
      ]
     }
    }
   },
   {
    "from": [
-    2.8,
+    7.293,
+    15.85,
+    4.746
+   ],
+   "to": [
+    8.707,
+    16.15,
+    6.9
+   ],
+   "faces": {
+    "north": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      0,
+      8.707,
+      0.3
+     ]
+    },
+    "down": {
+     "texture": "#inside",
+     "uv": [
+      7.293,
+      4.746,
+      8.707,
+      6.9
+     ]
+    },
+    "up": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      4.746,
+      8.707,
+      6.9
+     ]
+    }
+   },
+   "rotation": {
+    "angle": 22.5,
+    "axis": "z",
+    "origin": [
+     8.0,
+     13.0,
+     6.9
+    ],
+    "rescale": false
+   }
+  },
+  {
+   "from": [
+    7.293,
+    15.85,
+    4.876
+   ],
+   "to": [
+    8.707,
+    16.15,
+    6.9
+   ],
+   "faces": {
+    "north": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      0,
+      8.707,
+      0.3
+     ]
+    },
+    "down": {
+     "texture": "#inside",
+     "uv": [
+      7.293,
+      4.876,
+      8.707,
+      6.9
+     ]
+    },
+    "up": {
+     "texture": "#housing",
+     "uv": [
+      7.293,
+      4.876,
+      8.707,
+      6.9
+     ]
+    }
+   },
+   "rotation": {
+    "angle": 45.0,
+    "axis": "z",
+    "origin": [
+     8.0,
+     13.0,
+     6.9
+    ],
+    "rescale": false
+   }
+  },
+  {
+   "from": [
+    4.85,
+    12.293,
+    5.07
+   ],
+   "to": [
+    5.15,
+    13.707,
+    6.9
+   ],
+   "faces": {
+    "north": {
+     "texture": "#housing",
+     "uv": [
+      4.85,
+      2.293,
+      5.15,
+      3.707
+     ]
+    },
+    "east": {
+     "texture": "#inside",
+     "uv": [
+      5.07,
+      2.293,
+      6.9,
+      3.707
+     ]
+    },
+    "west": {
+     "texture": "#housing",
+     "uv": [
+      5.07,
+      2.293,
+      6.9,
+      3.707
+     ]
+    }
+   },
+   "rotation": {
+    "angle": -22.5,
+    "axis": "z",
+    "origin": [
+     8.0,
+     13.0,
+     6.9
+    ],
+    "rescale": false
+   }
+  },
+  {
+   "from": [
+    2.9,
     9.2,
     10.95
    ],
    "to": [
-    13.2,
+    13.1,
     15.0,
     11.0
    ],
@@ -276,9 +602,68 @@
      ]
     }
    }
+  },
+  {
+   "from": [
+    3.5,
+    9.8,
+    11.0
+   ],
+   "to": [
+    12.5,
+    14.4,
+    11.3
+   ],
+   "faces": {
+    "east": {
+     "texture": "#board_back",
+     "uv": [
+      11.0,
+      1.6,
+      11.3,
+      6.2
+     ]
+    },
+    "west": {
+     "texture": "#board_back",
+     "uv": [
+      11.0,
+      1.6,
+      11.3,
+      6.2
+     ]
+    },
+    "up": {
+     "texture": "#board_back",
+     "uv": [
+      3.5,
+      11.0,
+      12.5,
+      11.3
+     ]
+    },
+    "down": {
+     "texture": "#board_back",
+     "uv": [
+      3.5,
+      11.0,
+      12.5,
+      11.3
+     ]
+    },
+    "south": {
+     "texture": "#board_back",
+     "uv": [
+      3.5,
+      1.6,
+      12.5,
+      6.2
+     ]
+    }
+   }
   }
  ],
- "render_type": "minecraft:cutout",
+ "render_type": "minecraft:cutout_mipped",
  "display": {
   "gui": {
    "rotation": [

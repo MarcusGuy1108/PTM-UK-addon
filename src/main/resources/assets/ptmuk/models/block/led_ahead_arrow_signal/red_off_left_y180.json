@@ -1,1 +1,1 @@
-{"textures":{"particle":"ptmuk:block/signal/led_red_off","glass":"ptmuk:block/signal/led_red_off","lens":"ptmuk:block/signal/led_red_off"},"elements":[{"from":[1,11.2,9.0],"to":[5,15.2,9.5],"faces":{"south":{"texture":"#glass","uv":[0,0,16,16]}}}]}
+{"textures":{"particle":"ptmuk:block/signal/led_red_off","glass":"ptmuk:block/signal/led_red_off","lens":"ptmuk:block/signal/led_red_off"},"elements":[{"from":[0.8,11.133,9.15],"to":[5.2,15.533,9.2],"faces":{"south":{"texture":"#glass","uv":[0,0,16,16]}}}],"render_type":"minecraft:cutout_mipped"}

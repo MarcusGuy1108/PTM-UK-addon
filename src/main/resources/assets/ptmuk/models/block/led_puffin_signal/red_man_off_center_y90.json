@@ -1,1 +1,1 @@
-{"textures":{"particle":"ptmuk:block/signal/led_red_man_off","glass":"ptmuk:block/signal/led_red_man_off","lens":"ptmuk:block/signal/led_red_man_off"},"elements":[{"from":[9.0,10,6.25],"to":[9.5,13.5,9.75],"faces":{"east":{"texture":"#glass","uv":[0,0,16,16]}}}]}
+{"textures":{"particle":"ptmuk:block/signal/led_red_man_off","glass":"ptmuk:block/signal/led_red_man_off","lens":"ptmuk:block/signal/led_red_man_off"},"elements":[{"from":[9.15,9.9,6.3],"to":[9.2,13.3,9.7],"faces":{"east":{"texture":"#glass","uv":[0,0,16,16]}}}]}
