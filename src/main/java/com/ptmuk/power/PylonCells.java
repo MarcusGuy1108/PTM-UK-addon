@@ -15,6 +15,10 @@ public final class PylonCells {
         COUNTS.put("t_pylon", 162);
         COUNTS.put("wood_pole_11kv", 14);
         COUNTS.put("h_pole_33kv", 26);
+        COUNTS.put("pylon_275kv", 472);
+        COUNTS.put("pylon_400kv_square", 758);
+        COUNTS.put("pylon_400kv_angle", 698);
+        COUNTS.put("bt_telephone_pole", 9);
     }
 
     private PylonCells() {

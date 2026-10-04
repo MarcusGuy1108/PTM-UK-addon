@@ -345,6 +345,62 @@ def h_pole():
     return t
 
 
+def l2_275kv():
+    """Narrow 275 kV tower: short flat arms, top arm shortest, single vertical strings."""
+    t = Tower("pylon_275kv")
+    w = lattice_body(t, [(0, 4.0), (24, 1.5), (44, 1.3)], leg0=0.44, leg1=0.26, brace=0.14)
+    for y, length in ((28, 6.2), (35, 6.8), (42, 5.2)):
+        for side in (-1, 1):
+            tip = cross_arm(t, y, w(y), length, 1.4, side, brace=0.12, chord=0.2)
+            t.attach_point(t.insulator_string((tip, y, 0), 3.4), 2)
+    earth_peak(t, 44, w(44), 3.5)
+    return t
+
+
+def square_400kv():
+    """400 kV tower with deep square-ended arms, the middle arm the widest."""
+    t = Tower("pylon_400kv_square")
+    w = lattice_body(t, [(0, 5.6), (30, 1.9), (54, 1.6)], leg0=0.55, leg1=0.32, brace=0.17)
+    for y, length in ((34, 7.4), (43, 10.2), (51, 7.4)):
+        for side in (-1, 1):
+            tip = cross_arm(t, y, w(y), length, 2.2, side, brace=0.14, chord=0.24)
+            t.rod((tip, y, -0.7), (tip, y + 1.0, -0.7), 0.16)
+            t.rod((tip, y, 0.7), (tip, y + 1.0, 0.7), 0.16)
+            t.attach_point(t.insulator_string((tip, y, 0), 4.8), 2)
+    earth_peak(t, 54, w(54), 4.0)
+    return t
+
+
+def angle_400kv():
+    """Wide-based angle tower with heavy drooping arms and horizontal tension strings."""
+    t = Tower("pylon_400kv_angle")
+    w = lattice_body(t, [(0, 7.4), (26, 2.6), (48, 2.2)], leg0=0.7, leg1=0.4, brace=0.2)
+    for y, length in ((30, 7.0), (38.5, 7.8), (46.5, 6.4)):
+        for side in (-1, 1):
+            tip = cross_arm(t, y, w(y), length, 4.2, side, brace=0.18, chord=0.3)
+            for zs in (1, -1):
+                t.attach_point(t.insulator_string((tip, y - 0.2, zs * 0.4), 4.2, axis=2, sign=zs), 2)
+            t.rod((tip, y - 0.25, 0.4), (tip, y - 1.6, 0.4 - 1.15), 0.06, "#wire")
+            t.rod((tip, y - 0.25, -0.4), (tip, y - 1.6, -0.4 + 1.15), 0.06, "#wire")
+    earth_peak(t, 48, w(48), 4.5)
+    return t
+
+
+def bt_pole():
+    """BT telephone pole: wooden, step bolts, distribution point at the top with drop wires."""
+    t = Tower("bt_telephone_pole")
+    t.column(0, 0, 0.15, 0, 8.6, "#wood")
+    for i in range(10):
+        y = 2.2 + i * 0.6
+        a = 1 if i % 2 else -1
+        t.rod((0.15 * a, y, 0), (0.32 * a, y, 0), 0.03, "#steel")
+    t.block((-0.12, 7.6, 0.14), (0.12, 8.0, 0.26), "#black_box")
+    t.block((-0.35, 8.25, -0.05), (0.35, 8.35, 0.05), "#steel")
+    for x in (-0.3, 0.0, 0.3):
+        t.attach_point((x, 8.37, 0), 1, "earth")
+    return t
+
+
 TOWERS = {
     "pylon_400kv": (l6_suspension, "400 kV Suspension Pylon"),
     "pylon_400kv_tension": (lambda: tension_tower("pylon_400kv_tension"), "400 kV Tension Pylon"),
@@ -353,6 +409,10 @@ TOWERS = {
     "t_pylon": (t_pylon, "T-Pylon"),
     "wood_pole_11kv": (wood_pole, "11 kV Wooden Pole"),
     "h_pole_33kv": (h_pole, "33 kV H Pole"),
+    "pylon_275kv": (l2_275kv, "275 kV Pylon"),
+    "pylon_400kv_square": (square_400kv, "400 kV Pylon (Square Arms)"),
+    "pylon_400kv_angle": (angle_400kv, "400 kV Angle Pylon"),
+    "bt_telephone_pole": (bt_pole, "BT Telephone Pole"),
 }
 
 
@@ -385,6 +445,7 @@ def make_textures():
         "grating": G.save(tex_noise((118, 122, 126), 10, 27), "power/grating"),
         "wire": G.save(tex_noise((70, 72, 74), 3, 28), "power/wire"),
         "cable": G.save(tex_noise((30, 30, 32), 3, 29), "power/cable"),
+        "black_box": G.save(tex_noise((40, 42, 40), 3, 30), "power/black_box"),
         "wood": G.save(wood(), "power/wood"),
     }
     return t

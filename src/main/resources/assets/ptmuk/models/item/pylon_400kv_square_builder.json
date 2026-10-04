@@ -1,0 +1,6 @@
+{
+ "parent": "minecraft:item/generated",
+ "textures": {
+  "layer0": "ptmuk:item/pylon_400kv_square_builder"
+ }
+}

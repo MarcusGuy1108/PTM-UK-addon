@@ -151,6 +151,9 @@
   "ptmuk:pylon_400kv_tension",
   "ptmuk:pylon_400kv_terminal",
   "ptmuk:pylon_132kv",
-  "ptmuk:t_pylon"
+  "ptmuk:t_pylon",
+  "ptmuk:pylon_275kv",
+  "ptmuk:pylon_400kv_square",
+  "ptmuk:pylon_400kv_angle"
  ]
 }
