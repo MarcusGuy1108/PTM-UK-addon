@@ -883,7 +883,10 @@ def write_animations():
 # ------------------------------------------------------------------ output
 
 def write_geo():
-    bones = [{"name": "Vehicle", "pivot": [0, 0, 0]}]
+    # PTM2 builds its buses facing +x and turns everything 90 degrees about y (each of its cubes
+    # carries rotation [0, 90, 0]); doing the same on the root bone puts our bus in PTM2's frame,
+    # so it faces the way PTM2 drives it and left-hand traffic mirrors it side to side
+    bones = [{"name": "Vehicle", "pivot": [0, 0, 0], "rotation": [0, 90, 0]}]
     for b in ORDER:
         if b.name == "Vehicle":
             continue
