@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_red_man_off","glass":"ptmuk:block/signal/led_red_man_off","lens":"ptmuk:block/signal/led_red_man_off"},"elements":[{"from":[6.3,9.9,0.7999999999999998],"to":[9.7,13.3,0.8499999999999996],"faces":{"north":{"texture":"#glass","uv":[0,0,16,16]}}}],"transform":{"rotation":{"y":-45},"origin":"center"}}

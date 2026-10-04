@@ -105,7 +105,7 @@ STRAIGHT_OFFSET = {
 # Diagonal (45 degree) placements only ever use these three attachments.
 DIAGONAL_OFFSET = {"center": 0.0, "wall": 9.3, "post": 16.4}
 # Where the pole is, in the head's own (centre) frame, for each post mount.
-POLE_IN_FRAME = {"post": (8, 14), "post45": (8, 8 + 16 * math.sqrt(2) - 16.4),
+POLE_IN_FRAME = {"post": (8, 14), "post45": (8, 8 + 16 * math.sqrt(2) - 16.4), "onpole": (8, 14), "onpole45": (8, 14),
                  "left_post": (14, 8), "right_post": (2, 8)}
 CLAMP_R = 2.05
 
@@ -119,6 +119,11 @@ def placements():
 
 
 GEOMETRIES = sorted({(g, d, a) for a, _, g, d, _ in placements()})
+# Pole-top mounting: a free-standing head or sign sitting on a UK pole is pushed forward so
+# the pole can carry on up behind it (chosen at render time by client/PoleMountedModel).
+STRAIGHT_OFFSET["onpole"] = (0, -6)
+DIAGONAL_OFFSET_ONPOLE = -6.0
+GEOMETRIES += [("onpole", False, "onpole"), ("onpole45", True, "onpole")]
 
 
 # =================================================================== textures
@@ -279,7 +284,10 @@ def place(elements, attachment, diagonal):
     out = []
     for el in elements:
         el = json.loads(json.dumps(el))
-        dx, dz = (0, DIAGONAL_OFFSET[attachment]) if diagonal else STRAIGHT_OFFSET[attachment]
+        if diagonal:
+            dx, dz = 0, DIAGONAL_OFFSET_ONPOLE if attachment == "onpole" else DIAGONAL_OFFSET[attachment]
+        else:
+            dx, dz = STRAIGHT_OFFSET[attachment]
         for k in ("from", "to"):
             el[k][0] += dx
             el[k][2] += dz
@@ -758,13 +766,26 @@ def write_accessory(name, kind, tex):
 
 # ---- poles
 
-def round_column(r, y1, y2, tex, faces=("north", "east", "south", "west")):
-    """A 16-sided column: four square prisms turned 0 / 22.5 / 45 / -22.5 degrees."""
-    a = r * math.cos(math.radians(11.25))
+def round_column(r, y1, y2, tex, top=False, bottom=False):
+    """A smooth 16-sided column: 16 plates around the axis (each built on the north, east,
+    south or west side and turned up to 45 degrees about the column), plus a filled top /
+    bottom when the end is visible."""
+    w = 2 * r * math.tan(math.radians(11.25)) + 0.06
+    t = max(0.3, r * 0.28)
+    ends = (("up",) if top else ()) + (("down",) if bottom else ())
     els = []
-    for ang in (0, 22.5, 45, -22.5):
-        els.append(box((8 - a, y1, 8 - a), (8 + a, y2, 8 + a), tex, faces=faces,
-                       rotation=("y", ang, (8, 8, 8)) if ang else None))
+    sides = {"north": ((8 - w / 2, 8 - r), (8 + w / 2, 8 - r + t)), "south": ((8 - w / 2, 8 + r - t), (8 + w / 2, 8 + r)),
+             "west": ((8 - r, 8 - w / 2), (8 - r + t, 8 + w / 2)), "east": ((8 + r - t, 8 - w / 2), (8 + r, 8 + w / 2))}
+    for face, ((x1, z1), (x2, z2)) in sides.items():
+        # north/south plates also cover the four diagonals (+-45), east/west only +-22.5: 16 in all
+        for ang in ((-45, -22.5, 0, 22.5, 45) if face in ("north", "south") else (-22.5, 0, 22.5)):
+            els.append(box((x1, y1, z1), (x2, y2, z2), tex, faces=(face,) + ends,
+                           rotation=("y", ang, (8, 8, 8)) if ang else None))
+    if ends:
+        h = r / math.sqrt(2)
+        for ang in (0, 22.5, 45, -22.5):
+            els.append(box((8 - h, y1 + (0.005 if bottom else 0), 8 - h), (8 + h, y2 - (0.005 if top else 0), 8 + h), tex,
+                           faces=ends, rotation=("y", ang, (8, 8, 8)) if ang else None))
     return els
 
 
@@ -776,14 +797,14 @@ def write_pole(name, radius, surface, collar, cap, tex):
         for top in (False, True):
             els = list(body)
             if base and collar:
-                els += round_column(radius + 0.55, 0, 3.6, "#pole", faces=("north", "east", "south", "west", "up"))
-                els += round_column(radius + 0.3, 3.6, 4.0, "#pole", faces=("north", "east", "south", "west", "up"))
+                els += round_column(radius + 0.55, 0, 3.6, "#pole", top=True)
+                els += round_column(radius + 0.3, 3.6, 4.0, "#pole", top=True)
             if top:
                 if cap == "dome":
-                    els += round_column(radius + 0.12, 15.2, 16.0, "#pole", faces=("north", "east", "south", "west", "up"))
-                    els += round_column(radius * 0.7, 16.0, 16.35, "#pole", faces=("north", "east", "south", "west", "up"))
+                    els += round_column(radius + 0.12, 15.2, 16.0, "#pole", top=True)
+                    els += round_column(radius * 0.7, 16.0, 16.35, "#pole", top=True)
                 else:
-                    els += round_column(radius + 0.1, 15.3, 16.1, "#plastic", faces=("north", "east", "south", "west", "up"))
+                    els += round_column(radius + 0.1, 15.3, 16.1, "#plastic", top=True)
             model_name = f"{name}/{'base' if base else 'mid'}_{'cap' if top else 'open'}"
             write_json(ASSETS / f"models/block/{model_name}.json", model(textures, els), compact=True)
             variants[f"base={str(base).lower()},cap={str(top).lower()}"] = {"model": f"{MOD_ID}:block/{model_name}"}

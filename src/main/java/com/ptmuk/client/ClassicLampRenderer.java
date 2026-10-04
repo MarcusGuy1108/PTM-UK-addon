@@ -56,7 +56,7 @@ public class ClassicLampRenderer implements BlockEntityRenderer<ClassicLampBlock
         double dt = first ? 0 : Math.min(0.25, (now - lamp.lastFrameNanos) / 1e9);
         lamp.lastFrameNanos = now;
 
-        String geometry = SignalModels.geometry(state);
+        String geometry = SignalModels.geometry(state, SignalModels.poleBelow(lamp.getLevel(), lamp.getBlockPos(), state) != null);
         int y = SignalModels.yRotation(state);
         // additive and unshaded: the lamp's light is added over the unlit coloured glass
         VertexConsumer consumer = buffers.getBuffer(RenderType.eyes(InventoryMenu.BLOCK_ATLAS));

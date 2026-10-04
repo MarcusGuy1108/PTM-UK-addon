@@ -99,8 +99,8 @@ public class SignalAccessory extends Block {
 
     @Override
     public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        double y1 = type.mount == AccessoryType.Mount.BELOW_HEAD ? 10 : type.mount == AccessoryType.Mount.ABOVE_HEAD ? 0 : 4;
-        double y2 = type.mount == AccessoryType.Mount.BELOW_HEAD ? 16 : type.mount == AccessoryType.Mount.ABOVE_HEAD ? 5 : 12;
+        double y1 = switch (type.mount) { case BELOW_HEAD -> 10; case ABOVE_HEAD -> 0; case POLE -> 4; case SIGN -> 2; };
+        double y2 = switch (type.mount) { case BELOW_HEAD -> 16; case ABOVE_HEAD -> 5; case POLE -> 12; case SIGN -> 14; };
         int rot = state.getValue(ROTATION);
         Vec3 offset = state.getOffset(level, pos);
         if (rot % 2 == 1) {

@@ -52,7 +52,7 @@ public class UkPole extends Streetpost {
         BlockPos pos = context.getClickedPos();
         return defaultBlockState()
                 .setValue(BASE, !isPole(level.getBlockState(pos.below())))
-                .setValue(CAP, !isPole(level.getBlockState(pos.above())));
+                .setValue(CAP, !isPole(level.getBlockState(pos.above())) && !isMountedOnTop(level.getBlockState(pos.above())));
     }
 
     @Override
@@ -62,13 +62,19 @@ public class UkPole extends Streetpost {
             return state.setValue(BASE, !isPole(neighbour));
         }
         if (direction == Direction.UP) {
-            return state.setValue(CAP, !isPole(neighbour));
+            // a head or sign on top carries the pole on up behind itself, cap included
+            return state.setValue(CAP, !isPole(neighbour) && !isMountedOnTop(neighbour));
         }
         return state;
     }
 
     private static boolean isPole(BlockState state) {
         return state.getBlock() instanceof UkPole;
+    }
+
+    private static boolean isMountedOnTop(BlockState state) {
+        return (state.getBlock() instanceof UkTrafficSignal || state.getBlock() instanceof SignalAccessory)
+                && state.getValue(UkTrafficSignal.ATTACHMENT) == com.rinventor.ptm2.core.properties.TrafficLightStates.CENTER;
     }
 
     // PTM2's streetpost reshapes itself (arms, bends, lamp brackets) on placement and neighbour

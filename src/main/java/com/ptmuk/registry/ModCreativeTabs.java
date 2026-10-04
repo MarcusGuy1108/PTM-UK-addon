@@ -19,6 +19,13 @@ public final class ModCreativeTabs {
             .displayItems((params, output) -> ModItems.BLOCK_ITEMS.forEach(item -> output.accept(item.get())))
             .build());
 
+    public static final RegistryObject<CreativeModeTab> STREET = TABS.register("street", () -> CreativeModeTab.builder()
+            .title(Component.translatable("itemGroup.ptmuk.street"))
+            .icon(() -> new ItemStack(ModBlocks.FURNITURE.get("phone_box").get()))
+            .withTabsBefore(MAIN.getKey())
+            .displayItems((params, output) -> ModItems.STREET_ITEMS.forEach(item -> output.accept(item.get())))
+            .build());
+
     private ModCreativeTabs() {
     }
 }

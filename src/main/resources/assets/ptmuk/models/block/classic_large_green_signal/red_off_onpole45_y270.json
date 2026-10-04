@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/classic_red_off","glass":"ptmuk:block/signal/classic_red_off","lens":"ptmuk:block/signal/classic_red_off"},"elements":[{"from":[0.8,11.65,6.2],"to":[0.85,15.25,9.8],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}}}],"render_type":"minecraft:cutout_mipped","transform":{"rotation":{"y":-45},"origin":"center"}}
