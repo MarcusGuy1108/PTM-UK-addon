@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/classic_green_man_flash","glass":"ptmuk:block/signal/classic_green_man_flash","lens":"ptmuk:block/signal/classic_green_man_flash"},"elements":[{"from":[16.5,3.5,9.0],"to":[21.5,8.5,9.5],"faces":{"south":{"texture":"#glass","uv":[0,0,16,16]}},"shade":false,"forge_data":{"block_light":15,"sky_light":15}}]}

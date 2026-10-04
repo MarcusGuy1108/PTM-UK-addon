@@ -1,9 +1,21 @@
 package com.ptmuk.block;
 
-/** Visual style of a UK signal head. Behaviour is identical; only the models differ. */
+/** Visual family of a UK signal head. Behaviour is identical; only the models differ. */
 public enum SignalStyle {
-    /** Modern LED heads (Siemens Helios / Dynniq style) with a yellow-bordered backing board. */
-    MODERN,
-    /** Older incandescent heads (GEC / Peek style) with long hoods and a white-bordered backing board. */
-    CLASSIC
+    /** Modern LED heads with short angled cowls (Siemens Helios style). */
+    LED("led"),
+    /** Modern LED heads with long tunnel hoods. */
+    LED_TUNNEL("led_tunnel"),
+    /** Older incandescent bulb heads with deep hoods and fresnel lenses. */
+    CLASSIC("classic");
+
+    private final String id;
+
+    SignalStyle(String id) {
+        this.id = id;
+    }
+
+    public String id() {
+        return id;
+    }
 }

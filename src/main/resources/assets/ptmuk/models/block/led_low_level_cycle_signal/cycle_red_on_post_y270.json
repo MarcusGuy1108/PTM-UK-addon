@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_cycle_red_on","glass":"ptmuk:block/signal/led_cycle_red_on","lens":"ptmuk:block/signal/led_cycle_red_on"},"elements":[{"from":[17.5,9.0,6.75],"to":[18.0,11.5,9.25],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}},"shade":false,"forge_data":{"block_light":15,"sky_light":15}}]}

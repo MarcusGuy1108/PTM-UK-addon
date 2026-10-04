@@ -1,8 +1,15 @@
 package com.ptmuk.registry;
 
 import com.ptmuk.PtmUk;
+import com.ptmuk.block.AccessoryType;
+import com.ptmuk.block.SignalAccessory;
 import com.ptmuk.block.SignalStyle;
+import com.ptmuk.block.SignalType;
 import com.ptmuk.block.UkTrafficSignal;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -11,10 +18,35 @@ import net.minecraftforge.registries.RegistryObject;
 public final class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, PtmUk.MOD_ID);
 
-    public static final RegistryObject<Block> UK_SIGNAL_MODERN =
-            BLOCKS.register("uk_signal_modern", () -> new UkTrafficSignal(SignalStyle.MODERN));
-    public static final RegistryObject<Block> UK_SIGNAL_CLASSIC =
-            BLOCKS.register("uk_signal_classic", () -> new UkTrafficSignal(SignalStyle.CLASSIC));
+    /** Every signal head, in creative-tab order. */
+    public static final Map<String, RegistryObject<Block>> SIGNALS = new LinkedHashMap<>();
+    /** Every accessory, in creative-tab order. */
+    public static final Map<String, RegistryObject<Block>> ACCESSORIES = new LinkedHashMap<>();
+
+    static {
+        for (SignalType type : SignalType.values()) {
+            for (SignalStyle style : stylesFor(type)) {
+                String name = style.id() + "_" + type.id();
+                SIGNALS.put(name, BLOCKS.register(name, () -> new UkTrafficSignal(style, type)));
+            }
+        }
+        for (AccessoryType type : AccessoryType.values()) {
+            ACCESSORIES.put(type.id(), BLOCKS.register(type.id(), () -> new SignalAccessory(type)));
+        }
+    }
+
+    /** The head styles each signal type really comes in on UK roads. */
+    public static Set<SignalStyle> stylesFor(SignalType type) {
+        return switch (type) {
+            case CYCLE, LOW_LEVEL_CYCLE, PUFFIN, TOUCAN -> EnumSet.of(SignalStyle.LED);
+            case PELICAN -> EnumSet.of(SignalStyle.LED, SignalStyle.CLASSIC);
+            default -> EnumSet.allOf(SignalStyle.class);
+        };
+    }
+
+    public static RegistryObject<Block> signal(SignalStyle style, SignalType type) {
+        return SIGNALS.get(style.id() + "_" + type.id());
+    }
 
     private ModBlocks() {
     }

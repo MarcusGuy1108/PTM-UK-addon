@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_green_man_off","glass":"ptmuk:block/signal/led_green_man_off","lens":"ptmuk:block/signal/led_green_man_off"},"elements":[{"from":[6.5,3.5,5.5],"to":[7.0,8.5,10.5],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}}}]}

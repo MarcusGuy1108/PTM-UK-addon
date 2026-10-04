@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_green_right_off","glass":"ptmuk:block/signal/led_green_right_off","lens":"ptmuk:block/signal/led_green_right_off"},"elements":[{"from":[12,0.8,9.0],"to":[16,4.8,9.5],"faces":{"south":{"texture":"#glass","uv":[0,0,16,16]}},"rotation":{"angle":-45.0,"axis":"y","origin":[8,8,8]}}]}

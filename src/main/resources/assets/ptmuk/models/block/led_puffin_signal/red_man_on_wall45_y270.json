@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_red_man_on","glass":"ptmuk:block/signal/led_red_man_on","lens":"ptmuk:block/signal/led_red_man_on"},"elements":[{"from":[15.8,10,6.25],"to":[16.3,13.5,9.75],"faces":{"west":{"texture":"#glass","uv":[0,0,16,16]}},"shade":false,"forge_data":{"block_light":15,"sky_light":15},"rotation":{"angle":-45.0,"axis":"y","origin":[8,8,8]}}]}

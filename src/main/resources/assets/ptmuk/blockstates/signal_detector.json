@@ -1,0 +1,7 @@
+{
+ "variants": {
+  "": {
+   "model": "ptmuk:block/signal_detector/body_center_y0"
+  }
+ }
+}

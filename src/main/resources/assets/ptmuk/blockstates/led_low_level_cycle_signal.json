@@ -1,0 +1,7 @@
+{
+ "variants": {
+  "": {
+   "model": "ptmuk:block/led_low_level_cycle_signal/body_center_y0"
+  }
+ }
+}

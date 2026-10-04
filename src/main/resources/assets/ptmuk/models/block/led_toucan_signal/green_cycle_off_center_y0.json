@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_green_cycle_off","glass":"ptmuk:block/signal/led_green_cycle_off","lens":"ptmuk:block/signal/led_green_cycle_off"},"elements":[{"from":[8.25,3.5,6.5],"to":[12.5,7.75,7.0],"faces":{"north":{"texture":"#glass","uv":[0,0,16,16]}}}]}
