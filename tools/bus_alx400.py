@@ -384,6 +384,8 @@ def front_panel(inside):
 
 
 REAR_WIN = (3.62, 4.12)
+HIGH_BRAKE = (0.82, 3.2, 0.065)          # |z|, height, radius of the two high level brake lamps
+HIGH_BRAKE_MID = (-0.05, 2.97, 0.035)    # small centre lamp above the route box
 REAR_LOW_WIN = (1.88, 2.32)
 REAR_BOX = (-0.42, 0.2, 2.56, 2.86)       # route number box: z from, z to, y from, y to
 
@@ -415,8 +417,13 @@ def rear_panel(inside):
     for (ya, yb), zr, rad in ((REAR_WIN, 0.8, 0.14), (REAR_LOW_WIN, 0.76, 0.08)):
         d.rounded_rectangle((Z(-zr - 0.035), Y(yb + 0.035), Z(zr + 0.035), Y(ya - 0.035)), radius=R(rad + 0.03), fill=BLACK + (255,))
         d.rounded_rectangle((Z(-zr), Y(yb), Z(zr), Y(ya)), radius=R(rad), fill=clear)
-    # high level brake light
-    d.rounded_rectangle((Z(-0.2), Y(3.38), Z(0.2), Y(3.31)), radius=R(0.02), fill=(150, 14, 18, 255))
+    # high level brake lights: a round lamp near each edge under the top window, a small one
+    # in the middle just above the route box (as on VLA 162)
+    for z, y, r in ((-HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]), (HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]),
+                    (HIGH_BRAKE_MID[0], HIGH_BRAKE_MID[1], HIGH_BRAKE_MID[2])):
+        d.ellipse((Z(z) - R(r + 0.012), Y(y) - R(r + 0.012), Z(z) + R(r + 0.012), Y(y) + R(r + 0.012)), fill=(120, 10, 14, 255))
+        d.ellipse((Z(z) - R(r), Y(y) - R(r), Z(z) + R(r), Y(y) + R(r)), fill=(176, 18, 22, 255))
+        d.ellipse((Z(z) - R(r * 0.5), Y(y) - R(r * 0.6), Z(z) - R(r * 0.05), Y(y) - R(r * 0.15)), fill=(206, 60, 60, 255))
     # route number box and the slatted vent beside it
     za, zb, ya, yb = REAR_BOX
     d.rounded_rectangle((Z(za) - R(0.03), Y(yb) - R(0.03), Z(zb) + R(0.03), Y(ya) + R(0.03)), radius=R(0.04), fill=BLACK + (255,))
@@ -532,6 +539,14 @@ def lamp(on):
     return img
 
 
+def round_lamp(col):
+    img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse((0, 0, 31, 31), fill=col + (255,))
+    d.ellipse((6, 6, 25, 25), fill=tuple(min(255, c + 60) for c in col) + (255,))
+    return img
+
+
 def indicator(on):
     img = Image.new("RGBA", (32, 24), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -587,6 +602,7 @@ def build_textures():
     a.add("headlamp_on", lamp(True))
     a.add("indicator", indicator(False))
     a.add("indicator_on", indicator(True))
+    a.add("brake_round_on", round_lamp((255, 30, 24)))
     a.add("stopping_off", lit_panel("BUS STOPPING", (160, 24), (70, 20, 20), (20, 20, 22)))
     a.add("stopping_on", lit_panel("BUS STOPPING", (160, 24), (255, 60, 40), (30, 10, 10)))
     for name, col in (("red", RED), ("red_dark", RED_DARK), ("black", BLACK), ("wall", WALL), ("wall_dark", WALL_DARK),
@@ -1096,6 +1112,10 @@ def lights():
         rz = sz * 0.857
         cube("StopLights", (X0 + 0.008, 1.22, rz - 0.07), (X0 + 0.02, 1.45, rz + 0.07), {"west": "brake_on"}, parent="Blinkers")
         cube("BackLights", (X0 + 0.008, 0.88, rz - 0.07), (X0 + 0.02, 1.0, rz + 0.07), {"west": "lamp_on"}, parent="Blinkers")
+    # high level brake lamps light with the main stop lights
+    for z, y, r in ((HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]), (-HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]),
+                    (HIGH_BRAKE_MID[0], HIGH_BRAKE_MID[1], HIGH_BRAKE_MID[2])):
+        cube("StopLights", (X0 + 0.008, y - r, z - r), (X0 + 0.02, y + r, z + r), {"west": "brake_round_on"}, parent="Blinkers")
     for name, sz in (("FrontLeftTurnSignal", 1), ("FrontRightTurnSignal", -1)):
         bone(name, "Blinkers")
         cube(name, (xl, iy - 0.032, sz * iz - iw / 2), (xl + 0.002, iy + 0.032, sz * iz + iw / 2), {"east": "indicator_on"}, parent="Blinkers")
