@@ -367,9 +367,15 @@ def front_panel(inside):
     # route number card in the offside bottom corner of the windscreen
     d.rectangle((Z(0.86), Y(1.33), Z(0.6), Y(1.2)), fill=(250, 220, 60, 255))
     d.rectangle((Z(0.82), Y(1.3), Z(0.64), Y(1.23)), fill=(40, 40, 40, 255))
+    # recessed pods round the headlamps: darker red with a shadow along the top
+    hz, hy, hs = HEADLAMP
+    for z in (hz, -hz):
+        d.ellipse((Z(z) - R(0.135), Y(hy + 0.125), Z(z) + R(0.135), Y(hy - 0.12)), fill=(150, 12, 18, 255))
+        d.ellipse((Z(z) - R(0.125), Y(hy + 0.11), Z(z) + R(0.125), Y(hy - 0.125)), fill=(176, 16, 22, 255))
+        d.ellipse((Z(z) - R(0.112), Y(hy + 0.112), Z(z) + R(0.112), Y(hy - 0.112)), fill=(40, 40, 44, 255))
     # lower panel: a crease line, two seams, the wheelchair sign on the nearside
     d.rectangle((0, Y(1.0), w, Y(0.985)), fill=RED_DARK + (255,))
-    for z in (0.52, -0.52):
+    for z in (0.5, -0.5):
         d.rectangle((Z(z) - 1, Y(0.97), Z(z) + 1, Y(0.86)), fill=RED_DARK + (255,))
     d.rectangle((Z(-0.3), Y(0.82), Z(-0.56), Y(0.68)), fill=(240, 240, 240, 255))
     d.rectangle((Z(-0.44), Y(0.8), Z(-0.54), Y(0.7)), fill=(30, 80, 170, 255))
@@ -1068,21 +1074,8 @@ def doors():
                  parent=group)
 
 
-HEADLAMP = (27.0, 0.85, 0.19)        # angle round the corner from straight ahead, height, size
-INDICATOR = (45.0, 0.99, 0.11)
-
-
-def corner_decal(bone_name, sz, theta, y, w, h, region, lift, parent="Vehicle"):
-    """A flat lamp lying on a front corner, theta degrees round from straight ahead (use the
-    middle of a corner segment: 9, 27, 45...)."""
-    rc = front_rc(y)
-    cx, cz = X1 - front_d(y) - rc, sz * (W / 2 - rc)
-    a = math.radians(90 - theta)
-    r = rc + T / 2 + lift
-    px, pz = cx + r * math.sin(a), cz + sz * r * math.cos(a)
-    face = "north" if sz < 0 else "south"
-    cube(bone_name, (px - w / 2, y - h / 2, pz - 0.001), (px + w / 2, y + h / 2, pz + 0.001), {face: region},
-         rotation=[0, RY * math.degrees(a) * sz, 0], pivot=(px, 0, pz), parent=parent)
+HEADLAMP = (0.77, 0.83, 0.2)         # centre z (either side), height, diameter: on the flat front near the corners
+INDICATOR = (0.86, 0.975, 0.11)    # amber, above and outboard of the headlamp
 
 
 def lights():
@@ -1090,19 +1083,22 @@ def lights():
     bone("Blinkers")
     for name in ("FrontLights", "StopLights", "BackLights"):
         bone(name, "Blinkers")
-    th, hy, hs = HEADLAMP
-    ti, iy, isz = INDICATOR
+    hz, hy, hs = HEADLAMP
+    iz, iy, iw = INDICATOR
+    xf = X1 + 0.003                       # unlit lenses just proud of the panel
+    xl = X1 - 0.012                       # lit ones hidden in the panel until pushed out
     for sz in (1, -1):
-        # round headlamps sit on the rounded corners, amber indicators above and further round
-        corner_decal("Body", sz, th, hy, hs, hs, "headlamp", 0.004)
-        corner_decal("FrontLights", sz, th, hy, hs, hs, "headlamp_on", -0.004, parent="Blinkers")
-        corner_decal("Body", sz, ti, iy, isz, isz * 0.7, "indicator", 0.004)
+        # round headlamps in recessed pods near the corners, small amber indicators above
+        cube("Body", (xf, hy - hs / 2, sz * hz - hs / 2), (xf + 0.002, hy + hs / 2, sz * hz + hs / 2), {"east": "headlamp"})
+        cube("FrontLights", (xl, hy - hs / 2, sz * hz - hs / 2), (xl + 0.002, hy + hs / 2, sz * hz + hs / 2), {"east": "headlamp_on"},
+             parent="Blinkers")
+        cube("Body", (xf, iy - 0.032, sz * iz - iw / 2), (xf + 0.002, iy + 0.032, sz * iz + iw / 2), {"east": "indicator"})
         rz = sz * 0.857
         cube("StopLights", (X0 + 0.008, 1.22, rz - 0.07), (X0 + 0.02, 1.45, rz + 0.07), {"west": "brake_on"}, parent="Blinkers")
         cube("BackLights", (X0 + 0.008, 0.88, rz - 0.07), (X0 + 0.02, 1.0, rz + 0.07), {"west": "lamp_on"}, parent="Blinkers")
     for name, sz in (("FrontLeftTurnSignal", 1), ("FrontRightTurnSignal", -1)):
         bone(name, "Blinkers")
-        corner_decal(name, sz, ti, iy, isz, isz * 0.7, "indicator_on", -0.004, parent="Blinkers")
+        cube(name, (xl, iy - 0.032, sz * iz - iw / 2), (xl + 0.002, iy + 0.032, sz * iz + iw / 2), {"east": "indicator_on"}, parent="Blinkers")
     for name, z in (("BackLeftTurnSignal", 0.857), ("BackRightTurnSignal", -0.857)):
         bone(name, "Blinkers")
         cube(name, (X0 + 0.008, 1.02, z - 0.07), (X0 + 0.02, 1.2, z + 0.07), {"west": "amber_on"}, parent="Blinkers")
