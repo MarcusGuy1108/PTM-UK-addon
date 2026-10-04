@@ -191,7 +191,7 @@ def lattice_body(t, profile, leg0=0.32, leg1=0.18, brace=0.1, top=None):
     return w
 
 
-def cross_arm(t, y, root_w, length, depth, side, brace=0.09):
+def cross_arm(t, y, root_w, length, depth, side, brace=0.09, chord=0.14):
     """Lattice cross-arm from the body face (x = side*root_w) out to the tip. The top chord
     slopes down at 22.5 degrees, so depth sets where it meets the bottom chords."""
     x0 = side * root_w
@@ -201,8 +201,8 @@ def cross_arm(t, y, root_w, length, depth, side, brace=0.09):
     run = min(length, depth / slope)
     top_root = y + run * slope
     for z in (-zw, zw):
-        t.rod((x0, y, z), (tip, y, z), 0.14)
-    t.rod((x0, top_root, 0), (x0 + side * run, y, 0), 0.14)
+        t.rod((x0, y, z), (tip, y, z), chord)
+    t.rod((x0, top_root, 0), (x0 + side * run, y, 0), chord)
     # verticals and bottom lacing
     n = max(2, int(length / 1.4))
     for k in range(n + 1):
@@ -219,7 +219,7 @@ def cross_arm(t, y, root_w, length, depth, side, brace=0.09):
         t.rod((x, y, zw), (x + side * step, y, -zw), brace)
         x += side * step
     for z in (-zw, zw):
-        t.rod((x0, y, z), (x0, top_root, z), 0.14)
+        t.rod((x0, y, z), (x0, top_root, z), chord)
     return tip
 
 
@@ -227,7 +227,7 @@ def earth_peak(t, y0, w0, height):
     """Earth-wire peak on top of the body."""
     for sx in (-1, 1):
         for sz in (-1, 1):
-            t.rod((sx * w0, y0, sz * w0), (sx * 0.15, y0 + height, sz * 0.15), 0.12)
+            t.rod((sx * w0, y0, sz * w0), (sx * 0.18, y0 + height, sz * 0.18), 0.2)
     t.block((-0.25, y0 + height, -0.25), (0.25, y0 + height + 0.25, 0.25), "#steel")
     t.attach_point((0, y0 + height + 0.1, 0), 1, "earth")
 
@@ -236,22 +236,22 @@ def earth_peak(t, y0, w0, height):
 
 def l6_suspension():
     t = Tower("pylon_400kv")
-    w = lattice_body(t, [(0, 4.2), (24, 1.45), (42, 1.25)], leg0=0.34, leg1=0.2)
-    for y, length in ((26, 7.0), (32.5, 7.8), (39, 6.4)):
+    w = lattice_body(t, [(0, 5.2), (30, 1.8), (52, 1.55)], leg0=0.52, leg1=0.3, brace=0.16)
+    for y, length in ((33, 8.6), (41, 9.6), (49, 7.9)):
         for side in (-1, 1):
-            tip = cross_arm(t, y, w(y), length, 2.6, side)
-            end = t.insulator_string((tip, y, 0), 4.0)
+            tip = cross_arm(t, y, w(y), length, 3.2, side, brace=0.14, chord=0.22)
+            end = t.insulator_string((tip, y, 0), 4.6)
             t.attach_point(end, 2)
-    earth_peak(t, 42, w(42), 4.5)
+    earth_peak(t, 52, w(52), 5.5)
     return t
 
 
 def tension_tower(name, terminal=False):
     t = Tower(name)
-    w = lattice_body(t, [(0, 5.6), (22, 2.1), (40, 1.8)], leg0=0.42, leg1=0.26)
-    for k, (y, length) in enumerate(((25, 6.0), (31.5, 6.8), (38, 5.6))):
+    w = lattice_body(t, [(0, 6.8), (28, 2.5), (50, 2.2)], leg0=0.62, leg1=0.36, brace=0.18)
+    for k, (y, length) in enumerate(((31, 7.4), (39.5, 8.4), (47.5, 6.9))):
         for side in (-1, 1):
-            tip = cross_arm(t, y, w(y), length, 3.2, side, brace=0.11)
+            tip = cross_arm(t, y, w(y), length, 3.8, side, brace=0.16, chord=0.26)
             far = t.insulator_string((tip, y - 0.2, 0.4), 4.6, axis=2, sign=1)
             t.attach_point(far, 2)
             if terminal:
@@ -279,19 +279,19 @@ def tension_tower(name, terminal=False):
                 t.rod((x, plat_y + 2.8, -3.2), (x, plat_y + 2.8, -3.2 + 0.01), 0.05, "#wire")
                 # cable down the leg to the ground
                 t.rod((x, 0.0, -3.0), (x, plat_y, -3.0), 0.12, "#cable")
-    earth_peak(t, 40, w(40), 4.0)
+    earth_peak(t, 50, w(50), 5.0)
     return t
 
 
 def pl16_132kv():
     t = Tower("pylon_132kv")
-    w = lattice_body(t, [(0, 2.6), (15, 1.0), (27, 0.9)], leg0=0.24, leg1=0.15, brace=0.08)
-    for y, length in ((17, 3.6), (21, 4.2), (25, 3.6)):
+    w = lattice_body(t, [(0, 3.3), (19, 1.25), (34, 1.1)], leg0=0.36, leg1=0.22, brace=0.12)
+    for y, length in ((21.5, 4.5), (26.5, 5.2), (31.5, 4.5)):
         for side in (-1, 1):
-            tip = cross_arm(t, y, w(y), length, 1.6, side, brace=0.07)
-            end = t.insulator_string((tip, y, 0), 1.9)
+            tip = cross_arm(t, y, w(y), length, 2.0, side, brace=0.1, chord=0.17)
+            end = t.insulator_string((tip, y, 0), 2.3)
             t.attach_point(end, 1)
-    earth_peak(t, 27, w(27), 2.5)
+    earth_peak(t, 34, w(34), 3.2)
     return t
 
 

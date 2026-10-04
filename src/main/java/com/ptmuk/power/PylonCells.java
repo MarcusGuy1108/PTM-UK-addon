@@ -8,10 +8,10 @@ public final class PylonCells {
     public static final Map<String, Integer> COUNTS = new LinkedHashMap<>();
 
     static {
-        COUNTS.put("pylon_400kv", 506);
-        COUNTS.put("pylon_400kv_tension", 656);
-        COUNTS.put("pylon_400kv_terminal", 830);
-        COUNTS.put("pylon_132kv", 316);
+        COUNTS.put("pylon_400kv", 740);
+        COUNTS.put("pylon_400kv_tension", 730);
+        COUNTS.put("pylon_400kv_terminal", 958);
+        COUNTS.put("pylon_132kv", 368);
         COUNTS.put("t_pylon", 162);
         COUNTS.put("wood_pole_11kv", 14);
         COUNTS.put("h_pole_33kv", 26);

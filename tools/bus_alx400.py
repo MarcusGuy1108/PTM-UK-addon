@@ -16,6 +16,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/ptmuk"
+# PTM2 only loads GeckoLib models and animations from its own namespace
+PTM_ASSETS = ROOT / "src/main/resources/assets/ptm2"
 JAVA = ROOT / "src/main/java/com/ptmuk/bus/ALX400Layout.java"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 PX = 16.0          # model pixels per metre
@@ -661,7 +663,7 @@ def write_animations():
     anims["alx400.wipers"] = anim(2.0, True, {
         "1": {"rotation": {"0.0": {"vector": [0, 0, 0]}, "1.0": {"vector": [-80, 0, 0]}, "2.0": {"vector": [0, 0, 0]}}},
         "2": {"rotation": {"0.0": {"vector": [0, 0, 0]}, "1.0": {"vector": [-80, 0, 0]}, "2.0": {"vector": [0, 0, 0]}}}})
-    path = ASSETS / "animations/bus/alx400.animation.json"
+    path = PTM_ASSETS / "animations/bus/ptmuk_alx400.animation.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1))
 
@@ -688,7 +690,7 @@ def write_geo():
         "description": {"identifier": "geometry.alx400", "texture_width": ATLAS, "texture_height": ATLAS,
                         "visible_bounds_width": 14, "visible_bounds_height": 6, "visible_bounds_offset": [0, 2.5, 0]},
         "bones": sort_bones(bones)}]}
-    path = ASSETS / "geo/bus/alx400.geo.json"
+    path = PTM_ASSETS / "geo/bus/ptmuk_alx400.geo.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(geo, separators=(",", ":")))
     print(f"  alx400: {sum(len(b.get('cubes', [])) for b in bones)} cubes, {len(bones)} bones, {len(SEATS)} seats")
