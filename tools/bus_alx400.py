@@ -385,7 +385,7 @@ def front_panel(inside):
 
 REAR_WIN = (3.62, 4.12)
 HIGH_BRAKE = (0.82, 3.2, 0.065)          # |z|, height, radius of the two high level brake lamps
-HIGH_BRAKE_MID = (-0.05, 2.97, 0.035)    # small centre lamp above the route box
+HIGH_BRAKE_MID = (-0.05, 2.97, 0.035)    # small raised boss above the route box (not a lamp)
 REAR_LOW_WIN = (1.88, 2.32)
 REAR_BOX = (-0.42, 0.2, 2.56, 2.86)       # route number box: z from, z to, y from, y to
 
@@ -419,11 +419,14 @@ def rear_panel(inside):
         d.rounded_rectangle((Z(-zr), Y(yb), Z(zr), Y(ya)), radius=R(rad), fill=clear)
     # high level brake lights: a round lamp near each edge under the top window, a small one
     # in the middle just above the route box (as on VLA 162)
-    for z, y, r in ((-HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]), (HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]),
-                    (HIGH_BRAKE_MID[0], HIGH_BRAKE_MID[1], HIGH_BRAKE_MID[2])):
+    for z, y, r in ((-HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]), (HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2])):
         d.ellipse((Z(z) - R(r + 0.012), Y(y) - R(r + 0.012), Z(z) + R(r + 0.012), Y(y) + R(r + 0.012)), fill=(120, 10, 14, 255))
         d.ellipse((Z(z) - R(r), Y(y) - R(r), Z(z) + R(r), Y(y) + R(r)), fill=(176, 18, 22, 255))
         d.ellipse((Z(z) - R(r * 0.5), Y(y) - R(r * 0.6), Z(z) - R(r * 0.05), Y(y) - R(r * 0.15)), fill=(206, 60, 60, 255))
+    # small raised boss above the route box (body colour, not a lamp)
+    z, y, r = HIGH_BRAKE_MID
+    d.ellipse((Z(z) - R(r), Y(y) - R(r), Z(z) + R(r), Y(y) + R(r)), fill=(150, 12, 18, 255))
+    d.ellipse((Z(z) - R(r * 0.8), Y(y) - R(r * 0.85), Z(z) + R(r * 0.7), Y(y) + R(r * 0.6)), fill=RED + (255,))
     # route number box and the slatted vent beside it
     za, zb, ya, yb = REAR_BOX
     d.rounded_rectangle((Z(za) - R(0.03), Y(yb) - R(0.03), Z(zb) + R(0.03), Y(ya) + R(0.03)), radius=R(0.04), fill=BLACK + (255,))
@@ -1113,8 +1116,7 @@ def lights():
         cube("StopLights", (X0 + 0.008, 1.22, rz - 0.07), (X0 + 0.02, 1.45, rz + 0.07), {"west": "brake_on"}, parent="Blinkers")
         cube("BackLights", (X0 + 0.008, 0.88, rz - 0.07), (X0 + 0.02, 1.0, rz + 0.07), {"west": "lamp_on"}, parent="Blinkers")
     # high level brake lamps light with the main stop lights
-    for z, y, r in ((HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]), (-HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]),
-                    (HIGH_BRAKE_MID[0], HIGH_BRAKE_MID[1], HIGH_BRAKE_MID[2])):
+    for z, y, r in ((HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]), (-HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2])):
         cube("StopLights", (X0 + 0.008, y - r, z - r), (X0 + 0.02, y + r, z + r), {"west": "brake_round_on"}, parent="Blinkers")
     for name, sz in (("FrontLeftTurnSignal", 1), ("FrontRightTurnSignal", -1)):
         bone(name, "Blinkers")
@@ -1145,6 +1147,9 @@ def details():
     bone("PlateFront", "Vehicle", (X1 + 0.054, 0.435, 0))
     bone("FrontID", "Vehicle", (X1 + 0.014, 1.12, 0))       # fleet number on the black band under the windscreen
     bone("PlateBack", "Vehicle", (X0 - 0.014, 1.73, 0))
+    # the little raised boss above the rear route box
+    bz, by, br = HIGH_BRAKE_MID
+    solid("Body", (X0 - 0.015, by - br * 0.8, bz - br * 0.8), (X0 + 0.005, by + br * 0.8, bz + br * 0.8), "red")
     # side adverts as thin decals just proud of the panels
     xa, xb = ADVERTS["near"]
     cube("Body", (xa, ADVERT_Y[0], ZN - 0.006), (xb, ADVERT_Y[1], ZN - 0.002), {"north": face_uv("advert_near")})
