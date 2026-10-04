@@ -554,17 +554,21 @@ def wheels():
         za, zb = z - zw / 2, z + zw / 2
         r = WHEEL_R
         side = -1 if z < 0 else 1
-        # four squares turned 22.5 degrees apart make a solid 16-sided tyre
-        a = r * 0.985
-        for rot in (0, 22.5, 45, 67.5):
-            cube(name, (ax - a, r - a, za), (ax + a, r + a, zb), {f: "tyre" for f in ALL},
+        # round tyre: a filled octagon core plus eight planks rounding out the rim (16 sides)
+        core = r * 0.93
+        for rot in (0, 45):
+            cube(name, (ax - core, r - core, za), (ax + core, r + core, zb), {f: "tyre" for f in ALL},
+                 rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
+        plank = r * math.tan(math.radians(11.25)) * 1.02
+        for rot in (0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5):
+            cube(name, (ax - r, r - plank, za), (ax + r, r + plank, zb), {f: "tyre" for f in ALL},
                  rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
         if twin:   # groove between the two tyres
             solid(name, (ax - r - 0.002, r - 0.06, z - 0.01), (ax + r + 0.002, r + 0.06, z + 0.01), "black", parent="Wheels")
         face_z = z + side * zw / 2
         # rim (octagonal steel disc), recessed hub, 8 studs
-        rr = 0.29
-        for rot in (0, 22.5, 45, 67.5):
+        rr = 0.27
+        for rot in (0, 45):
             cube(name, (ax - rr, r - rr, min(face_z, face_z + side * 0.012)), (ax + rr, r + rr, max(face_z, face_z + side * 0.012)),
                  {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
         hz = face_z + side * 0.012
@@ -771,9 +775,12 @@ def details():
     bone("Mirrors")
     for name, z, s in (("LeftMirror", ZO, 1), ("RightMirror", ZN, -1)):
         bone(name, "Mirrors", (X1 + 0.25, 1.85, z + s * 0.1))
-        solid(name, (X1 - 0.3, 2.45, z + s * 0.0), (X1 + 0.3, 2.5, z + s * 0.06), "black", parent="Mirrors")
-        solid(name, (X1 + 0.25, 1.95, z + s * 0.02), (X1 + 0.3, 2.5, z + s * 0.07), "black", parent="Mirrors")
-        solid(name, (X1 + 0.18, 1.55, z + s * 0.0), (X1 + 0.32, 2.0, z + s * 0.2), "black", parent="Mirrors")
+        # arm from the front corner, curving forward and down, then the mirror head
+        solid(name, (X1 - 0.25, 2.47, z + s * 0.01), (X1 + 0.22, 2.51, z + s * 0.04), "black", parent="Mirrors")
+        solid(name, (X1 + 0.19, 2.02, z + s * 0.01), (X1 + 0.23, 2.5, z + s * 0.04), "black", parent="Mirrors")
+        solid(name, (X1 + 0.16, 1.66, z - s * 0.02), (X1 + 0.24, 2.04, z + s * 0.14), "black", parent="Mirrors")
+        cube(name, (X1 + 0.155, 1.69, min(z - s * 0.01, z + s * 0.13)), (X1 + 0.16, 2.01, max(z - s * 0.01, z + s * 0.13)),
+             {"west": "glass_door"}, parent="Mirrors")
     # wipers
     bone("windscreenwipers")
     for name, z in (("1", 0.55), ("2", -0.55)):
@@ -939,10 +946,11 @@ public final class ALX400Layout {{
     public static final double DOOR2_FORWARD = {f(sum(DOOR2) / 2)};
     public static final double[] TICKET_MACHINE = {{-0.12, 1.3, 4.35}};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
-    public static final float[] DISPLAY_FRONT = {{{f(DISPLAY_FRONT[2])}f, {f(DISPLAY_FRONT[3])}f, 90.0f}};
-    public static final float[] DISPLAY_SIDE = {{{f(DISPLAY_SIDE[2])}f, {f(DISPLAY_SIDE[3])}f, 0.0f}};
-    public static final float[] DISPLAY_REAR = {{{f(DISPLAY_REAR[2])}f, {f(DISPLAY_REAR[3])}f, 270.0f}};
-    public static final float[] DISPLAY_INSIDE = {{0.62f, 0.3f, 270.0f}};
+    // label yaws: PTM2's own buses face -z in model space, ours face +x, so ours are theirs - 90
+    public static final float[] DISPLAY_FRONT = {{{f(DISPLAY_FRONT[2])}f, {f(DISPLAY_FRONT[3])}f, 270.0f}};
+    public static final float[] DISPLAY_SIDE = {{{f(DISPLAY_SIDE[2])}f, {f(DISPLAY_SIDE[3])}f, 180.0f}};
+    public static final float[] DISPLAY_REAR = {{{f(DISPLAY_REAR[2])}f, {f(DISPLAY_REAR[3])}f, 90.0f}};
+    public static final float[] DISPLAY_INSIDE = {{0.62f, 0.3f, 90.0f}};
     public static final int SEAT_COUNT = {len(SEATS)};
 
     private ALX400Layout() {{

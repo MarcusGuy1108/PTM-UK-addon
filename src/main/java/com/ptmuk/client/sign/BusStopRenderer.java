@@ -142,7 +142,7 @@ public class BusStopRenderer implements BlockEntityRenderer<BusStopBlockEntity> 
         float[][] hex = {{cx, cy + s}, {cx + c, cy + s / 2}, {cx + c, cy - s / 2}, {cx, cy - s}, {cx - c, cy - s / 2}, {cx - c, cy + s / 2}};
         for (int i = 0; i < 6; i++) {
             float[] a = hex[i], bb = hex[(i + 1) % 6];
-            quad(cx, cy, a[0], a[1], bb[0], bb[1], bb[0], bb[1], WHITE);
+            quad(cx, cy, bb[0], bb[1], a[0], a[1], a[0], a[1], WHITE);
         }
         z += 0.002f;
         float t = s * 0.1f;
