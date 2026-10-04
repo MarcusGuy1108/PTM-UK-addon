@@ -578,9 +578,8 @@ def fence_parts(kind):
                 box((7.2, 28, 0), (8.8, 28.6, 8), "#wood")]
         return post, side, {"concrete": t("concrete"), "wood_vertical": t("wood_vertical"), "wood": t("wood")}
     if kind == "armco_barrier":
-        post = [box((7, 0, 7), (9, 11, 9), "#galv")]
-        side = [box((6.2, 5.5, 0), (6.8, 10.5, 8), "#w_beam", faces=("east", "west", "up", "down")),
-                box((6.8, 7, 0), (7.2, 9, 8), "#galv")]
+        post = [box((7.2, 0, 7.2), (8.8, 9, 8.8), "#galv"), box((7.6, 5.5, 7.6), (8.4, 10.5, 8.4), "#w_beam")]
+        side = [box((7.7, 5.5, 0), (8.3, 10.5, 8), "#w_beam", faces=("east", "west", "up", "down"))]
         return post, side, {"galv": t("galv"), "w_beam": t("w_beam")}
     # heras temporary fencing
     post = [box((4.5, 0, 5), (11.5, 2.2, 11), "#rubber"), box((7.6, 2.2, 7.6), (8.4, 31, 8.4), "#galv")]
