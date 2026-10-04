@@ -62,12 +62,15 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
         }
         String number = bus.getLineNumber();
         number = "D".equals(number) ? "" : number;
-        boolean lit = bus.ignition;
+        boolean lit = bus.ignition || DEBUG;
+        if (DEBUG && number.isBlank()) {
+            number = "96";
+        }
         switch (name) {
             case "Display1" -> {      // front: route number and destination
                 if (!lit || !bus.outsideDisplays) return false;
                 float[] d = ALX400Layout.DISPLAY_FRONT;
-                String dest = bus.getDestination();
+                String dest = DEBUG ? "Woolwich" : bus.getDestination();
                 if (number.isBlank() && (dest == null || dest.isBlank())) {
                     label(ps, buffers, "NOT IN SERVICE", d[0], d[1], 0, 0, LED, true, d[2]);
                 } else {
@@ -79,7 +82,7 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
             case "Display2" -> {      // nearside: number and via points
                 if (!lit || !bus.outsideDisplays) return false;
                 float[] d = ALX400Layout.DISPLAY_SIDE;
-                label(ps, buffers, (number + " " + bus.getSideDestination()).trim(), d[0], d[1], 0, 0, LED, true, d[2]);
+                label(ps, buffers, (number + " " + (DEBUG ? "Woolwich" : bus.getSideDestination())).trim(), d[0], d[1], 0, 0, LED, true, d[2]);
                 return true;
             }
             case "Display3" -> {      // rear route number
@@ -92,11 +95,11 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
                 if (!lit || !bus.insideDisplays) return false;
                 float[] d = ALX400Layout.DISPLAY_INSIDE;
                 double w = d[0], rh = d[1] / 4.0;
-                screenRow(ps, buffers, (number + " " + bus.getDestination()).trim(), w * 0.75, rh, 0, 0, WHITE, SCREEN_BG, d[2]);
+                screenRow(ps, buffers, (number + " " + (DEBUG ? "Woolwich" : bus.getDestination())).trim(), w * 0.75, rh, 0, 0, WHITE, SCREEN_BG, d[2]);
                 screenRow(ps, buffers, OpSystemUtil.currentClock(bus.level()), w * 0.25, rh, w * 0.75, 0, WHITE, SCREEN_BG, d[2]);
                 List<Pair<String, String>> stops = bus.nextStopsWithTimes();
                 for (int i = 0; i < 3; i++) {
-                    Pair<String, String> p = stops.size() > i ? stops.get(i) : null;
+                    Pair<String, String> p = stops.size() > i ? stops.get(i) : DEBUG ? Pair.of(new String[]{"Bexleyheath", "Dartford", "Woolwich"}[i], (i + 2) + " min") : null;
                     screenRow(ps, buffers, p != null ? p.getFirst() : "", w * 0.75, rh, 0, rh * (i + 1), BLACK, SCREEN_ROW, d[2]);
                     screenRow(ps, buffers, p != null ? p.getSecond() : "", w * 0.25, rh, w * 0.75, rh * (i + 1), BLACK, SCREEN_ROW, d[2]);
                 }
