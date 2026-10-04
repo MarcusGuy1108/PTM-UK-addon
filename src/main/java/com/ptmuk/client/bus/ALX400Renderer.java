@@ -28,6 +28,8 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
     private static final int BLACK = 0xFF101010;
 
     private final GeoModel<ALX400> model = getGeoModel();
+    private static final boolean DEBUG = true;
+    private static long lastLog;
 
     public ALX400Renderer(EntityRendererProvider.Context context) {
         super(context, new ALX400Model());
@@ -52,6 +54,12 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
     @Override
     protected boolean renderBoneText(PoseStack ps, ALX400 bus, GeoBone bone, MultiBufferSource buffers, int light) {
         String name = bone.getName();
+        if (DEBUG && name.startsWith("Display") && System.currentTimeMillis() - lastLog > 3000) {
+            lastLog = System.currentTimeMillis();
+            org.joml.Vector3f t = ps.last().pose().getTranslation(new org.joml.Vector3f());
+            com.ptmuk.PtmUk.LOGGER.info("ALX400 text bone {} at {} ignition={} outside={} dest='{}' num='{}'", name, t, bus.ignition,
+                    bus.outsideDisplays, bus.getDestination(), bus.getLineNumber());
+        }
         String number = bus.getLineNumber();
         number = "D".equals(number) ? "" : number;
         boolean lit = bus.ignition;

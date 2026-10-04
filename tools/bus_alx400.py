@@ -554,11 +554,8 @@ def wheels():
         za, zb = z - zw / 2, z + zw / 2
         r = WHEEL_R
         side = -1 if z < 0 else 1
-        # round tyre: a filled octagon core plus eight planks rounding out the rim (16 sides)
-        core = r * 0.93
-        for rot in (0, 45):
-            cube(name, (ax - core, r - core, za), (ax + core, r + core, zb), {f: "tyre" for f in ALL},
-                 rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
+        # round tyre: eight planks through the hub, 22.5 degrees apart, make a filled 16-gon
+        # (turned squares would poke their corners out into a star)
         plank = r * math.tan(math.radians(11.25)) * 1.02
         for rot in (0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5):
             cube(name, (ax - r, r - plank, za), (ax + r, r + plank, zb), {f: "tyre" for f in ALL},
@@ -568,12 +565,15 @@ def wheels():
         face_z = z + side * zw / 2
         # rim (octagonal steel disc), recessed hub, 8 studs
         rr = 0.27
-        for rot in (0, 45):
-            cube(name, (ax - rr, r - rr, min(face_z, face_z + side * 0.012)), (ax + rr, r + rr, max(face_z, face_z + side * 0.012)),
+        rp = rr * math.tan(math.radians(22.5)) * 1.02
+        for rot in (0, 45, 90, 135):
+            cube(name, (ax - rr, r - rp, min(face_z, face_z + side * 0.012)), (ax + rr, r + rp, max(face_z, face_z + side * 0.012)),
                  {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
         hz = face_z + side * 0.012
-        cube(name, (ax - 0.12, r - 0.12, min(hz, hz + side * 0.03)), (ax + 0.12, r + 0.12, max(hz, hz + side * 0.03)),
-             {f: "hub" for f in ALL}, rotation=[0, 0, 45], pivot=(ax, r, z), parent="Wheels")
+        hp = 0.12 * math.tan(math.radians(22.5)) * 1.02
+        for rot in (0, 45, 90, 135):
+            cube(name, (ax - 0.12, r - hp, min(hz, hz + side * 0.03)), (ax + 0.12, r + hp, max(hz, hz + side * 0.03)),
+                 {f: "hub" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
         for k in range(8):
             a = math.radians(k * 45)
             sxp, syp = ax + 0.16 * math.cos(a), r + 0.16 * math.sin(a)
