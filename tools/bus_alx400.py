@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/ptmuk"
 # PTM2 only loads GeckoLib models and animations from its own namespace
 PTM_ASSETS = ROOT / "src/main/resources/assets/ptm2"
+# PTM2 only loads GeckoLib models and animations from its own namespace
+PTM_ASSETS = ROOT / "src/main/resources/assets/ptm2"
 JAVA = ROOT / "src/main/java/com/ptmuk/bus/ALX400Layout.java"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 PX = 16.0          # model pixels per metre
