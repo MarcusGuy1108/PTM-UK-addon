@@ -381,6 +381,9 @@ def cube(bone_name, lo, hi, faces, rotation=None, pivot=None, parent="Vehicle"):
     lo, hi = np.minimum(lo, hi), np.maximum(lo, hi)
     c = {"origin": m2px(lo), "size": m2px(hi - lo)}
     uv = {}
+    # GeckoLib mirrors the model's x axis: our "east" (front, +x) is its "west" face
+    swap = {"east": "west", "west": "east"}
+    faces = {swap.get(f, f): v for f, v in faces.items()}
     for f, spec in faces.items():
         uv[f] = spec if isinstance(spec, dict) else face_uv(spec)
     c["uv"] = uv
