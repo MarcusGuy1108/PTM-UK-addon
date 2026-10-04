@@ -17,9 +17,9 @@ public final class ALX400Layout {
     public static final double[] TICKET_MACHINE = {-0.12, 1.3, 4.35};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
     // label yaws measured in game: 90 faces the front, 180 the nearside, 270 the rear
-    public static final float[] DISPLAY_FRONT = {1.840f, 0.400f, 90.0f};
+    public static final float[] DISPLAY_FRONT = {1.680f, 0.440f, 90.0f};
     public static final float[] DISPLAY_SIDE = {1.500f, 0.260f, 180.0f};
-    public static final float[] DISPLAY_REAR = {0.650f, 0.300f, 270.0f};
+    public static final float[] DISPLAY_REAR = {0.600f, 0.300f, 270.0f};
     public static final float[] DISPLAY_INSIDE = {0.62f, 0.3f, 270.0f};
     public static final int SEAT_COUNT = 74;
 

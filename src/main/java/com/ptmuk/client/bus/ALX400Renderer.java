@@ -74,9 +74,11 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
                 if (number.isBlank() && (dest == null || dest.isBlank())) {
                     label(ps, buffers, "NOT IN SERVICE", d[0], d[1], 0, 0, LED, true, d[2]);
                 } else {
-                    // route number on the left, a gap, then the destination
-                    label(ps, buffers, number, d[0] * 0.2, d[1] * 0.85, d[0] * 0.02, d[1] * 0.075, LED, true, d[2]);
-                    label(ps, buffers, dest, d[0] * 0.72, d[1] * 0.7, d[0] * 0.26, d[1] * 0.15, LED, true, d[2]);
+                    // as on London blinds: via points small top left, route number big top right,
+                    // destination big underneath
+                    label(ps, buffers, via(bus), d[0] * 0.66, d[1] * 0.3, d[0] * 0.03, d[1] * 0.06, LED, false, d[2]);
+                    label(ps, buffers, number, d[0] * 0.26, d[1] * 0.46, d[0] * 0.71, d[1] * 0.02, LED, true, d[2]);
+                    label(ps, buffers, dest, d[0] * 0.9, d[1] * 0.44, d[0] * 0.05, d[1] * 0.52, LED, true, d[2]);
                 }
                 return true;
             }
@@ -106,6 +108,10 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
                 }
                 return true;
             }
+            case "FrontID" -> {
+                return com.rinventor.ptm2.client.AnimationUtils.garageNumber(ps, bus, bone, buffers, light, 12, 0.0, 0.02,
+                        ALX400Layout.DISPLAY_FRONT[2], 0.0f, BLACK);
+            }
             case "PlateFront" -> {
                 EntityTextRenderer.drawStringC(bus.registrationPlate, false, 9, 0.0, -0.01, 0.02, ALX400Layout.DISPLAY_FRONT[2], 0.0f,
                         ps, buffers, BLACK, light);
@@ -120,6 +126,19 @@ public class ALX400Renderer extends GeoEntityRenderer<ALX400> {
                 return false;
             }
         }
+    }
+
+    /** Via points for the blind: the next two stops, as London blinds show them. */
+    private static String via(ALX400 bus) {
+        if (DEBUG) {
+            return "Bexleyheath  Dartford";
+        }
+        List<Pair<String, String>> stops = bus.nextStopsWithTimes();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < Math.min(2, stops.size() - 1); i++) {
+            sb.append(i > 0 ? "  " : "").append(stops.get(i).getFirst());
+        }
+        return sb.toString();
     }
 
     /** A single LED line: right/down are offsets from the display's top-left corner, in blocks. */
