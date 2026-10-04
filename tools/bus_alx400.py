@@ -464,7 +464,7 @@ def arc_x(bone_name, x0, x1, cy, cz, r, phi0, phi1, n, region, t=0.035):
         chord = 2 * r * math.sin(math.radians(abs(a1 - a0)) / 2) + 0.01
         py, pz = cy + r * math.sin(am), cz - r * math.cos(am)
         cube(bone_name, (x0, py - chord / 2, pz - t / 2), (x1, py + chord / 2, pz + t / 2),
-             {f: region for f in ("north", "south", "up", "down")}, rotation=[RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
+             {"north": region, "south": "ceiling", "up": region, "down": region}, rotation=[RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
 
 
 def corner(bone_name, cx, cz, sx, sz, y0, y1, region):
@@ -511,7 +511,7 @@ def shell():
         chord = 2 * R_ROOF * math.sin(math.radians(15)) + 0.01
         py, pz = H - R_ROOF + R_ROOF * math.sin(am), ZO - R_ROOF + R_ROOF * math.cos(am)
         cube("Roof", (X0 + R_ROOF, py - chord / 2, pz - t / 2), (X1 - R_ROOF, py + chord / 2, pz + t / 2),
-             {f: "red" for f in ("north", "south", "up", "down")}, rotation=[-RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
+             {"south": "red", "north": "ceiling", "up": "red", "down": "red"}, rotation=[-RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
     # front and rear domes: the roof curving down onto the front and back across the width
     for x, sx in ((X1, 1), (X0, -1)):
         for i in range(3):
@@ -519,8 +519,9 @@ def shell():
             am = math.radians((a0 + a1) / 2)
             chord = 2 * R_ROOF * math.sin(math.radians(15)) + 0.01
             px, py = x - sx * R_ROOF + sx * R_ROOF * math.cos(am), H - R_ROOF + R_ROOF * math.sin(am)
+            outer, inner = ("east", "west") if sx > 0 else ("west", "east")
             cube("Roof", (px - t / 2, py - chord / 2, ZN + R_ROOF), (px + t / 2, py + chord / 2, ZO - R_ROOF),
-                 {f: "red" for f in ("east", "west", "up", "down")}, rotation=[0, 0, -sx * math.degrees(am)], pivot=(px, py, 0))
+                 {outer: "red", inner: "ceiling", "up": "red", "down": "red"}, rotation=[0, 0, -sx * math.degrees(am)], pivot=(px, py, 0))
     # roof corner caps (small pieces where the domes meet the side edges)
     for x, sx in ((X1, 1), (X0, -1)):
         for z, sz in ((ZN, -1), (ZO, 1)):

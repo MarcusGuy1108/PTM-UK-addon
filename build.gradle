@@ -61,6 +61,13 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
     maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
+    maven {
         name = 'CurseMaven'
         url = 'https://cursemaven.com'
         content {
@@ -74,6 +81,11 @@ dependencies {
 
     // Public Transport Mod 2 - we extend its traffic light classes so its AI traffic obeys our signals.
     implementation fg.deobf("curse.maven:public-transport-mod-562157:${ptm2_curse_file}")
+
+    // ./gradlew runClient -PwithDH to test how things look in Distant Horizons' LODs (not bundled)
+    if (project.hasProperty('withDH')) {
+        runtimeOnly fg.deobf("maven.modrinth:distanthorizons:3.3.3-1.20.1")
+    }
 }
 
 tasks.named('processResources', ProcessResources).configure {
