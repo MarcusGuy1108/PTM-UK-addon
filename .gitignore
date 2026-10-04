@@ -1,0 +1,26 @@
+# gradle
+build/
+.gradle/
+out/
+classes/
+
+# eclipse / idea / vscode
+*.launch
+.settings/
+.metadata/
+.classpath
+.project
+bin/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# minecraft runs
+run/
+run-data/
+logs/
+
+# local copies of other mods (never commit these)
+libs/
