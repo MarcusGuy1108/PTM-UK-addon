@@ -27,22 +27,29 @@ public final class UkBuses {
     /** Model code -> specification. */
     public static final Map<String, VehicleSpecification> SPECS = new LinkedHashMap<>();
     /** Model code -> entity type. */
-    public static final Map<String, RegistryObject<EntityType<ALX400>>> TYPES = new LinkedHashMap<>();
+    public static final Map<String, RegistryObject<? extends EntityType<? extends DoubleDeckerBus>>> TYPES = new LinkedHashMap<>();
 
     public static final String ALX400_CODE = "124d";
+    public static final String UKDD_CODE = "124e";
 
-    public static final RegistryObject<EntityType<ALX400>> ALX400_TYPE = ENTITIES.register("ptm_" + ALX400_CODE + "_alx400",
-            () -> EntityType.Builder.of(ALX400::new, MobCategory.AMBIENT).setUpdateInterval(3).sized(2.5f, 0.7f)
-                    .setTrackingRange(192).build(PtmUk.id("ptm_" + ALX400_CODE + "_alx400").toString()));
-
-    static {
-        // 10.2 m dual-door double decker, 4.4 m tall; automatic gearbox
-        SPECS.put(ALX400_CODE, new VehicleSpecification(3.0f, 4.4f, 10.2f, 0.0f, ALX400.SEATS, VehicleTypes.BUS, 1, false, false,
-                EngineTypes.DIESEL, true, 4, 80.0f, 80.0f, 6.0f, 2.2f, 5.0f));
-        TYPES.put(ALX400_CODE, ALX400_TYPE);
-    }
+    public static final RegistryObject<EntityType<ALX400>> ALX400_TYPE = doubleDecker(ALX400_CODE, "alx400", ALX400::new,
+            ALX400Layout.SEAT_COUNT);
+    public static final RegistryObject<EntityType<UkDoubleDecker>> UKDD_TYPE = doubleDecker(UKDD_CODE, "ukdd", UkDoubleDecker::new,
+            UkddLayout.SEAT_COUNT);
 
     private UkBuses() {
+    }
+
+    /** A 10.2 m dual-door double decker, 4.4 m tall, diesel with an automatic gearbox. */
+    private static <T extends DoubleDeckerBus> RegistryObject<EntityType<T>> doubleDecker(String code, String name,
+                                                                                         EntityType.EntityFactory<T> factory, int seats) {
+        String id = "ptm_" + code + "_" + name;
+        RegistryObject<EntityType<T>> type = ENTITIES.register(id, () -> EntityType.Builder.of(factory, MobCategory.AMBIENT)
+                .setUpdateInterval(3).sized(2.5f, 0.7f).setTrackingRange(192).build(PtmUk.id(id).toString()));
+        SPECS.put(code, new VehicleSpecification(3.0f, 4.4f, 10.2f, 0.0f, seats, VehicleTypes.BUS, 1, false, false,
+                EngineTypes.DIESEL, true, 4, 80.0f, 80.0f, 6.0f, 2.2f, 5.0f));
+        TYPES.put(code, type);
+        return type;
     }
 
     /** PTM2 passes "124d", "ptm_124d" or a full entity name like "ptm_124d_alx400". */

@@ -34,7 +34,7 @@ minecraft {
 
         client {
             property 'forge.enabledGameTestNamespaces', mod_id
-            jvmArgs '-Xmx6G'
+            jvmArgs '-Xmx6G', '-Dptmuk.busDebug=true'
             // e.g. ./gradlew runClient -PquickPlayWorld=test to jump straight into a saved world
             if (project.hasProperty('quickPlayWorld')) {
                 args '--quickPlaySingleplayer', project.property('quickPlayWorld')

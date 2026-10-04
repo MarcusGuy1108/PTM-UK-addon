@@ -1,10 +1,10 @@
-"""Alexander ALX400 (dual door, London style) for PTM2, as a GeckoLib model.
+"""UK Double Decker: the original stylised model, kept as its own bus (forked from the first ALX400).
 
 Everything is laid out in metres in the model frame PTM2 uses: x forward, y up, z with the
 nearside (door side) at -z and the driver at +z. PTM2 mirrors vehicles in left-hand traffic
 worlds, which turns this into a proper UK bus with the doors on the left.
 
-Writes: geo model, texture atlas, animations, item icon and ALX400Layout.java (seats, doors,
+Writes: geo model, texture atlas, animations, item icon and UkddLayout.java (seats, doors,
 floors, display positions) so the Java side always matches the model.
 """
 import json
@@ -20,7 +20,7 @@ ASSETS = ROOT / "src/main/resources/assets/ptmuk"
 PTM_ASSETS = ROOT / "src/main/resources/assets/ptm2"
 # PTM2 only loads GeckoLib models and animations from its own namespace
 PTM_ASSETS = ROOT / "src/main/resources/assets/ptm2"
-JAVA = ROOT / "src/main/java/com/ptmuk/bus/ALX400Layout.java"
+JAVA = ROOT / "src/main/java/com/ptmuk/bus/UkddLayout.java"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 PX = 16.0          # model pixels per metre
 TPM = 64           # texels per metre on the big painted panels
@@ -907,15 +907,15 @@ def door_anim(right, left, open_):
 def write_animations():
     out = 0.025 * PX
     anims = {
-        "alx400.door1_open": door_anim("Right", "Left", True),
-        "alx400.door1_close": door_anim("Right", "Left", False),
-        "alx400.door2_open": door_anim("Right2", "Left2", True),
-        "alx400.door2_close": door_anim("Right2", "Left2", False),
-        "alx400.front_lights": anim(loop=True, bones={"FrontLights": {"position": [out, 0, 0]}}),
-        "alx400.stop_lights": anim(loop=True, bones={"StopLights": {"position": [-out, 0, 0]}}),
-        "alx400.reverse_lights": anim(loop=True, bones={"BackLights": {"position": [-out, 0, 0]}}),
-        "alx400.bus_stopping": anim(loop=True, bones={"BusStopping": {"position": [-0.4, 0, 0]}}),
-        "alx400.null": anim(loop=True),
+        "ukdd.door1_open": door_anim("Right", "Left", True),
+        "ukdd.door1_close": door_anim("Right", "Left", False),
+        "ukdd.door2_open": door_anim("Right2", "Left2", True),
+        "ukdd.door2_close": door_anim("Right2", "Left2", False),
+        "ukdd.front_lights": anim(loop=True, bones={"FrontLights": {"position": [out, 0, 0]}}),
+        "ukdd.stop_lights": anim(loop=True, bones={"StopLights": {"position": [-out, 0, 0]}}),
+        "ukdd.reverse_lights": anim(loop=True, bones={"BackLights": {"position": [-out, 0, 0]}}),
+        "ukdd.bus_stopping": anim(loop=True, bones={"BusStopping": {"position": [-0.4, 0, 0]}}),
+        "ukdd.null": anim(loop=True),
     }
     for side, bones in (("left", ("FrontLeftTurnSignal", "BackLeftTurnSignal", "LeftTurnSignal")),
                         ("right", ("FrontRightTurnSignal", "BackRightTurnSignal", "RightTurnSignal"))):
@@ -923,11 +923,11 @@ def write_animations():
         for name in bones:
             vec = [out, 0, 0] if name.startswith("Front") else [-out, 0, 0] if name.startswith("Back") else [0, 0, out if side == "left" else -out]
             b[name] = {"position": {"0.0": {"vector": vec}, "0.5": {"vector": [0, 0, 0]}}}
-        anims[f"alx400.{side}_signal"] = anim(1.0, True, b)
-    anims["alx400.wipers"] = anim(2.0, True, {
+        anims[f"ukdd.{side}_signal"] = anim(1.0, True, b)
+    anims["ukdd.wipers"] = anim(2.0, True, {
         "1": {"rotation": {"0.0": {"vector": [0, 0, 0]}, "1.0": {"vector": [-80, 0, 0]}, "2.0": {"vector": [0, 0, 0]}}},
         "2": {"rotation": {"0.0": {"vector": [0, 0, 0]}, "1.0": {"vector": [-80, 0, 0]}, "2.0": {"vector": [0, 0, 0]}}}})
-    path = PTM_ASSETS / "animations/bus/ptmuk_alx400.animation.json"
+    path = PTM_ASSETS / "animations/bus/ptmuk_ukdd.animation.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"format_version": "1.8.0", "animations": anims}, indent=1))
 
@@ -954,13 +954,13 @@ def write_geo():
         if b.get("parent") and b["parent"] not in names:
             raise SystemExit(f"missing parent {b['parent']} for {b['name']}")
     geo = {"format_version": "1.12.0", "minecraft:geometry": [{
-        "description": {"identifier": "geometry.alx400", "texture_width": ATLAS, "texture_height": ATLAS,
+        "description": {"identifier": "geometry.ukdd", "texture_width": ATLAS, "texture_height": ATLAS,
                         "visible_bounds_width": 14, "visible_bounds_height": 6, "visible_bounds_offset": [0, 2.5, 0]},
         "bones": sort_bones(bones)}]}
-    path = PTM_ASSETS / "geo/bus/ptmuk_alx400.geo.json"
+    path = PTM_ASSETS / "geo/bus/ptmuk_ukdd.geo.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(geo, separators=(",", ":")))
-    print(f"  alx400: {sum(len(b.get('cubes', [])) for b in bones)} cubes, {len(bones)} bones, {len(SEATS)} seats")
+    print(f"  ukdd: {sum(len(b.get('cubes', [])) for b in bones)} cubes, {len(bones)} bones, {len(SEATS)} seats")
 
 
 def sort_bones(bones):
@@ -981,14 +981,14 @@ def sort_bones(bones):
 
 
 def write_texture():
-    path = ASSETS / "textures/entity/bus/alx400.png"
+    path = ASSETS / "textures/entity/bus/ukdd.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     ATL.img.save(path)
     left = ATL.img.copy()
     for name in TEXT_REGIONS:
         x, y, w, h = ATL.regions[name]
         left.paste(left.crop((x, y, x + w, y + h)).transpose(Image.Transpose.FLIP_LEFT_RIGHT), (x, y))
-    left.save(ASSETS / "textures/entity/bus/alx400_left.png")
+    left.save(ASSETS / "textures/entity/bus/ukdd_left.png")
 
 
 def write_icon():
@@ -1001,15 +1001,16 @@ def write_icon():
         for x in range(30, 116, 22):
             d.line((x, y0, x, y1), fill=RED + (255,), width=3)
     d.rectangle((86, 64, 100, 106), fill=(40, 40, 44, 255))
+    d.rectangle((6, 56, 122, 60), fill=(235, 235, 225, 255))   # cream band: tells it apart from the ALX400 icon
     for cx in (30, 96):
         d.ellipse((cx - 11, 96, cx + 11, 118), fill=(20, 20, 20, 255))
         d.ellipse((cx - 5, 102, cx + 5, 112), fill=(170, 170, 170, 255))
-    path = ASSETS / "textures/item/alx400.png"
+    path = ASSETS / "textures/item/uk_double_decker.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     img.resize((16, 16), Image.LANCZOS).save(path)
     (ASSETS / "models/item").mkdir(parents=True, exist_ok=True)
-    (ASSETS / "models/item/alx400.json").write_text(json.dumps(
-        {"parent": "minecraft:item/generated", "textures": {"layer0": "ptmuk:item/alx400"}}, indent=1))
+    (ASSETS / "models/item/uk_double_decker.json").write_text(json.dumps(
+        {"parent": "minecraft:item/generated", "textures": {"layer0": "ptmuk:item/uk_double_decker"}}, indent=1))
 
 
 def floors(upper):
@@ -1041,9 +1042,9 @@ import com.rinventor.ptm2.engine.vehicle.WheelLocation;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Generated by tools/bus_alx400.py together with the model. Do not edit by hand. */
-public final class ALX400Layout implements BusLayout {{
-    public static final ALX400Layout INSTANCE = new ALX400Layout();
+/** Generated by tools/bus_ukdd.py together with the model. Do not edit by hand. */
+public final class UkddLayout implements BusLayout {{
+    public static final UkddLayout INSTANCE = new UkddLayout();
 
     public static final float LOWER_FLOOR = {f(LOWER_FLOOR)}f;
     public static final float UPPER_FLOOR = {f(UPPER_FLOOR)}f;
@@ -1060,7 +1061,7 @@ public final class ALX400Layout implements BusLayout {{
     public static final float[] DISPLAY_INSIDE = {{0.62f, 0.3f, 270.0f}};
     public static final int SEAT_COUNT = {len(SEATS)};
 
-    private ALX400Layout() {{
+    private UkddLayout() {{
     }}
 
     @Override public float lowerFloor() {{ return LOWER_FLOOR; }}

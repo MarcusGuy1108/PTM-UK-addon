@@ -27,6 +27,7 @@ import motorway  # noqa: E402
 import pylons  # noqa: E402
 import building  # noqa: E402
 import bus_alx400  # noqa: E402
+import bus_ukdd  # noqa: E402
 
 MOD_ID = "ptmuk"
 ROOT = Path(__file__).resolve().parent.parent
@@ -859,6 +860,7 @@ def write_lang():
     lang.update(pylons.lang(sys.modules[__name__]))
     lang.update(building.lang(sys.modules[__name__]))
     lang.update({"item.ptmuk.alx400": "Alexander ALX400 (Double Decker)", "entity.ptmuk.ptm_124d_alx400": "Alexander ALX400",
+                 "item.ptmuk.uk_double_decker": "UK Double Decker", "entity.ptmuk.ptm_124e_ukdd": "UK Double Decker",
                  "itemGroup.ptmuk.buses": "UK Buses"})
     lang.update({"itemGroup.ptmuk.main": "UK Traffic Lights", "itemGroup.ptmuk.poles": "UK Poles",
                  "itemGroup.ptmuk.signs": "UK Road Signs", "itemGroup.ptmuk.street": "UK Street Furniture",
@@ -873,7 +875,7 @@ def write_data():
         [f"{MOD_ID}:{n}" for n in furniture.FURNITURE] + fences + \
         [f"{MOD_ID}:{n}" for n in signs.SIGNS] + [f"{MOD_ID}:london_bus_stop"] + [f"{MOD_ID}:{n}" for n in motorway.NAMES]
     write_json(DATA / "minecraft/tags/blocks/fences.json", {"replace": False, "values": fences})
-    write_json(DATA / "ptm2/tags/items/vehicles.json", {"replace": False, "values": [f"{MOD_ID}:alx400"]})
+    write_json(DATA / "ptm2/tags/items/vehicles.json", {"replace": False, "values": [f"{MOD_ID}:alx400", f"{MOD_ID}:uk_double_decker"]})
     loot = DATA / MOD_ID / "loot_tables"
     if loot.exists():
         shutil.rmtree(loot)
@@ -919,6 +921,7 @@ def main():
     pylons.generate(sys.modules[__name__])
     building.generate(sys.modules[__name__])
     bus_alx400.main()
+    bus_ukdd.main()
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)
     write_lang()
     write_data()

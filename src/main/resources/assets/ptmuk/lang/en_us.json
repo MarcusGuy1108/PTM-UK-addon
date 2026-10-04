@@ -176,6 +176,8 @@
  "itemGroup.ptmuk.building": "UK Building Blocks",
  "item.ptmuk.alx400": "Alexander ALX400 (Double Decker)",
  "entity.ptmuk.ptm_124d_alx400": "Alexander ALX400",
+ "item.ptmuk.uk_double_decker": "UK Double Decker",
+ "entity.ptmuk.ptm_124e_ukdd": "UK Double Decker",
  "itemGroup.ptmuk.buses": "UK Buses",
  "itemGroup.ptmuk.poles": "UK Poles",
  "itemGroup.ptmuk.signs": "UK Road Signs",

@@ -29,7 +29,8 @@ public class PtmUk {
     }
 
     private static void attributes(net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
-        event.put(com.ptmuk.bus.UkBuses.ALX400_TYPE.get(), com.rinventor.ptm2.objects.entities.vehicle.Vehicle.attributes());
+        com.ptmuk.bus.UkBuses.TYPES.values().forEach(type ->
+                event.put(type.get(), com.rinventor.ptm2.objects.entities.vehicle.Vehicle.attributes()));
     }
 
     public static ResourceLocation id(String path) {

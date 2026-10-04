@@ -31,6 +31,7 @@ public final class ModItems {
     public static final RegistryObject<Item> CABLE_TOOL;
     public static final List<RegistryObject<Item>> BUS_ITEMS = new ArrayList<>();
     public static final RegistryObject<Item> ALX400;
+    public static final RegistryObject<Item> UK_DOUBLE_DECKER;
 
     static {
         register(ModBlocks.POLES, POLE_ITEMS);
@@ -51,6 +52,8 @@ public final class ModItems {
         POWER_ITEMS.add(ITEMS.register("pylon_dismantler", com.ptmuk.power.PylonDismantlerItem::new));
         ALX400 = ITEMS.register("alx400", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.ALX400_CODE));
         BUS_ITEMS.add(ALX400);
+        UK_DOUBLE_DECKER = ITEMS.register("uk_double_decker", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.UKDD_CODE));
+        BUS_ITEMS.add(UK_DOUBLE_DECKER);
         BUS_ITEMS.add(item("london_bus_stop", ModBlocks.BUS_STOP));
         register(ModBlocks.FURNITURE, STREET_ITEMS);
         register(ModBlocks.FENCES, STREET_ITEMS);
