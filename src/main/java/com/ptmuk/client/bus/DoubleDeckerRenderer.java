@@ -106,7 +106,7 @@ public class DoubleDeckerRenderer<T extends DoubleDeckerBus> extends GeoEntityRe
             }
             case "FrontID" -> {
                 return com.rinventor.ptm2.client.AnimationUtils.garageNumber(ps, bus, bone, buffers, light, 12, 0.0, 0.02,
-                        layout.displayFront()[2], 0.0f, BLACK);
+                        layout.displayFront()[2], 0.0f, layout.frontIdColour());
             }
             case "PlateFront" -> {
                 EntityTextRenderer.drawStringC(bus.registrationPlate, false, 9, 0.0, -0.01, 0.02, layout.displayFront()[2], 0.0f,
@@ -141,7 +141,20 @@ public class DoubleDeckerRenderer<T extends DoubleDeckerBus> extends GeoEntityRe
     /** A single LED line: right/down are offsets from the display's top-left corner, in blocks. */
     private static void label(PoseStack ps, MultiBufferSource buffers, String text, double w, double h, double right, double down,
                               int colour, boolean centre, float yaw) {
+        if (sideways(ps, yaw)) {
+            new ScaledWorldLabel(w, h, text, colour, centre).render(ps, buffers, 0xF000F0, right, -down, 0.0, 0.0f, 0.0f);
+            return;
+        }
         new ScaledWorldLabel(w, h, text, colour, centre).render(ps, buffers, 0xF000F0, right, -down, 0.0, yaw, 0.0f);
+    }
+
+    /**
+     * In left-hand traffic worlds PTM2 mirrors the bus. ScaledWorldLabel undoes the mirror for
+     * text facing the front or back, but text facing the side then ends up facing into the bus;
+     * turning it round puts it back on the outside (checked in game).
+     */
+    private static boolean sideways(PoseStack ps, float yaw) {
+        return yaw == 180.0f && ps.last().pose().determinant3x3() < 0.0f;
     }
 
     private static void screenRow(PoseStack ps, MultiBufferSource buffers, String text, double w, double h, double right, double down,

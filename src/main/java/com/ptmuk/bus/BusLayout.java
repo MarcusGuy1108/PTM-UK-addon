@@ -31,4 +31,9 @@ public interface BusLayout {
     List<WheelLocation> wheelList();
 
     List<FloorObject> floorList(boolean upper);
+
+    /** Colour of the fleet number on the front. */
+    default int frontIdColour() {
+        return 0xFF101010;
+    }
 }
