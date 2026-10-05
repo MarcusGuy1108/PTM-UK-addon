@@ -589,12 +589,30 @@ SCALE = {
 }
 
 
+# Pavement-level items read small next to a player at true size, so they get a general boost
+# on top of SCALE. Benches are also stretched to a real bench length (about 1.8 m).
+STREET_BOOST = 1.2
+BOOSTED = {"wheelie_bin_black", "wheelie_bin_grey", "wheelie_bin_green", "wheelie_bin_blue", "wheelie_bin_brown",
+           "communal_bin", "litter_bin", "dog_waste_bin", "grit_bin", "bollard_cast_iron", "bollard_steel",
+           "keep_left_bollard", "pay_and_display", "parking_meter", "ev_charger", "bike_stand", "telecoms_cabinet",
+           "controller_cabinet", "feeder_pillar", "hydrant_marker", "traffic_cone", "emergency_phone", "marker_post",
+           "bench_metal", "bench_wood", "road_closed_sign", "chapter8_barrier"}
+SCALE.update({"bench_metal": (1.65, 1.0, 1.0), "bench_wood": (1.65, 1.0, 1.0), "pillar_box": (1.12, 1.12, 1.12)})
+
+
+def scale_of(name):
+    sx, sy, sz = SCALE.get(name, (1, 1, 1))
+    if name in BOOSTED:
+        sx, sy, sz = sx * STREET_BOOST, sy * STREET_BOOST, sz * STREET_BOOST
+    return sx, sy, sz
+
+
 def write_furniture(name, builder, tex_keys=None):
     els, textures, opts = builder()
     textures = dict(textures)
     textures["particle"] = next(iter(textures.values()))
     mdl = G.model(textures, els, cutout=opts.get("cutout", False))
-    sx, sy, sz = SCALE.get(name, (1, 1, 1))
+    sx, sy, sz = scale_of(name)
     sy *= opts.get("scale_y", 1)
     if (sx, sy, sz) != (1, 1, 1):
         # Forge model transform, scaled about the middle of the block's floor
