@@ -1036,6 +1036,11 @@ def interior():
     for x in (-2.45, -3.25, -4.05, -4.65):
         for z in zp:
             add_seat(x, z, LOWER_FLOOR + (0.42 if -3.5 < x < -2.2 else 0.3 if x < -4.5 else 0.0))
+    # raised floors under the seats over the rear axle and the engine (they floated before)
+    for (xa, xb, h) in ((-3.7, -2.0, 0.42), (X0 + 0.1, -4.3, 0.3)):
+        for za, zb in ((ZN + 0.05, -0.3), (0.3, ZO - 0.05)):
+            cube("Interior", (xa, LOWER_FLOOR, za), (xb, LOWER_FLOOR + h, zb),
+                 {"up": "carpet", "north": "wall_dark", "south": "wall_dark", "east": "yellow", "west": "wall_dark"})
     # lower deck poles and bells
     for x, z in ((DOOR1[0] - 0.05, ZN + 0.35), (DOOR1[1] - 0.15, ZN + 0.3), (DOOR2[0] - 0.05, ZN + 0.32), (DOOR2[1] + 0.05, ZN + 0.32),
                  (DOOR2[1] + 0.05, -0.3), (0.0, 0.3), (1.6, -0.3), (-2.45, -0.3), (-2.45, 0.3), (-4.05, -0.3), (-4.05, 0.3)):
