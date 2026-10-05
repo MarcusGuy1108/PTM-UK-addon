@@ -217,6 +217,17 @@ def advert(img, x0, y0, x1, y1, which):
     d.text((x0 + hgt * 0.27, y0 + hgt * 0.62), sub, fill=fg + (255,), font=f2)
 
 
+def emblem(d, cx, cy, s, fg=(255, 255, 255, 255), bg=RED + (255,)):
+    """The world's transport emblem (used instead of the TfL roundel): a flat isometric block,
+    a hexagon in fg with its three inner edges cut in bg, as on the bus stop flags."""
+    c = 0.866 * s
+    d.polygon([(cx, cy - s), (cx + c, cy - s / 2), (cx + c, cy + s / 2), (cx, cy + s), (cx - c, cy + s / 2), (cx - c, cy - s / 2)],
+              fill=fg)
+    t = max(1, int(s * 0.2))
+    for ex, ey in ((cx, cy + s), (cx - c, cy - s / 2), (cx + c, cy - s / 2)):
+        d.line([(cx, cy), (ex, ey)], fill=bg, width=t)
+
+
 def rrect(d, box, r_top, r_bot, fill):
     """Rounded rectangle with different radii at the top and bottom corners."""
     x0, y0, x1, y1 = box
@@ -309,6 +320,8 @@ def side_panel(nearside, inside):
             louvre(-0.98, -0.66, 0.92, 1.42)                                     # engine air intake (TA19)
             d.rectangle((X(-5.0), Y(1.25), X(-4.05), Y(0.4)), outline=(140, 10, 16, 255), width=R(0.012))   # engine bay door
             d.rectangle((X(1.95), Y(0.88), X(2.12), Y(0.7)), outline=(140, 10, 16, 255), width=R(0.01))     # fuel flap
+        # transport emblem low on the panel just behind the exit door, both sides
+        emblem(d, X(DOOR2[1] + 0.5), Y(0.92), R(0.27))
         # small amber side repeater just ahead of the front wheel
         d.rectangle((X(3.37), Y(0.53), X(3.44), Y(0.47)), fill=(200, 110, 20, 255))
     img = noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
@@ -378,6 +391,8 @@ def front_panel(inside):
     for z in (0.5, -0.5):
         d.rectangle((Z(z) - 1, Y(0.97), Z(z) + 1, Y(0.86)), fill=RED_DARK + (255,))
     d.rectangle((Z(-0.3), Y(0.82), Z(-0.56), Y(0.68)), fill=(240, 240, 240, 255))
+    d.rectangle((Z(-0.32), Y(0.8), Z(-0.42), Y(0.7)), fill=RED + (255,))
+    emblem(d, (Z(-0.32) + Z(-0.42)) / 2, Y(0.75), R(0.042))
     d.rectangle((Z(-0.44), Y(0.8), Z(-0.54), Y(0.7)), fill=(30, 80, 170, 255))
     d.rectangle((0, Y(BUMPER_TOP), w, Y(SKIRT)), fill=(26, 30, 40, 255))
     return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)

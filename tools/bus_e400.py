@@ -218,6 +218,17 @@ def advert(img, x0, y0, x1, y1, which):
     d.text((x0 + hgt * 0.27, y0 + hgt * 0.62), sub, fill=fg + (255,), font=f2)
 
 
+def emblem(d, cx, cy, s, fg=(255, 255, 255, 255), bg=RED + (255,)):
+    """The world's transport emblem (used instead of the TfL roundel): a flat isometric block,
+    a hexagon in fg with its three inner edges cut in bg, as on the bus stop flags."""
+    c = 0.866 * s
+    d.polygon([(cx, cy - s), (cx + c, cy - s / 2), (cx + c, cy + s / 2), (cx, cy + s), (cx - c, cy + s / 2), (cx - c, cy - s / 2)],
+              fill=fg)
+    t = max(1, int(s * 0.2))
+    for ex, ey in ((cx, cy + s), (cx - c, cy - s / 2), (cx + c, cy - s / 2)):
+        d.line([(cx, cy), (ex, ey)], fill=bg, width=t)
+
+
 def rrect(d, box, r_top, r_bot, fill):
     """Rounded rectangle with different radii at the top and bottom corners."""
     x0, y0, x1, y1 = box
@@ -315,6 +326,8 @@ def side_panel(nearside, inside):
             d.rectangle((X(-5.0), Y(1.32), X(-3.75), Y(0.42)), outline=(140, 10, 16, 255), width=R(0.012))   # engine bay door
             d.rectangle((X(1.75), Y(0.88), X(1.92), Y(0.7)), outline=(140, 10, 16, 255), width=R(0.01))     # fuel flap
             d.rectangle((X(-1.6), Y(2.15), X(-0.9), Y(1.3)), outline=(140, 10, 16, 255), width=R(0.01))     # emergency door
+        # transport emblem low on the panel just behind the exit door, both sides
+        emblem(d, X(DOOR2[1] + 0.5), Y(0.92), R(0.27))
         # small amber side repeater just ahead of the front wheel
         d.rectangle((X(3.17), Y(0.53), X(3.24), Y(0.47)), fill=(200, 110, 20, 255))
     img = noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
@@ -385,9 +398,6 @@ def front_panel(inside):
             d.ellipse((cx - R(lr), cy - R(lr), cx + R(lr), cy + R(lr)), fill=(236, 238, 234, 255))
             d.ellipse((cx - R(lr * 0.5), cy - R(lr * 0.6), cx, cy - R(lr * 0.1)), fill=(252, 252, 250, 255))
     d.rectangle((Z(0.26), Y(0.44), Z(-0.26), Y(0.32)), fill=(242, 242, 238, 255))       # plate (text drawn live)
-    # accessibility sticker on the nearside of the bumper
-    d.rectangle((Z(-0.78), Y(0.5), Z(-1.0), Y(0.38)), fill=(240, 240, 240, 255))
-    d.rectangle((Z(-0.9), Y(0.48), Z(-0.98), Y(0.4)), fill=(30, 80, 170, 255))
     return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
 
 
@@ -567,9 +577,12 @@ def bumper_front():
     def Y(y):
         return h - int((y - SKIRT) * s)
     d.rectangle((0, 0, w, int(0.02 * s)), fill=(44, 50, 64, 255))
-    for z in (0.7, -0.7):
-        for r, col in ((0.05, (180, 182, 186)), (0.04, (226, 228, 224))):
-            d.ellipse((Z(z) - r * s, Y(0.44) - r * s, Z(z) + r * s, Y(0.44) + r * s), fill=col + (255,))
+    # accessibility sticker on the nearside: the transport emblem and the wheelchair sign
+    # (this texture runs the other way to the front panel: +z here is the nearside, checked in game)
+    d.rectangle((Z(0.86), Y(0.5), Z(0.62), Y(0.38)), fill=(240, 240, 240, 255))
+    d.rectangle((Z(0.84), Y(0.48), Z(0.74), Y(0.4)), fill=(30, 80, 170, 255))
+    d.rectangle((Z(0.72), Y(0.48), Z(0.64), Y(0.4)), fill=RED + (255,))
+    emblem(d, (Z(0.72) + Z(0.64)) / 2, Y(0.44), int(0.04 * s))
     d.rectangle((Z(0.26), Y(0.49), Z(-0.26), Y(0.38)), fill=(242, 242, 238, 255))
     return noise(img.resize((w // 2, h // 2), Image.LANCZOS), 2)
 
@@ -1133,7 +1146,7 @@ def details():
     rz, rt, rw, rh = DISPLAY_REAR
     bone("Display3", "Vehicle", (X0 - 0.014, rt, rz))
     solid("Display3", (X0 - 0.012, rt - rh, rz - rw), (X0 + 0.01, rt, rz), "black")
-    bone("PlateFront", "Vehicle", (X1 + 0.054, 0.38, 0))
+    bone("PlateFront", "Vehicle", (X1 + 0.054, 0.435, 0))
     bone("FrontID", "Vehicle", (X1 + 0.014, 1.05, -0.95))   # fleet number on the red panel, nearside
     bone("PlateBack", "Vehicle", (X0 - 0.014, 1.115, 0))
     # side adverts as thin decals just proud of the panels
