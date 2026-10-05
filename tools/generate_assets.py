@@ -865,6 +865,9 @@ def write_lang():
                  "item.ptmuk.uk_double_decker": "UK Double Decker", "entity.ptmuk.ptm_124e_ukdd": "UK Double Decker",
                  "item.ptmuk.enviro400": "Alexander Dennis Enviro400 (London, Double Decker)",
                  "entity.ptmuk.ptm_124f_e400": "Alexander Dennis Enviro400",
+                 "item.ptmuk.alx400_len": "Alexander ALX400 (Len Livery)", "entity.ptmuk.ptm_124g_alx400_len": "Alexander ALX400 (Len Livery)",
+                 "item.ptmuk.enviro400_len": "Alexander Dennis Enviro400 (Len Livery)",
+                 "entity.ptmuk.ptm_124h_e400_len": "Alexander Dennis Enviro400 (Len Livery)",
                  "item.ptmuk.kia_k4_gt_line_s": "Kia K4 GT-Line S (Red)", "entity.ptmuk.ptm_035k_k4": "Kia K4 GT-Line S",
                  "itemGroup.ptmuk.buses": "UK Buses & Cars"})
     lang.update({"itemGroup.ptmuk.main": "UK Traffic Lights", "itemGroup.ptmuk.poles": "UK Poles",
@@ -880,7 +883,7 @@ def write_data():
         [f"{MOD_ID}:{n}" for n in furniture.FURNITURE] + fences + \
         [f"{MOD_ID}:{n}" for n in signs.SIGNS] + [f"{MOD_ID}:london_bus_stop"] + [f"{MOD_ID}:{n}" for n in motorway.NAMES]
     write_json(DATA / "minecraft/tags/blocks/fences.json", {"replace": False, "values": fences})
-    write_json(DATA / "ptm2/tags/items/vehicles.json", {"replace": False, "values": [f"{MOD_ID}:alx400", f"{MOD_ID}:uk_double_decker", f"{MOD_ID}:enviro400", f"{MOD_ID}:kia_k4_gt_line_s"]})
+    write_json(DATA / "ptm2/tags/items/vehicles.json", {"replace": False, "values": [f"{MOD_ID}:alx400", f"{MOD_ID}:uk_double_decker", f"{MOD_ID}:enviro400", f"{MOD_ID}:alx400_len", f"{MOD_ID}:enviro400_len", f"{MOD_ID}:kia_k4_gt_line_s"]})
     loot = DATA / MOD_ID / "loot_tables"
     if loot.exists():
         shutil.rmtree(loot)

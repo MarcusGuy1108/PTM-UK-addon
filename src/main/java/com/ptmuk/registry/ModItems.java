@@ -33,6 +33,8 @@ public final class ModItems {
     public static final RegistryObject<Item> ALX400;
     public static final RegistryObject<Item> UK_DOUBLE_DECKER;
     public static final RegistryObject<Item> ENVIRO400;
+    public static final RegistryObject<Item> ALX400_LEN;
+    public static final RegistryObject<Item> ENVIRO400_LEN;
     public static final RegistryObject<Item> KIA_K4;
 
     static {
@@ -58,6 +60,10 @@ public final class ModItems {
         BUS_ITEMS.add(UK_DOUBLE_DECKER);
         ENVIRO400 = ITEMS.register("enviro400", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.E400_CODE));
         BUS_ITEMS.add(ENVIRO400);
+        ALX400_LEN = ITEMS.register("alx400_len", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.ALX400_LEN_CODE));
+        BUS_ITEMS.add(ALX400_LEN);
+        ENVIRO400_LEN = ITEMS.register("enviro400_len", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.E400_LEN_CODE));
+        BUS_ITEMS.add(ENVIRO400_LEN);
         KIA_K4 = ITEMS.register("kia_k4_gt_line_s", () -> com.ptmuk.bus.UkBuses.carItem(com.ptmuk.bus.UkBuses.K4_CODE, "red"));
         BUS_ITEMS.add(KIA_K4);
         BUS_ITEMS.add(item("london_bus_stop", ModBlocks.BUS_STOP));

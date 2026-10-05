@@ -3,7 +3,10 @@ package com.ptmuk.client.bus;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.ptmuk.bus.BusLayout;
 import com.ptmuk.bus.DoubleDeckerBus;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.rinventor.ptm2.client.view.MirrorRenderer;
 import com.rinventor.ptm2.dimension.digital.OpSystemUtil;
+import com.rinventor.ptm2.engine.animation.util.RenderUtils;
 import com.rinventor.ptm2.engine.animation.cache.GeoBone;
 import com.rinventor.ptm2.engine.animation.model.GeoModel;
 import com.rinventor.ptm2.engine.animation.renderer.GeoEntityRenderer;
@@ -11,7 +14,9 @@ import com.rinventor.ptm2.engine.bezier.utility.Pair;
 import com.rinventor.ptm2.engine.graphics.EntityTextRenderer;
 import com.rinventor.ptm2.engine.graphics.ScaledWorldLabel;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 
 /**
@@ -33,7 +38,11 @@ public class DoubleDeckerRenderer<T extends DoubleDeckerBus> extends GeoEntityRe
     private final GeoModel<T> model = getGeoModel();
 
     public DoubleDeckerRenderer(EntityRendererProvider.Context context, String name) {
-        super(context, new DoubleDeckerModel<>(name));
+        this(context, name, name);
+    }
+
+    public DoubleDeckerRenderer(EntityRendererProvider.Context context, String name, String texture) {
+        super(context, new DoubleDeckerModel<>(name, texture));
         this.shadowRadius = 1.2f;
     }
 
@@ -50,6 +59,43 @@ public class DoubleDeckerRenderer<T extends DoubleDeckerBus> extends GeoEntityRe
         }
         model.getBone("SteeringWheel").ifPresent(b -> b.setRotZ((float) Math.toRadians(bus.strafe * 360.0f)));
         super.render(bus, entityYaw, partialTick, ps, buffers, light);
+    }
+
+    /** Bones holding the lit lamps: drawn full bright so lights glow at night. */
+    static final Set<String> LIGHT_BONES = Set.of("FrontLights", "StopLights", "BackLights", "FrontLeftTurnSignal",
+            "FrontRightTurnSignal", "BackLeftTurnSignal", "BackRightTurnSignal", "LeftTurnSignal", "RightTurnSignal", "BusStopping");
+    static final int FULL_BRIGHT = 0xF000F0;
+
+    @Override
+    public void renderRecursively(PoseStack ps, T bus, GeoBone bone, RenderType renderType, MultiBufferSource buffers,
+                                  VertexConsumer buffer, boolean isReRender, float partialTick, int light, int overlay,
+                                  float red, float green, float blue, float alpha) {
+        String name = bone.getName();
+        if (LIGHT_BONES.contains(name)) {
+            light = FULL_BRIGHT;
+        }
+        // working mirrors, as on PTM2's own buses: hide ours while the mirror view is drawn
+        boolean mirrorBone = "Mirrors".equals(name) || "LeftMirror".equals(name) || "RightMirror".equals(name);
+        boolean hide = MirrorRenderer.renderingMirror && mirrorBone && bus.equals(MirrorRenderer.renderingBus);
+        boolean hidden = bone.isHidden();
+        boolean childrenHidden = bone.isHidingChildren();
+        if (hide) {
+            bone.setHidden(true);
+        }
+        try {
+            super.renderRecursively(ps, bus, bone, renderType, buffers, buffer, isReRender, partialTick, light, overlay, red, green, blue, alpha);
+        } finally {
+            if (hide) {
+                bone.setHidden(hidden);
+                bone.setChildrenHidden(childrenHidden);
+            }
+        }
+        if (!isReRender && ("LeftMirror".equals(name) || "RightMirror".equals(name))) {
+            ps.pushPose();
+            RenderUtils.prepMatrixForBone(ps, bone);
+            MirrorRenderer.draw(bus, ps, bone, buffers, ps.last().pose().determinant3x3() < 0.0f);
+            ps.popPose();
+        }
     }
 
     @Override

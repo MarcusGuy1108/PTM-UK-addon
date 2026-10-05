@@ -14,6 +14,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+import livery
+
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/ptmuk"
 # PTM2 only loads GeckoLib models and animations from its own namespace
@@ -179,6 +181,14 @@ def carpet(size=64):
 
 # ------------------------------------------------------------------ painted body panels
 
+GRAD_N = 12
+
+
+def grad_name(x):
+    """Body colour swatch for pieces at x along the bus (they follow the livery's fade)."""
+    return f"grad{min(GRAD_N - 1, max(0, int((x - X0) / L * GRAD_N)))}"
+
+
 def tx(m):
     return int(round(m * TPM))
 
@@ -193,6 +203,8 @@ TEXT_REGIONS = ["advert_near", "advert_off", "stopping_off", "stopping_on"]
 def advert_image(which):
     xa, xb = ADVERTS[which]
     img = Image.new("RGBA", (tx(xb - xa) * 2, tx(ADVERT_Y[1] - ADVERT_Y[0]) * 2), (0, 0, 0, 0))
+    if livery.active():
+        return img
     advert(img, 3, 3, img.width - 4, img.height - 4, which)
     return img
 
@@ -277,6 +289,8 @@ def side_panel(nearside, inside):
         d.rectangle((0, Y(UPPER_FLOOR + 0.3), w, Y(UPPER_FLOOR)), fill=WALL_DARK + (255,))
         d.rectangle((0, Y(LOWER_FLOOR + 0.3), w, Y(LOWER_FLOOR)), fill=WALL_DARK + (255,))
         d.rectangle((0, Y(H), w, Y(UP_WIN[1] + 0.02)), fill=CEILING + (255,))
+    if not inside:
+        livery.side_design(img, X, Y, R, X0, X1, (LOW_WIN[1] + 0.06, UP_WIN[0] - 0.06))
     rubber = (GLASS_FRAME if not inside else (88, 92, 98)) + (255,)
     for xa, xb, ya, yb, n, kind in window_rows(nearside):
         # bonded glazing: one black band, the panes cut out with thin black pillars between
@@ -328,9 +342,13 @@ def side_panel(nearside, inside):
             d.rectangle((X(1.75), Y(0.88), X(1.92), Y(0.7)), outline=(140, 10, 16, 255), width=R(0.01))     # fuel flap
             d.rectangle((X(-1.6), Y(2.15), X(-0.9), Y(1.3)), outline=(140, 10, 16, 255), width=R(0.01))     # emergency door
         # transport emblem low on the panel just behind the exit door, both sides
-        emblem(d, X(DOOR2[1] + 0.5), Y(0.92), R(0.27))
+        ex = DOOR2[1] + 0.5
+        ered = livery.active() and livery.fade(ex, X0, X1) > 0.5
+        emblem(d, X(ex), Y(0.92), R(0.27), fg=(livery.EMBLEM_RED if ered else (255, 255, 255)) + (255,))
         # small amber side repeater just ahead of the front wheel
         d.rectangle((X(3.17), Y(0.53), X(3.24), Y(0.47)), fill=(200, 110, 20, 255))
+    if not inside:
+        img = livery.recolour(img, livery.fade(X0 + (np.arange(w) + 0.5) / (TPM * ss), X0, X1))
     img = noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2)
     # the inside faces are seen from inside, i.e. mirrored
     flip_x = (not nearside) ^ inside
@@ -434,6 +452,7 @@ def rear_panel(inside):
         d.rounded_rectangle((Z(-0.95), Y(REAR_WIN[1]), Z(0.95), Y(REAR_WIN[0])), radius=R(0.1), fill=clear)
         return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2).transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     d.rectangle((0, Y(H), w, Y(SKIRT)), fill=RED + (255,))
+    livery.rear_design(img, Z, Y, R)
     d.rounded_rectangle((Z(-1.0), Y(REAR_WIN[1] + 0.05), Z(1.0), Y(REAR_WIN[0] - 0.05)), radius=R(0.14), fill=BLACK + (255,))
     d.rounded_rectangle((Z(-0.95), Y(REAR_WIN[1]), Z(0.95), Y(REAR_WIN[0])), radius=R(0.1), fill=clear)
     d.rectangle((Z(-0.25), Y(4.12), Z(0.25), Y(4.07)), fill=(150, 14, 18, 255))       # high level brake light
@@ -459,6 +478,7 @@ def rear_panel(inside):
         for (ya_, yb_, col) in ((1.6, 1.32, (170, 16, 20)), (1.3, 1.08, (240, 150, 30)), (1.06, 0.92, (236, 236, 236)),
                                 (0.9, 0.62, (150, 14, 18))):
             d.rounded_rectangle((x0 + R(0.012), Y(ya_), x1 - R(0.012), Y(yb_)), radius=R(0.02), fill=col + (255,))
+    img = livery.recolour(img, 1.0)
     return noise(img.resize((w // ss, h // ss), Image.LANCZOS), 2).transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 
 
@@ -474,7 +494,12 @@ def roof_panel(inside):
     d = ImageDraw.Draw(img)
     for xf in (0.25, 0.62):        # roof hatches
         d.rectangle((tx(L * xf), tx(0.6), tx(L * xf) + tx(0.7), h - tx(0.6)), fill=(170, 16, 22, 255))
+    xs = X0 + (np.arange(w) + 0.5) / TPM
+    img = livery.recolour(img, livery.fade(xs[::-1] if ROOF_U_FRONT else xs, X0, X1))
     return noise(img, 3)
+
+
+ROOF_U_FRONT = False   # True if column 0 of the roof texture is at the front of the bus (checked in game)
 
 
 CPM = 128          # texels per metre up the corner strips
@@ -507,7 +532,7 @@ def corner_strip(kind, inside=False):
         d.rectangle((int(w * 0.55), Y(REAR_CLUSTER[3]), w, Y(REAR_CLUSTER[2])), fill=(30, 30, 32, 255))
         d.rectangle((int(w * 0.6), Y(1.6), w, Y(1.32)), fill=(170, 16, 20, 255))
         d.rectangle((int(w * 0.6), Y(0.9), w, Y(0.62)), fill=(150, 14, 18, 255))
-    return noise(img, 2)
+    return noise(livery.recolour(img, 0.0 if kind == "front" else 1.0), 2)
 
 
 def lit_panel(text, size, fg, bg):
@@ -625,6 +650,9 @@ def build_textures():
                       ("amber_off", (120, 70, 20)), ("white", (240, 240, 236)), ("bell", (210, 30, 30)),
                       ("cab", (60, 90, 150)), ("dash", (40, 42, 46)), ("rim", (150, 152, 156)), ("bumper", (26, 30, 40))):
         swatch(name, col)
+    for i in range(GRAD_N):
+        t = livery.fade(X0 + (i + 0.5) / GRAD_N * L, X0, X1) if livery.active() else 0.0
+        swatch(f"grad{i}", livery.mix(RED, t))
     # door leaves: glazed almost top to bottom in black frames, with a rail across
     leaf = Image.new("RGBA", (40, 120), BLACK + (255,))
     ImageDraw.Draw(leaf).rounded_rectangle((5, 6, 34, 112), radius=3, fill=(0, 0, 0, 0))
@@ -783,7 +811,7 @@ def arc_x(bone_name, x0, x1, cy, cz, r, phi0, phi1, n, region, t=T):
              {"north": region, "south": "ceiling", "up": region, "down": region}, rotation=[RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
 
 
-def roof_corner(cx, cz, sx, sz, rc):
+def roof_corner(cx, cz, sx, sz, rc, region="red"):
     """Rounded roof corner: stacked rings that shrink as the roof edge curves in, each reaching
     in to the next so there are no gaps from above."""
     n = 4
@@ -795,7 +823,7 @@ def roof_corner(cx, cz, sx, sz, rc):
         r_out = rc - rr * (1 - math.cos(math.radians((p0 + p1) / 2)))
         r_next = rc - rr * (1 - math.cos(math.radians(min(90, p1 + 90 / n / 2)))) if k < n - 1 else 0.0
         t = max(T, r_out - r_next + T)
-        corner("Roof", cx, cz, sx, sz, y0, y1, max(r_out, 0.01), "red", "ceiling", n=4, t=min(t, r_out + T / 2), top="red")
+        corner("Roof", cx, cz, sx, sz, y0, y1, max(r_out, 0.01), region, "ceiling", n=4, t=min(t, r_out + T / 2), top=region)
 
 
 def bands():
@@ -850,15 +878,20 @@ def shell():
     # roof: flat top, curved side edges, front and rear domes, rounded corners
     xr0, xr1 = X0 + RC_REAR, X1 - D_TOP - RC_TOP
     cube("Roof", (xr0, H - T, ZN + R_ROOF), (xr1, H, ZO - R_ROOF), {"up": face_uv("roof_out"), "down": face_uv("roof_in")})
-    cube("Roof", (X0 + R_ROOF, H - T, ZN + RC_REAR), (xr0, H, ZO - RC_REAR), {"up": "red", "down": "ceiling"})
-    arc_x("Roof", xr0, xr1, H - R_ROOF, ZN + R_ROOF, R_ROOF, 0, 90, 4, "red")
-    for i in range(4):          # offside edge: same arc mirrored in z
-        a0, a1 = 90 * i / 4, 90 * (i + 1) / 4
-        am = math.radians((a0 + a1) / 2)
-        chord = 2 * R_ROOF * math.sin(math.radians(11.25)) + 0.01
-        py, pz = H - R_ROOF + R_ROOF * math.sin(am), ZO - R_ROOF + R_ROOF * math.cos(am)
-        cube("Roof", (xr0, py - chord / 2, pz - T / 2), (xr1, py + chord / 2, pz + T / 2),
-             {"south": "red", "north": "ceiling", "up": "red", "down": "red"}, rotation=[-RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
+    cube("Roof", (X0 + R_ROOF, H - T, ZN + RC_REAR), (xr0, H, ZO - RC_REAR), {"up": grad_name(X0), "down": "ceiling"})
+    # roof side edges in lengths, so each piece can take its part of the livery's fade
+    nseg = GRAD_N
+    cuts = [xr0 + (xr1 - xr0) * k / nseg for k in range(nseg + 1)]
+    for xa, xb in zip(cuts, cuts[1:]):
+        g = grad_name((xa + xb) / 2)
+        arc_x("Roof", xa, xb + 0.002, H - R_ROOF, ZN + R_ROOF, R_ROOF, 0, 90, 4, g)
+        for i in range(4):          # offside edge: same arc mirrored in z
+            a0, a1 = 90 * i / 4, 90 * (i + 1) / 4
+            am = math.radians((a0 + a1) / 2)
+            chord = 2 * R_ROOF * math.sin(math.radians(11.25)) + 0.01
+            py, pz = H - R_ROOF + R_ROOF * math.sin(am), ZO - R_ROOF + R_ROOF * math.cos(am)
+            cube("Roof", (xa, py - chord / 2, pz - T / 2), (xb + 0.002, py + chord / 2, pz + T / 2),
+                 {"south": g, "north": "ceiling", "up": g, "down": g}, rotation=[-RX * math.degrees(am), 0, 0], pivot=(0, py, pz))
     for x, sx, rc in ((X1 - D_TOP, 1, RC_TOP), (X0, -1, RC_REAR)):
         for i in range(4):
             a0, a1 = 90 * i / 4, 90 * (i + 1) / 4
@@ -867,9 +900,10 @@ def shell():
             px, py = x - sx * R_ROOF + sx * R_ROOF * math.cos(am), H - R_ROOF + R_ROOF * math.sin(am)
             outer, inner = ("east", "west") if sx > 0 else ("west", "east")
             cube("Roof", (px - T / 2, py - chord / 2, ZN + rc), (px + T / 2, py + chord / 2, ZO - rc),
-                 {outer: "red", inner: "ceiling", "up": "red", "down": "red"}, rotation=[0, 0, -sx * math.degrees(am)], pivot=(px, py, 0))
+                 {outer: grad_name(x), inner: "ceiling", "up": grad_name(x), "down": grad_name(x)},
+                 rotation=[0, 0, -sx * math.degrees(am)], pivot=(px, py, 0))
         for zs, sz in ((ZN, -1), (ZO, 1)):
-            roof_corner(x - sx * rc, zs - sz * rc, sx, sz, rc)
+            roof_corner(x - sx * rc, zs - sz * rc, sx, sz, rc, grad_name(x))
     # floors and decks, kept inside the rounded corners
     def slab(name, xa, xb, za, zb, y0, y1, faces, rf=RC_LOW, rr=RC_REAR):
         """A floor slab clipped to the rounded plan: where it reaches the front or back it is
@@ -1279,15 +1313,53 @@ def sort_bones(bones):
     return out
 
 
-def write_texture():
-    path = ASSETS / "textures/entity/bus/e400.png"
+def write_texture(suffix=""):
+    path = ASSETS / f"textures/entity/bus/e400{suffix}.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     ATL.img.save(path)
     left = ATL.img.copy()
     for name in TEXT_REGIONS:
         x, y, w, h = ATL.regions[name]
         left.paste(left.crop((x, y, x + w, y + h)).transpose(Image.Transpose.FLIP_LEFT_RIGHT), (x, y))
-    left.save(ASSETS / "textures/entity/bus/e400_left.png")
+    left.save(ASSETS / f"textures/entity/bus/e400{suffix}_left.png")
+
+
+def write_livery(livery_name):
+    """Paint the same atlas again in another livery (same layout, so the same model uses it)."""
+    global ATL
+    regions = dict(ATL.regions)
+    livery.STATE["name"] = livery_name
+    try:
+        ATL = Atlas(ATLAS)
+        build_textures()
+        if ATL.regions != regions:
+            raise SystemExit("livery atlas layout differs")
+        write_texture("_" + livery_name)
+    finally:
+        livery.STATE["name"] = None
+    write_livery_icon(livery_name)
+
+
+def write_livery_icon(livery_name):
+    s = 8
+    img = Image.new("RGBA", (16 * s, 16 * s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for x in range(6, 123):                        # red front (right) fading to white
+        t = float(livery.fade(X0 + (x - 6) / 116 * L, X0, X1))
+        d.line((x, 18, x, 108), fill=livery.mix(RED, t) + (255,))
+    for y0, y1 in ((26, 52), (64, 88)):
+        d.rectangle((14, y0, 116, y1), fill=(30, 30, 34, 255))
+    d.polygon([(8, 106), (8, 92), (60, 54), (66, 60)], fill=livery.YELLOW + (255,))
+    d.polygon([(8, 88), (8, 84), (56, 50), (58, 53)], fill=livery.BLACK + (255,))
+    livery.note(d, 30, 60, 16, livery.BLACK + (255,), beamed=True)
+    for cx in (30, 96):
+        d.ellipse((cx - 11, 96, cx + 11, 118), fill=(20, 20, 20, 255))
+        d.ellipse((cx - 5, 102, cx + 5, 112), fill=(170, 170, 170, 255))
+    item = "enviro400_" + livery_name
+    path = ASSETS / f"textures/item/{item}.png"
+    img.resize((16, 16), Image.LANCZOS).save(path)
+    (ASSETS / f"models/item/{item}.json").write_text(json.dumps(
+        {"parent": "minecraft:item/generated", "textures": {"layer0": f"ptmuk:item/{item}"}}, indent=1))
 
 
 def write_icon():
@@ -1413,6 +1485,7 @@ def main():
     details()
     write_geo()
     write_texture()
+    write_livery("len")
     write_animations()
     write_icon()
     write_java()

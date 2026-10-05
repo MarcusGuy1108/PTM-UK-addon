@@ -16,4 +16,16 @@ public class Enviro400 extends DoubleDeckerBus {
     public ItemStack getPickResult() {
         return new ItemStack(ModItems.ENVIRO400.get());
     }
+
+    /** In the red-to-white "Len" livery. */
+    public static class Len extends Enviro400 {
+        public Len(EntityType<? extends PathfinderMob> type, Level level) {
+            super(type, level);
+        }
+
+        @Override
+        public ItemStack getPickResult() {
+            return new ItemStack(ModItems.ENVIRO400_LEN.get());
+        }
+    }
 }

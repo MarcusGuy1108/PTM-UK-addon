@@ -58,6 +58,9 @@ public class KiaK4Renderer extends GeoEntityRenderer<KiaK4> {
                                   VertexConsumer buffer, boolean isReRender, float partialTick, int light, int overlay,
                                   float red, float green, float blue, float alpha) {
         String name = bone.getName();
+        if (DoubleDeckerRenderer.LIGHT_BONES.contains(name)) {
+            light = DoubleDeckerRenderer.FULL_BRIGHT;
+        }
         boolean mirrorBone = "Mirrors".equals(name) || "LeftMirror".equals(name) || "RightMirror".equals(name);
         boolean hide = MirrorRenderer.renderingMirror && mirrorBone && car.equals(MirrorRenderer.renderingBus);
         boolean hidden = bone.isHidden();

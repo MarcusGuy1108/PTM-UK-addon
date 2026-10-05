@@ -16,4 +16,16 @@ public class ALX400 extends DoubleDeckerBus {
     public ItemStack getPickResult() {
         return new ItemStack(ModItems.ALX400.get());
     }
+
+    /** In the red-to-white "Len" livery. */
+    public static class Len extends ALX400 {
+        public Len(EntityType<? extends PathfinderMob> type, Level level) {
+            super(type, level);
+        }
+
+        @Override
+        public ItemStack getPickResult() {
+            return new ItemStack(ModItems.ALX400_LEN.get());
+        }
+    }
 }

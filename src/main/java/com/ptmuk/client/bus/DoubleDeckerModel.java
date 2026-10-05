@@ -15,8 +15,13 @@ public class DoubleDeckerModel<T extends DoubleDeckerBus> extends GeoModel<T> {
     private final ResourceLocation animations;
 
     public DoubleDeckerModel(String name) {
+        this(name, name);
+    }
+
+    /** texture: the livery's texture name (same layout as the model's own texture). */
+    public DoubleDeckerModel(String name, String texture) {
         this.geo = new ResourceLocation("ptm2", "geo/bus/ptmuk_" + name + ".geo.json");
-        this.texture = PtmUk.id("textures/entity/bus/" + name + ".png");
+        this.texture = PtmUk.id("textures/entity/bus/" + texture + ".png");
         this.animations = new ResourceLocation("ptm2", "animations/bus/ptmuk_" + name + ".animation.json");
     }
 
