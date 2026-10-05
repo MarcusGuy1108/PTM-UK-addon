@@ -193,7 +193,7 @@ def side_panel(nearside, inside):
             d.rounded_rectangle((X(a), Y(y1), X(b), Y(y0)), radius=6, fill=(0, 0, 0, 0))
             if not inside:      # hopper vent on alternate upper windows
                 if y0 > 2.5 and i % 2 == 1:
-                    d.rectangle((X(a), Y(y1), X(b), Y(y1 - 0.2)), fill=(20, 22, 26, 140))
+                    d.rectangle((X(a), Y(y1 - 0.2), X(b), Y(y1 - 0.2) + 2), fill=frame)
 
     window_row(X0 + 0.25, X1 - 0.18, *UP_WIN, 7)
     doors = [DOOR1, DOOR2] if nearside else []
@@ -528,12 +528,17 @@ def corner_strip(kind):
     def Y(y):
         return h - tx(y)
     if kind == "front":
-        bands = ((2.69, 4.02), (2.12, 2.64), (1.03, 2.075))
+        bands = ((2.69, 3.86), (2.12, 2.64), (1.03, 2.075))
     else:
         bands = ((UP_WIN[0], UP_WIN[1]),)
     for a, b in bands:
-        d.rectangle((0, Y(b), w, Y(a)), fill=(22, 26, 30, 255))
-        d.line((0, Y(b) + 2, w, Y(b) + 2), fill=(70, 80, 90, 255), width=1)
+        if kind == "front" and (a, b) == (2.12, 2.64):
+            d.rectangle((0, Y(b), w, Y(a)), fill=(22, 26, 30, 255))      # destination box stays dark
+            continue
+        # wrap-round glass: clear, in a thin black rubber surround
+        d.rectangle((0, Y(b) - 2, w, Y(a) + 2), fill=(22, 24, 26, 255))
+        d.rectangle((0, Y(b) + 1, w, Y(a) - 1), fill=(0, 0, 0, 0))
+        d.rectangle((int(w * 0.38), Y(b), int(w * 0.62), Y(a)), fill=(22, 24, 26, 255))     # pillar between the panes
     d.rectangle((0, Y(SKIRT + 0.22), w, Y(SKIRT)), fill=(40, 40, 44, 255))
     if kind == "front":
         d.rectangle((0, Y(0.43), w, Y(SKIRT)), fill=(26, 30, 40, 255))
@@ -561,8 +566,37 @@ def corner(bone_name, cx, cz, sx, sz, y0, y1, region):
         chord = 2 * R_CORNER * math.sin(math.radians(90 / n) / 2) + 0.012
         px, pz = cx + sx * R_CORNER * math.sin(a), cz + sz * R_CORNER * math.cos(a)
         ang = math.degrees(a) * sx * sz
+        # each segment shows its own slice of the strip (column 0 at the side edge), so details
+        # such as the pillar between the wrap-round panes appear once
+        rx, ry, rw, rh = ATL.regions[region]
+        c0, c1 = int(round(rw * i / n)), int(round(rw * (i + 1) / n))
+        r0, r1 = rh - tx(y1), rh - tx(y0)
+        rev = sx * sz > 0
+        out_face, in_face = ("north", "south") if sz < 0 else ("south", "north")
+        uv_out = face_uv(region, sub=(c0, r0, c1 - c0, r1 - r0), flip_u=rev)
+        uv_in = face_uv(region, sub=(c0, r0, c1 - c0, r1 - r0), flip_u=not rev)
         cube(bone_name, (px - chord / 2, y0, pz - 0.0175), (px + chord / 2, y1, pz + 0.0175),
-             {f: region for f in ("north", "south", "east", "west")}, rotation=[0, RY * ang, 0], pivot=(px, 0, pz))
+             {out_face: uv_out, in_face: uv_in, "east": uv_out, "west": uv_out}, rotation=[0, RY * ang, 0], pivot=(px, 0, pz))
+
+
+def roof_corner(cx, cz, sx, sz):
+    n, rr, t0 = 4, R_ROOF, 0.035
+    for k in range(n):
+        p0, p1 = 90 * k / n, 90 * (k + 1) / n
+        y0 = H - rr + rr * math.sin(math.radians(p0))
+        y1 = H - rr + rr * math.sin(math.radians(p1)) + 0.004
+        r_out = R_CORNER - rr * (1 - math.cos(math.radians((p0 + p1) / 2))) + t0 / 2
+        r_in = (R_CORNER - rr * (1 - math.cos(math.radians(min(90, p1 + 11.25)))) - t0 / 2) if k < n - 1 else 0.0
+        t = max(t0, r_out - r_in)
+        rm = r_out - t / 2
+        for i in range(4):
+            a = math.radians(90 * (i + 0.5) / 4)
+            chord = 2 * r_out * math.sin(math.radians(90 / 4) / 2) + 0.012
+            px, pz = cx + sx * rm * math.sin(a), cz + sz * rm * math.cos(a)
+            out_face, in_face = ("north", "south") if sz < 0 else ("south", "north")
+            cube("Roof", (px - chord / 2, y0, pz - t / 2), (px + chord / 2, y1, pz + t / 2),
+                 {out_face: "red", in_face: "ceiling", "east": "red", "west": "red", "up": "red", "down": "ceiling"},
+                 rotation=[0, RY * math.degrees(a) * sx * sz, 0], pivot=(px, 0, pz))
 
 
 def shell():
@@ -610,12 +644,11 @@ def shell():
             outer, inner = ("east", "west") if sx > 0 else ("west", "east")
             cube("Roof", (px - t / 2, py - chord / 2, ZN + R_ROOF), (px + t / 2, py + chord / 2, ZO - R_ROOF),
                  {outer: "red", inner: "ceiling", "up": "red", "down": "red"}, rotation=[0, 0, -sx * math.degrees(am)], pivot=(px, py, 0))
-    # roof corner caps (small pieces where the domes meet the side edges)
+    # roof corners: rings that shrink as the roof edge curves over, each reaching in to the
+    # next so nothing is open from above (the old 45 degree boxes stuck out)
     for x, sx in ((X1, 1), (X0, -1)):
         for z, sz in ((ZN, -1), (ZO, 1)):
-            cx, cz = x - sx * R_CORNER * 0.62, z - sz * R_CORNER * 0.62
-            solid("Roof", (cx - 0.2, H - R_ROOF * 0.85, cz - 0.2), (cx + 0.2, H - 0.06, cz + 0.2), "red",
-                  rotation=[0, 45, 0], pivot=(cx, 0, cz))
+            roof_corner(x - sx * R_CORNER, z - sz * R_CORNER, sx, sz)
     # floors and decks
     cube("Floor", (X0 + t, 0.30, ZN + t), (X1 - t, LOWER_FLOOR, ZO - t), {"up": "carpet", "down": "black"})
     # upper floor / lower ceiling, with the stairwell opening on the offside
