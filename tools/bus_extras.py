@@ -136,6 +136,25 @@ def reader_face(size=64, ss=6):
     return img.resize((size, size), Image.LANCZOS)
 
 
+def instrument_panel(w=96, h=40):
+    """Bus instrument panel: speedometer and rev counter dials either side of a small screen,
+    with a row of warning lamps."""
+    p = Panel(w, h, (22, 24, 28))
+    for cx in (w * 0.2, w * 0.8):
+        p.ellipse(cx - 15, h / 2 - 15, cx + 15, h / 2 + 15, (12, 12, 14), outline=(150, 154, 160), width=1.5)
+        for k in range(9):
+            a = math.radians(225 - k * 33.75)
+            p.line([(cx + 11 * math.cos(a), h / 2 - 11 * math.sin(a)), (cx + 14 * math.cos(a), h / 2 - 14 * math.sin(a))],
+                   (230, 230, 230), 1)
+        p.line([(cx, h / 2), (cx - 9, h / 2 + 6)], (255, 90, 40), 1.5)
+    p.rect(w * 0.37, 8, w * 0.63, h - 12, (30, 70, 120), r=2)
+    p.text(w / 2, h / 2 - 3, "D", 10, (240, 240, 240), NARROW)
+    for i, col in enumerate(((60, 210, 80), (250, 190, 30), (220, 40, 40), (60, 140, 240))):
+        x = w * 0.38 + i * 7
+        p.ellipse(x, h - 9, x + 4, h - 5, col)
+    return p.done()
+
+
 def reader_screen(w=96, h=30):
     """The reader's little screen: TOUCH CARD in white on blue."""
     p = Panel(w, h, (18, 46, 110))

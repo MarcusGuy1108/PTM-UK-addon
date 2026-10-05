@@ -58,13 +58,13 @@ public final class UkBuses {
     private UkBuses() {
     }
 
-    /** A 10.2 m dual-door double decker, 4.4 m tall, diesel with an automatic gearbox. */
+    /** A dual-door double decker (10.2 m, built at 1.18x like PTM2's buses), diesel with an automatic gearbox. */
     private static <T extends DoubleDeckerBus> RegistryObject<EntityType<T>> doubleDecker(String code, String name,
                                                                                          EntityType.EntityFactory<T> factory, int seats) {
         String id = "ptm_" + code + "_" + name;
         RegistryObject<EntityType<T>> type = ENTITIES.register(id, () -> EntityType.Builder.of(factory, MobCategory.AMBIENT)
                 .setUpdateInterval(3).sized(2.5f, 0.7f).setTrackingRange(192).build(PtmUk.id(id).toString()));
-        SPECS.put(code, new VehicleSpecification(3.0f, 4.4f, 10.2f, 0.0f, seats, VehicleTypes.BUS, 1, false, false,
+        SPECS.put(code, new VehicleSpecification(3.0f, 5.2f, 12.0f, 0.0f, seats, VehicleTypes.BUS, 1, false, false,
                 EngineTypes.DIESEL, true, 4, 80.0f, 80.0f, 6.0f, 2.2f, 5.0f));
         TYPES.put(code, type);
         return type;

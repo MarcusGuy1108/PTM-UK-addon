@@ -24,7 +24,11 @@ PTM_ASSETS = ROOT / "src/main/resources/assets/ptm2"
 PTM_ASSETS = ROOT / "src/main/resources/assets/ptm2"
 JAVA = ROOT / "src/main/java/com/ptmuk/bus/UkddLayout.java"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-PX = 16.0          # model pixels per metre
+# PTM2's own buses are built about 1.18 times real size (3 m wide), so ours are too, or they
+# look small next to them and the roads; everything below is in real metres
+SCALE = 1.18
+PX = 16.0 * SCALE  # model pixels per (real) metre
+STEER_TILT = -30   # steering wheel tilt, degrees
 TPM = 64           # texels per metre on the big painted panels
 ATLAS = 2048
 rng = np.random.default_rng(400)
@@ -423,6 +427,7 @@ def build_textures():
     a.add("advert_off", advert_image("off"))
     a.add("moquette", moquette())
     a.add("reader", bus_extras.reader_face(48))
+    a.add("instruments", bus_extras.instrument_panel())
     a.add("carpet", carpet())
     a.add("stopping_off", lit_panel("BUS STOPPING", (160, 24), (70, 20, 20), (20, 20, 22)))
     a.add("stopping_on", lit_panel("BUS STOPPING", (160, 24), (255, 60, 40), (30, 10, 10)))
@@ -759,23 +764,41 @@ SEATS = []        # (right, height, forward, yaw, drop_right, drop_height, drop_
 
 def add_seat(x, z, floor, facing=1, yaw=None):
     seat("Seats", x, z, floor, facing)
-    SEATS.append((-z, floor + 1.0, x, (0.0 if facing > 0 else 180.0) if yaw is None else yaw, 0.0, floor, x))
+    SEATS.append((-z, floor + 0.52, x, (0.0 if facing > 0 else 180.0) if yaw is None else yaw, 0.0, floor, x))
 
 
 def interior():
     zp = (-0.98, -0.53, 0.53, 0.98)       # seat centres across the bus, aisle in the middle
     # driver first: PTM2 treats seat 0 as the driver's seat
-    SEATS.append((-0.72, 1.05, 4.35, 0.0, -0.72, LOWER_FLOOR, 4.35))
+    SEATS.append((-0.72, LOWER_FLOOR + 0.57, 4.35, 0.0, -0.72, LOWER_FLOOR, 4.35))
     seat("Cab", 4.35, 0.72, LOWER_FLOOR + 0.05, 1, width=0.5)
     # cab: partition, dashboard, steering wheel, ticket machine
     solid("Cab", (CAB[0], LOWER_FLOOR, 0.2), (CAB[0] + 0.05, 1.7, ZO - 0.04), "cab")
     solid("Cab", (CAB[0], LOWER_FLOOR, 0.17), (X1 - 0.3, 1.25, 0.22), "cab")
-    solid("Cab", (X1 - 0.35, 0.8, 0.2), (X1 - 0.04, 1.2, ZO - 0.05), "dash")
-    solid("Cab", (X1 - 0.6, 1.22, -0.2), (X1 - 0.04, 1.3, 0.2), "dash")
-    sw = bone("SteeringWheel", "Vehicle", (4.72, 1.32, 0.72))
-    for rot in (0, 45, 90, 135):
-        cube("SteeringWheel", (4.71, 1.32 - 0.2, 0.71), (4.73, 1.32 + 0.2, 0.73), {f: "black" for f in ALL},
-             rotation=[rot, 0, 0], pivot=(4.72, 1.32, 0.72))
+    # dashboard: a shelf right across under the windscreen, the driver's binnacle with the
+    # instruments facing the seat, and a switch panel by the offside window
+    solid("Cab", (X1 - 0.34, 0.82, ZN + 0.18), (X1 - 0.06, 1.04, ZO - 0.06), "dash")
+    solid("Cab", (X1 - 0.36, 1.04, ZN + 0.2), (X1 - 0.08, 1.07, ZO - 0.08), "grey")
+    solid("Cab", (X1 - 0.5, 0.78, ZO - 0.82), (X1 - 0.3, 1.1, ZO - 0.12), "dash")
+    cube("Cab", (X1 - 0.52, 0.86, ZO - 0.78), (X1 - 0.5, 1.08, ZO - 0.16), {"west": "instruments"})
+    solid("Cab", (X1 - 0.55, 1.1, ZO - 0.84), (X1 - 0.3, 1.14, ZO - 0.1), "black")
+    solid("Cab", (4.0, LOWER_FLOOR + 0.35, ZO - 0.16), (X1 - 0.5, 1.02, ZO - 0.05), "dash")
+    solid("Cab", (4.05, 1.02, ZO - 0.15), (X1 - 0.55, 1.04, ZO - 0.06), "black")
+    # steering wheel: a round rim with three spokes and a hub on its column, tilted back like a
+    # bus wheel; the renderer turns the SteeringWheel bone about its own axis
+    hub = (X1 - 0.33, 1.2, 0.72)
+    bone("SteeringTilt", "Vehicle", hub, rotation=[0, 0, STEER_TILT])
+    bone("SteeringWheel", "SteeringTilt", hub)
+    solid("SteeringTilt", (hub[0] - 0.035, 0.95, hub[2] - 0.035), (hub[0] + 0.035, hub[1] - 0.02, hub[2] + 0.035), "black")
+    r, seg = 0.23, 2 * math.pi * 0.23 / 16 * 1.12
+    for i in range(16):
+        cube("SteeringWheel", (hub[0] + r - 0.017, hub[1] - 0.017, hub[2] - seg / 2),
+             (hub[0] + r + 0.017, hub[1] + 0.017, hub[2] + seg / 2), {f: "black" for f in ALL},
+             rotation=[0, i * 22.5, 0], pivot=hub)
+    for a in (90, 210, 330):
+        cube("SteeringWheel", (hub[0], hub[1] - 0.01, hub[2] - 0.022), (hub[0] + r, hub[1] + 0.01, hub[2] + 0.022),
+             {f: "grey" for f in ALL}, rotation=[0, a, 0], pivot=hub)
+    solid("SteeringWheel", (hub[0] - 0.05, hub[1] - 0.02, hub[2] - 0.05), (hub[0] + 0.05, hub[1] + 0.025, hub[2] + 0.05), "black")
     solid("Cab", (4.25, 1.15, 0.05), (4.45, 1.45, 0.2), "dash")          # ticket machine
     # card reader pod on the cab screen behind it, its yellow ring facing the entrance (the
     # layout's validator is here, so card taps on the bus are made at this spot)
@@ -784,7 +807,7 @@ def interior():
     # lower deck: perch seats over the front wheel arch (nearside), facing across the bus
     for x in (2.35, 2.85):
         seat("Seats", x, ZN + 0.68, LOWER_FLOOR + 0.25, 1)
-        SEATS.append((-(ZN + 0.68), LOWER_FLOOR + 1.25, x, -90.0, 0.0, LOWER_FLOOR, x))
+        SEATS.append((-(ZN + 0.68), LOWER_FLOOR + 0.77, x, -90.0, 0.0, LOWER_FLOOR, x))
     # wheelchair bay opposite the centre door: blue backboard
     solid("Interior", (0.3, LOWER_FLOOR + 0.3, ZO - 0.12), (1.15, 1.6, ZO - 0.05), "shell")
     solid("Interior", (0.3, 1.0, ZO - 0.2), (1.15, 1.04, ZO - 0.12), "orange")
@@ -1002,7 +1025,7 @@ def write_geo():
             raise SystemExit(f"missing parent {b['parent']} for {b['name']}")
     geo = {"format_version": "1.12.0", "minecraft:geometry": [{
         "description": {"identifier": "geometry.ukdd", "texture_width": ATLAS, "texture_height": ATLAS,
-                        "visible_bounds_width": 14, "visible_bounds_height": 6, "visible_bounds_offset": [0, 2.5, 0]},
+                        "visible_bounds_width": 17, "visible_bounds_height": 7, "visible_bounds_offset": [0, 3, 0]},
         "bones": sort_bones(bones)}]}
     path = PTM_ASSETS / "geo/bus/ptmuk_ukdd.geo.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1075,7 +1098,7 @@ def floors(upper):
 
 def write_java():
     def f(v):
-        return f"{v:.3f}"
+        return f"{v * SCALE:.3f}"
     seats = ",\n".join(f"                new SeatLocation({f(r)}, {f(h)}, {f(fw)}, {yaw:.1f}f, false, {f(dr)}, {f(dh)}, {f(df)})"
                        for r, h, fw, yaw, dr, dh, df in SEATS)
 
@@ -1099,13 +1122,13 @@ public final class UkddLayout implements BusLayout {{
     public static final double DECK_SWITCH_HEIGHT = {f((LOWER_FLOOR + UPPER_FLOOR) / 2)};
     public static final double DOOR1_FORWARD = {f(sum(DOOR1) / 2)};
     public static final double DOOR2_FORWARD = {f(sum(DOOR2) / 2)};
-    public static final double[] TICKET_MACHINE = {{-0.04, {READER[1]}, {READER[0]}}};
+    public static final double[] TICKET_MACHINE = {{{f(-0.04)}, {f(READER[1])}, {f(READER[0])}}};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
     // label yaws measured in game: 90 faces the front, 180 the nearside, 270 the rear
     public static final float[] DISPLAY_FRONT = {{{f(DISPLAY_FRONT[2])}f, {f(DISPLAY_FRONT[3])}f, 90.0f}};
     public static final float[] DISPLAY_SIDE = {{{f(DISPLAY_SIDE[2])}f, {f(DISPLAY_SIDE[3])}f, 180.0f}};
     public static final float[] DISPLAY_REAR = {{{f(DISPLAY_REAR[2])}f, {f(DISPLAY_REAR[3])}f, 270.0f}};
-    public static final float[] DISPLAY_INSIDE = {{0.62f, 0.3f, 270.0f}};
+    public static final float[] DISPLAY_INSIDE = {{{f(0.62)}f, {f(0.3)}f, 270.0f}};
     public static final int SEAT_COUNT = {len(SEATS)};
 
     private UkddLayout() {{

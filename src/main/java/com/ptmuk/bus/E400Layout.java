@@ -10,19 +10,19 @@ import java.util.List;
 public final class E400Layout implements BusLayout {
     public static final E400Layout INSTANCE = new E400Layout();
 
-    public static final float LOWER_FLOOR = 0.360f;
-    public static final float UPPER_FLOOR = 2.430f;
+    public static final float LOWER_FLOOR = 0.425f;
+    public static final float UPPER_FLOOR = 2.867f;
     /** Above this height (relative to the bus) the local player counts as being upstairs. */
-    public static final double DECK_SWITCH_HEIGHT = 1.395;
-    public static final double DOOR1_FORWARD = 3.985;
-    public static final double DOOR2_FORWARD = -0.910;
-    public static final double[] TICKET_MACHINE = {-0.04, 1.17, 3.99};
+    public static final double DECK_SWITCH_HEIGHT = 1.646;
+    public static final double DOOR1_FORWARD = 4.702;
+    public static final double DOOR2_FORWARD = -1.074;
+    public static final double[] TICKET_MACHINE = {-0.047, 1.381, 4.708};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
     // label yaws measured in game: 90 faces the front, 180 the nearside, 270 the rear
-    public static final float[] DISPLAY_FRONT = {1.960f, 0.440f, 90.0f};
-    public static final float[] DISPLAY_SIDE = {1.450f, 0.240f, 180.0f};
-    public static final float[] DISPLAY_REAR = {0.720f, 0.300f, 270.0f};
-    public static final float[] DISPLAY_INSIDE = {0.62f, 0.3f, 270.0f};
+    public static final float[] DISPLAY_FRONT = {2.313f, 0.519f, 90.0f};
+    public static final float[] DISPLAY_SIDE = {1.711f, 0.283f, 180.0f};
+    public static final float[] DISPLAY_REAR = {0.850f, 0.354f, 270.0f};
+    public static final float[] DISPLAY_INSIDE = {0.732f, 0.354f, 270.0f};
     public static final int SEAT_COUNT = 76;
 
     private E400Layout() {
@@ -47,110 +47,110 @@ public final class E400Layout implements BusLayout {
 
     public static List<SeatLocation> seats() {
         return new ArrayList<>(List.of(
-                new SeatLocation(-0.720, 1.050, 4.350, 0.0f, false, -0.720, 0.360, 4.350),
-                new SeatLocation(0.595, 1.610, 2.450, -90.0f, false, 0.000, 0.360, 2.450),
-                new SeatLocation(0.595, 1.610, 2.950, -90.0f, false, 0.000, 0.360, 2.950),
-                new SeatLocation(0.980, 1.360, 1.600, 0.0f, false, 0.000, 0.360, 1.600),
-                new SeatLocation(0.530, 1.360, 1.600, 0.0f, false, 0.000, 0.360, 1.600),
-                new SeatLocation(0.980, 1.360, 0.800, 0.0f, false, 0.000, 0.360, 0.800),
-                new SeatLocation(0.530, 1.360, 0.800, 0.0f, false, 0.000, 0.360, 0.800),
-                new SeatLocation(0.980, 1.360, 0.000, 0.0f, false, 0.000, 0.360, 0.000),
-                new SeatLocation(0.530, 1.360, 0.000, 0.0f, false, 0.000, 0.360, 0.000),
-                new SeatLocation(-0.530, 1.360, 0.800, 0.0f, false, 0.000, 0.360, 0.800),
-                new SeatLocation(-0.980, 1.360, 0.800, 0.0f, false, 0.000, 0.360, 0.800),
-                new SeatLocation(-0.530, 1.360, 0.000, 0.0f, false, 0.000, 0.360, 0.000),
-                new SeatLocation(-0.980, 1.360, 0.000, 0.0f, false, 0.000, 0.360, 0.000),
-                new SeatLocation(0.980, 1.780, -2.450, 0.0f, false, 0.000, 0.780, -2.450),
-                new SeatLocation(0.530, 1.780, -2.450, 0.0f, false, 0.000, 0.780, -2.450),
-                new SeatLocation(-0.530, 1.780, -2.450, 0.0f, false, 0.000, 0.780, -2.450),
-                new SeatLocation(-0.980, 1.780, -2.450, 0.0f, false, 0.000, 0.780, -2.450),
-                new SeatLocation(0.980, 1.780, -3.250, 0.0f, false, 0.000, 0.780, -3.250),
-                new SeatLocation(0.530, 1.780, -3.250, 0.0f, false, 0.000, 0.780, -3.250),
-                new SeatLocation(-0.530, 1.780, -3.250, 0.0f, false, 0.000, 0.780, -3.250),
-                new SeatLocation(-0.980, 1.780, -3.250, 0.0f, false, 0.000, 0.780, -3.250),
-                new SeatLocation(0.980, 1.360, -4.050, 0.0f, false, 0.000, 0.360, -4.050),
-                new SeatLocation(0.530, 1.360, -4.050, 0.0f, false, 0.000, 0.360, -4.050),
-                new SeatLocation(-0.530, 1.360, -4.050, 0.0f, false, 0.000, 0.360, -4.050),
-                new SeatLocation(-0.980, 1.360, -4.050, 0.0f, false, 0.000, 0.360, -4.050),
-                new SeatLocation(0.980, 1.660, -4.650, 0.0f, false, 0.000, 0.660, -4.650),
-                new SeatLocation(0.530, 1.660, -4.650, 0.0f, false, 0.000, 0.660, -4.650),
-                new SeatLocation(-0.530, 1.660, -4.650, 0.0f, false, 0.000, 0.660, -4.650),
-                new SeatLocation(-0.980, 1.660, -4.650, 0.0f, false, 0.000, 0.660, -4.650),
-                new SeatLocation(0.980, 3.430, 4.500, 0.0f, false, 0.000, 2.430, 4.500),
-                new SeatLocation(0.530, 3.430, 4.500, 0.0f, false, 0.000, 2.430, 4.500),
-                new SeatLocation(-0.530, 3.430, 4.500, 0.0f, false, 0.000, 2.430, 4.500),
-                new SeatLocation(-0.980, 3.430, 4.500, 0.0f, false, 0.000, 2.430, 4.500),
-                new SeatLocation(0.980, 3.430, 3.720, 0.0f, false, 0.000, 2.430, 3.720),
-                new SeatLocation(0.530, 3.430, 3.720, 0.0f, false, 0.000, 2.430, 3.720),
-                new SeatLocation(-0.530, 3.430, 3.720, 0.0f, false, 0.000, 2.430, 3.720),
-                new SeatLocation(-0.980, 3.430, 3.720, 0.0f, false, 0.000, 2.430, 3.720),
-                new SeatLocation(0.980, 3.430, 2.940, 0.0f, false, 0.000, 2.430, 2.940),
-                new SeatLocation(0.530, 3.430, 2.940, 0.0f, false, 0.000, 2.430, 2.940),
-                new SeatLocation(0.980, 3.430, 2.160, 0.0f, false, 0.000, 2.430, 2.160),
-                new SeatLocation(0.530, 3.430, 2.160, 0.0f, false, 0.000, 2.430, 2.160),
-                new SeatLocation(0.980, 3.430, 1.380, 0.0f, false, 0.000, 2.430, 1.380),
-                new SeatLocation(0.530, 3.430, 1.380, 0.0f, false, 0.000, 2.430, 1.380),
-                new SeatLocation(0.980, 3.430, 0.600, 0.0f, false, 0.000, 2.430, 0.600),
-                new SeatLocation(0.530, 3.430, 0.600, 0.0f, false, 0.000, 2.430, 0.600),
-                new SeatLocation(-0.530, 3.430, 0.600, 0.0f, false, 0.000, 2.430, 0.600),
-                new SeatLocation(-0.980, 3.430, 0.600, 0.0f, false, 0.000, 2.430, 0.600),
-                new SeatLocation(0.980, 3.430, -0.180, 0.0f, false, 0.000, 2.430, -0.180),
-                new SeatLocation(0.530, 3.430, -0.180, 0.0f, false, 0.000, 2.430, -0.180),
-                new SeatLocation(-0.530, 3.430, -0.180, 0.0f, false, 0.000, 2.430, -0.180),
-                new SeatLocation(-0.980, 3.430, -0.180, 0.0f, false, 0.000, 2.430, -0.180),
-                new SeatLocation(0.980, 3.430, -0.960, 0.0f, false, 0.000, 2.430, -0.960),
-                new SeatLocation(0.530, 3.430, -0.960, 0.0f, false, 0.000, 2.430, -0.960),
-                new SeatLocation(-0.530, 3.430, -0.960, 0.0f, false, 0.000, 2.430, -0.960),
-                new SeatLocation(-0.980, 3.430, -0.960, 0.0f, false, 0.000, 2.430, -0.960),
-                new SeatLocation(0.980, 3.430, -1.740, 0.0f, false, 0.000, 2.430, -1.740),
-                new SeatLocation(0.530, 3.430, -1.740, 0.0f, false, 0.000, 2.430, -1.740),
-                new SeatLocation(-0.530, 3.430, -1.740, 0.0f, false, 0.000, 2.430, -1.740),
-                new SeatLocation(-0.980, 3.430, -1.740, 0.0f, false, 0.000, 2.430, -1.740),
-                new SeatLocation(0.980, 3.430, -2.520, 0.0f, false, 0.000, 2.430, -2.520),
-                new SeatLocation(0.530, 3.430, -2.520, 0.0f, false, 0.000, 2.430, -2.520),
-                new SeatLocation(-0.530, 3.430, -2.520, 0.0f, false, 0.000, 2.430, -2.520),
-                new SeatLocation(-0.980, 3.430, -2.520, 0.0f, false, 0.000, 2.430, -2.520),
-                new SeatLocation(0.980, 3.430, -3.300, 0.0f, false, 0.000, 2.430, -3.300),
-                new SeatLocation(0.530, 3.430, -3.300, 0.0f, false, 0.000, 2.430, -3.300),
-                new SeatLocation(-0.530, 3.430, -3.300, 0.0f, false, 0.000, 2.430, -3.300),
-                new SeatLocation(-0.980, 3.430, -3.300, 0.0f, false, 0.000, 2.430, -3.300),
-                new SeatLocation(0.980, 3.430, -4.080, 0.0f, false, 0.000, 2.430, -4.080),
-                new SeatLocation(0.530, 3.430, -4.080, 0.0f, false, 0.000, 2.430, -4.080),
-                new SeatLocation(-0.530, 3.430, -4.080, 0.0f, false, 0.000, 2.430, -4.080),
-                new SeatLocation(-0.980, 3.430, -4.080, 0.0f, false, 0.000, 2.430, -4.080),
-                new SeatLocation(0.840, 3.430, -4.590, 0.0f, false, 0.000, 2.430, -4.590),
-                new SeatLocation(0.420, 3.430, -4.590, 0.0f, false, 0.000, 2.430, -4.590),
-                new SeatLocation(-0.000, 3.430, -4.590, 0.0f, false, 0.000, 2.430, -4.590),
-                new SeatLocation(-0.420, 3.430, -4.590, 0.0f, false, 0.000, 2.430, -4.590),
-                new SeatLocation(-0.840, 3.430, -4.590, 0.0f, false, 0.000, 2.430, -4.590)));
+                new SeatLocation(-0.850, 1.097, 5.133, 0.0f, false, -0.850, 0.425, 5.133),
+                new SeatLocation(0.702, 1.333, 2.891, -90.0f, false, 0.000, 0.425, 2.891),
+                new SeatLocation(0.702, 1.333, 3.481, -90.0f, false, 0.000, 0.425, 3.481),
+                new SeatLocation(1.156, 1.038, 1.888, 0.0f, false, 0.000, 0.425, 1.888),
+                new SeatLocation(0.625, 1.038, 1.888, 0.0f, false, 0.000, 0.425, 1.888),
+                new SeatLocation(1.156, 1.038, 0.944, 0.0f, false, 0.000, 0.425, 0.944),
+                new SeatLocation(0.625, 1.038, 0.944, 0.0f, false, 0.000, 0.425, 0.944),
+                new SeatLocation(1.156, 1.038, 0.000, 0.0f, false, 0.000, 0.425, 0.000),
+                new SeatLocation(0.625, 1.038, 0.000, 0.0f, false, 0.000, 0.425, 0.000),
+                new SeatLocation(-0.625, 1.038, 0.944, 0.0f, false, 0.000, 0.425, 0.944),
+                new SeatLocation(-1.156, 1.038, 0.944, 0.0f, false, 0.000, 0.425, 0.944),
+                new SeatLocation(-0.625, 1.038, 0.000, 0.0f, false, 0.000, 0.425, 0.000),
+                new SeatLocation(-1.156, 1.038, 0.000, 0.0f, false, 0.000, 0.425, 0.000),
+                new SeatLocation(1.156, 1.534, -2.891, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(0.625, 1.534, -2.891, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(-0.625, 1.534, -2.891, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(-1.156, 1.534, -2.891, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(1.156, 1.534, -3.835, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(0.625, 1.534, -3.835, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(-0.625, 1.534, -3.835, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(-1.156, 1.534, -3.835, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(1.156, 1.038, -4.779, 0.0f, false, 0.000, 0.425, -4.779),
+                new SeatLocation(0.625, 1.038, -4.779, 0.0f, false, 0.000, 0.425, -4.779),
+                new SeatLocation(-0.625, 1.038, -4.779, 0.0f, false, 0.000, 0.425, -4.779),
+                new SeatLocation(-1.156, 1.038, -4.779, 0.0f, false, 0.000, 0.425, -4.779),
+                new SeatLocation(1.156, 1.392, -5.487, 0.0f, false, 0.000, 0.779, -5.487),
+                new SeatLocation(0.625, 1.392, -5.487, 0.0f, false, 0.000, 0.779, -5.487),
+                new SeatLocation(-0.625, 1.392, -5.487, 0.0f, false, 0.000, 0.779, -5.487),
+                new SeatLocation(-1.156, 1.392, -5.487, 0.0f, false, 0.000, 0.779, -5.487),
+                new SeatLocation(1.156, 3.481, 5.310, 0.0f, false, 0.000, 2.867, 5.310),
+                new SeatLocation(0.625, 3.481, 5.310, 0.0f, false, 0.000, 2.867, 5.310),
+                new SeatLocation(-0.625, 3.481, 5.310, 0.0f, false, 0.000, 2.867, 5.310),
+                new SeatLocation(-1.156, 3.481, 5.310, 0.0f, false, 0.000, 2.867, 5.310),
+                new SeatLocation(1.156, 3.481, 4.390, 0.0f, false, 0.000, 2.867, 4.390),
+                new SeatLocation(0.625, 3.481, 4.390, 0.0f, false, 0.000, 2.867, 4.390),
+                new SeatLocation(-0.625, 3.481, 4.390, 0.0f, false, 0.000, 2.867, 4.390),
+                new SeatLocation(-1.156, 3.481, 4.390, 0.0f, false, 0.000, 2.867, 4.390),
+                new SeatLocation(1.156, 3.481, 3.469, 0.0f, false, 0.000, 2.867, 3.469),
+                new SeatLocation(0.625, 3.481, 3.469, 0.0f, false, 0.000, 2.867, 3.469),
+                new SeatLocation(1.156, 3.481, 2.549, 0.0f, false, 0.000, 2.867, 2.549),
+                new SeatLocation(0.625, 3.481, 2.549, 0.0f, false, 0.000, 2.867, 2.549),
+                new SeatLocation(1.156, 3.481, 1.628, 0.0f, false, 0.000, 2.867, 1.628),
+                new SeatLocation(0.625, 3.481, 1.628, 0.0f, false, 0.000, 2.867, 1.628),
+                new SeatLocation(1.156, 3.481, 0.708, 0.0f, false, 0.000, 2.867, 0.708),
+                new SeatLocation(0.625, 3.481, 0.708, 0.0f, false, 0.000, 2.867, 0.708),
+                new SeatLocation(-0.625, 3.481, 0.708, 0.0f, false, 0.000, 2.867, 0.708),
+                new SeatLocation(-1.156, 3.481, 0.708, 0.0f, false, 0.000, 2.867, 0.708),
+                new SeatLocation(1.156, 3.481, -0.212, 0.0f, false, 0.000, 2.867, -0.212),
+                new SeatLocation(0.625, 3.481, -0.212, 0.0f, false, 0.000, 2.867, -0.212),
+                new SeatLocation(-0.625, 3.481, -0.212, 0.0f, false, 0.000, 2.867, -0.212),
+                new SeatLocation(-1.156, 3.481, -0.212, 0.0f, false, 0.000, 2.867, -0.212),
+                new SeatLocation(1.156, 3.481, -1.133, 0.0f, false, 0.000, 2.867, -1.133),
+                new SeatLocation(0.625, 3.481, -1.133, 0.0f, false, 0.000, 2.867, -1.133),
+                new SeatLocation(-0.625, 3.481, -1.133, 0.0f, false, 0.000, 2.867, -1.133),
+                new SeatLocation(-1.156, 3.481, -1.133, 0.0f, false, 0.000, 2.867, -1.133),
+                new SeatLocation(1.156, 3.481, -2.053, 0.0f, false, 0.000, 2.867, -2.053),
+                new SeatLocation(0.625, 3.481, -2.053, 0.0f, false, 0.000, 2.867, -2.053),
+                new SeatLocation(-0.625, 3.481, -2.053, 0.0f, false, 0.000, 2.867, -2.053),
+                new SeatLocation(-1.156, 3.481, -2.053, 0.0f, false, 0.000, 2.867, -2.053),
+                new SeatLocation(1.156, 3.481, -2.974, 0.0f, false, 0.000, 2.867, -2.974),
+                new SeatLocation(0.625, 3.481, -2.974, 0.0f, false, 0.000, 2.867, -2.974),
+                new SeatLocation(-0.625, 3.481, -2.974, 0.0f, false, 0.000, 2.867, -2.974),
+                new SeatLocation(-1.156, 3.481, -2.974, 0.0f, false, 0.000, 2.867, -2.974),
+                new SeatLocation(1.156, 3.481, -3.894, 0.0f, false, 0.000, 2.867, -3.894),
+                new SeatLocation(0.625, 3.481, -3.894, 0.0f, false, 0.000, 2.867, -3.894),
+                new SeatLocation(-0.625, 3.481, -3.894, 0.0f, false, 0.000, 2.867, -3.894),
+                new SeatLocation(-1.156, 3.481, -3.894, 0.0f, false, 0.000, 2.867, -3.894),
+                new SeatLocation(1.156, 3.481, -4.814, 0.0f, false, 0.000, 2.867, -4.814),
+                new SeatLocation(0.625, 3.481, -4.814, 0.0f, false, 0.000, 2.867, -4.814),
+                new SeatLocation(-0.625, 3.481, -4.814, 0.0f, false, 0.000, 2.867, -4.814),
+                new SeatLocation(-1.156, 3.481, -4.814, 0.0f, false, 0.000, 2.867, -4.814),
+                new SeatLocation(0.991, 3.481, -5.416, 0.0f, false, 0.000, 2.867, -5.416),
+                new SeatLocation(0.496, 3.481, -5.416, 0.0f, false, 0.000, 2.867, -5.416),
+                new SeatLocation(-0.000, 3.481, -5.416, 0.0f, false, 0.000, 2.867, -5.416),
+                new SeatLocation(-0.496, 3.481, -5.416, 0.0f, false, 0.000, 2.867, -5.416),
+                new SeatLocation(-0.991, 3.481, -5.416, 0.0f, false, 0.000, 2.867, -5.416)));
     }
 
     public static List<WheelLocation> wheels() {
-        return new ArrayList<>(List.of(new WheelLocation(2.450), new WheelLocation(-2.600)));
+        return new ArrayList<>(List.of(new WheelLocation(2.891), new WheelLocation(-3.068)));
     }
 
     /** The stairs first (so they win), then for the upper deck its floor everywhere else. */
     public static List<FloorObject> floors(boolean upper) {
         if (upper) {
             return new ArrayList<>(List.of(
-                    new FloorObject(3.037, 3.300, 0.250, 1.220, 0.619f),
-                    new FloorObject(2.775, 3.037, 0.250, 1.220, 0.878f),
-                    new FloorObject(2.513, 2.775, 0.250, 1.220, 1.136f),
-                    new FloorObject(2.250, 2.513, 0.250, 1.220, 1.395f),
-                    new FloorObject(1.988, 2.250, 0.250, 1.220, 1.654f),
-                    new FloorObject(1.725, 1.988, 0.250, 1.220, 1.913f),
-                    new FloorObject(1.463, 1.725, 0.250, 1.220, 2.171f),
-                    new FloorObject(1.200, 1.463, 0.250, 1.220, 2.430f),
-                    new FloorObject(-5.050, 5.050, -2.550, 2.550, 2.430f)));
+                    new FloorObject(3.584, 3.894, 0.295, 1.440, 0.730f),
+                    new FloorObject(3.274, 3.584, 0.295, 1.440, 1.035f),
+                    new FloorObject(2.965, 3.274, 0.295, 1.440, 1.341f),
+                    new FloorObject(2.655, 2.965, 0.295, 1.440, 1.646f),
+                    new FloorObject(2.345, 2.655, 0.295, 1.440, 1.951f),
+                    new FloorObject(2.035, 2.345, 0.295, 1.440, 2.257f),
+                    new FloorObject(1.726, 2.035, 0.295, 1.440, 2.562f),
+                    new FloorObject(1.416, 1.726, 0.295, 1.440, 2.867f),
+                    new FloorObject(-5.959, 5.959, -3.009, 3.009, 2.867f)));
         }
         return new ArrayList<>(List.of(
-                    new FloorObject(3.037, 3.300, 0.250, 1.220, 0.619f),
-                    new FloorObject(2.775, 3.037, 0.250, 1.220, 0.878f),
-                    new FloorObject(2.513, 2.775, 0.250, 1.220, 1.136f),
-                    new FloorObject(2.250, 2.513, 0.250, 1.220, 1.395f),
-                    new FloorObject(1.988, 2.250, 0.250, 1.220, 1.654f),
-                    new FloorObject(1.725, 1.988, 0.250, 1.220, 1.913f),
-                    new FloorObject(1.463, 1.725, 0.250, 1.220, 2.171f),
-                    new FloorObject(1.200, 1.463, 0.250, 1.220, 2.430f)));
+                    new FloorObject(3.584, 3.894, 0.295, 1.440, 0.730f),
+                    new FloorObject(3.274, 3.584, 0.295, 1.440, 1.035f),
+                    new FloorObject(2.965, 3.274, 0.295, 1.440, 1.341f),
+                    new FloorObject(2.655, 2.965, 0.295, 1.440, 1.646f),
+                    new FloorObject(2.345, 2.655, 0.295, 1.440, 1.951f),
+                    new FloorObject(2.035, 2.345, 0.295, 1.440, 2.257f),
+                    new FloorObject(1.726, 2.035, 0.295, 1.440, 2.562f),
+                    new FloorObject(1.416, 1.726, 0.295, 1.440, 2.867f)));
     }
 }

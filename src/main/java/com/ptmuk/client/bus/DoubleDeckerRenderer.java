@@ -57,7 +57,8 @@ public class DoubleDeckerRenderer<T extends DoubleDeckerBus> extends GeoEntityRe
                 b.setRotY(front ? steer : 0);
             });
         }
-        model.getBone("SteeringWheel").ifPresent(b -> b.setRotZ((float) Math.toRadians(bus.strafe * 360.0f)));
+        // the wheel is modelled flat on its tilted column, so it turns about its own y axis
+        model.getBone("SteeringWheel").ifPresent(b -> b.setRotY((float) Math.toRadians(-bus.strafe * 360.0f)));
         super.render(bus, entityYaw, partialTick, ps, buffers, light);
     }
 
