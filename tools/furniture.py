@@ -3,10 +3,12 @@
 Models are in block pixels, facing north (the side the player looks at when placing).
 """
 import json
+import math
 
 import numpy as np
 from PIL import Image
 
+import furniture_hd as H
 import furniture_textures as F
 
 G = None   # the generate_assets module (helpers: box, model, write_json, save, ...)
@@ -52,41 +54,45 @@ BIN_COLOURS = {"black": (34, 35, 37), "grey": (104, 107, 110), "green": (38, 92,
                "brown": (92, 60, 34)}
 
 
+BIN_LABELS = {"black": "GENERAL WASTE", "grey": "GENERAL WASTE", "green": "GARDEN WASTE", "blue": "RECYCLING",
+              "brown": "FOOD WASTE"}
+
+
 def make_textures():
     s = G.save
     p = "furniture/"
     TEX.update({
-        "red": s(F.paint((188, 20, 22), gloss=0.6, wear=0.04), p + "red_paint"),
-        "black": s(F.paint((24, 24, 25), gloss=0.5), p + "black_paint"),
-        "cast_iron": s(F.paint((30, 30, 30), wear=0.12), p + "cast_iron"),
-        "stainless": s(F.stainless(), p + "stainless"),
-        "green_cab": s(F.paint((40, 74, 54), wear=0.1), p + "green_paint"),
-        "grey_cab": s(F.paint((152, 156, 154), wear=0.1), p + "grey_paint"),
-        "feeder": s(F.paint((112, 126, 118), wear=0.12), p + "feeder_paint"),
-        "yellow": s(F.paint((232, 186, 28), wear=0.08), p + "yellow_paint"),
-        "white": s(F.paint((236, 236, 232)), p + "white_plastic"),
-        "blue_metal": s(F.paint((52, 70, 110), gloss=0.3), p + "blue_paint"),
-        "dark": s(F.paint((12, 12, 13)), p + "dark"),
-        "rubber": s(F.paint((20, 20, 20)), p + "rubber"),
-        "concrete": s(F.concrete(), p + "concrete"),
-        "wood": s(F.wood(), p + "wood"),
-        "wood_vertical": s(F.wood().transpose(Image.Transpose.ROTATE_90), p + "wood_vertical"),
+        "red": s(H.paint((188, 20, 22), gloss=0.6, wear=0.04), p + "red_paint"),
+        "black": s(H.paint((28, 28, 30), gloss=0.5, wear=0.03), p + "black_paint"),
+        "cast_iron": s(H.cast_iron(), p + "cast_iron"),
+        "stainless": s(H.stainless(), p + "stainless"),
+        "green_cab": s(H.paint((40, 74, 54), wear=0.1), p + "green_paint"),
+        "grey_cab": s(H.paint((152, 156, 154), wear=0.1), p + "grey_paint"),
+        "feeder": s(H.paint((112, 126, 118), wear=0.12), p + "feeder_paint"),
+        "yellow": s(H.paint((232, 186, 28), wear=0.08), p + "yellow_paint"),
+        "white": s(H.paint((234, 234, 230), streaks=0.6), p + "white_plastic"),
+        "blue_metal": s(H.paint((52, 70, 110), gloss=0.3, wear=0.05), p + "blue_paint"),
+        "dark": s(H.dark(), p + "dark"),
+        "rubber": s(H.rubber(), p + "rubber"),
+        "concrete": s(H.concrete(), p + "concrete"),
+        "wood": s(H.wood(), p + "wood"),
+        "wood_vertical": s(H.wood_vertical(), p + "wood_vertical"),
         "galv": TEXG["pole_galvanised"],
-        "telephone": s(F.telephone_sign(), p + "telephone_sign"),
-        "litter": s(F.litter_band(), p + "litter_band"),
-        "post_plate": s(F.post_plate(), p + "post_plate"),
-        "dog_bin": s(F.dog_bin_face(), p + "dog_bin_face"),
-        "grit": s(F.grit_face(), p + "grit_face"),
+        "telephone": s(H.telephone_sign(), p + "telephone_sign"),
+        "litter": s(H.litter_band(), p + "litter_band"),
+        "post_plate": s(H.post_plate(), p + "post_plate"),
+        "dog_bin": s(H.dog_bin_face(), p + "dog_bin_face"),
+        "grit": s(H.grit_face(), p + "grit_face"),
         "hydrant": s(F.hydrant_plate(), p + "hydrant_plate"),
-        "timetable": s(F.timetable(), p + "timetable"),
+        "timetable": s(H.timetable(), p + "timetable"),
         "bus_flag": s(F.bus_stop_flag(), p + "bus_stop_flag"),
-        "poster": s(F.poster(), p + "poster"),
-        "pay_display": s(F.pay_display_face(), p + "pay_display_face"),
-        "meter": s(F.meter_face(), p + "meter_face"),
-        "ev": s(F.ev_face(), p + "ev_face"),
-        "cab_green_door": s(F.cabinet_door((40, 74, 54)), p + "cabinet_green_door"),
-        "cab_grey_door": s(F.cabinet_door((152, 156, 154), sticker=True), p + "cabinet_grey_door"),
-        "feeder_door": s(F.cabinet_door((112, 126, 118), sticker=True), p + "feeder_door"),
+        "poster": s(H.poster(), p + "poster"),
+        "pay_display": s(H.pay_display_face(), p + "pay_display_face"),
+        "meter": s(H.meter_face(), p + "meter_face"),
+        "ev": s(H.ev_face(), p + "ev_face"),
+        "cab_green_door": s(H.cabinet_door((40, 74, 54)), p + "cabinet_green_door"),
+        "cab_grey_door": s(H.cabinet_door((152, 156, 154), sticker=True), p + "cabinet_grey_door"),
+        "feeder_door": s(H.cabinet_door((112, 126, 118), sticker=True), p + "feeder_door"),
         "manhole": s(F.manhole(), p + "manhole"),
         "drain": s(F.drain(), p + "drain"),
         "led_panel": s(F.led_panel(), p + "led_panel"),
@@ -100,18 +106,19 @@ def make_textures():
         "gatso_front": s(F.camera_front("gatso"), p + "gatso_front"),
         "truvelo_front": s(F.camera_front("truvelo"), p + "truvelo_front"),
         "specs_front": s(F.specs_front(), p + "specs_front"),
-        "camera_yellow": s(F.paint((232, 186, 28), gloss=0.3, wear=0.03), p + "camera_yellow"),
-        "camera_grey": s(F.paint((120, 124, 128), wear=0.05), p + "camera_grey"),
+        "camera_yellow": s(H.paint((232, 186, 28), gloss=0.3, wear=0.03), p + "camera_yellow"),
+        "camera_grey": s(H.paint((120, 124, 128), wear=0.05), p + "camera_grey"),
         "cone": s(F.cone_bands(), p + "cone_bands"),
-        "orange": s(F.paint(F.ORANGE, gloss=0.3), p + "orange_paint"),
+        "orange": s(H.paint(F.ORANGE, gloss=0.3, wear=0.04), p + "orange_paint"),
         "chapter8": s(F.chapter8(), p + "chapter8"),
         "road_closed": s(F.road_closed(), p + "road_closed"),
-        "sos": s(F.sos_panel(), p + "sos_panel"),
+        "sos": s(H.sos_panel(), p + "sos_panel"),
         "marker_plate": s(F.marker_plate(), p + "marker_plate"),
         "w_beam": s(F.w_beam(), p + "w_beam"),
     })
     for name, colour in BIN_COLOURS.items():
-        TEX[f"bin_{name}"] = s(F.plastic(colour), p + f"bin_{name}")
+        TEX[f"bin_{name}"] = s(H.plastic(colour), p + f"bin_{name}")
+        TEX[f"bin_front_{name}"] = s(H.bin_front(colour, BIN_LABELS[name]), p + f"bin_front_{name}")
 
 
 def shelter_glass(size=64):
@@ -129,18 +136,40 @@ def shelter_glass(size=64):
 
 # ----------------------------------------------------------------- items
 
+def wheel_x(x1, x2, cy, cz, r, tex):
+    """A wheel turning about the x axis: eight planks through the hub at 22.5 degree steps make
+    a filled 16-sided disc (element rotations only go to 45 degrees, so half of them are laid
+    the other way round)."""
+    w = r * math.tan(math.radians(11.25)) * 1.04
+    els = []
+    for ang in (0, 22.5, -22.5, 45):
+        els.append(box((x1, cy - w, cz - r), (x2, cy + w, cz + r), tex, rotation=("x", ang, (x1, cy, cz))))
+    for ang in (0, 22.5, -22.5):
+        els.append(box((x1, cy - r, cz - w), (x2, cy + r, cz + w), tex, rotation=("x", ang, (x1, cy, cz))))
+    return els
+
+
 def wheelie_bin(colour):
+    """240 litre wheelie bin: slightly tapered body, rim, overhanging lid with a grip, the
+    handle bar and hinge at the back, two wheels on an axle, a kick foot at the front."""
     b = "#bin_" + colour
-    els = [box((3.5, 1.4, 2.6), (12.5, 16, 13), b),
-           box((3.2, 16, 2.2), (12.8, 16.7, 13.6), b),                      # lid
-           box((4.0, 15.2, 13.4), (12.0, 15.9, 14.4), b),                    # handle
-           box((4.0, 0, 2.8), (12.0, 1.4, 4.2), b),                          # front foot
-           box((2.6, 1.15, 11.9), (13.4, 1.65, 12.4), "#black"),             # axle
-           box((4.2, 6, 2.45), (11.8, 13, 2.6), b, faces=("north",))]        # moulded front panel
-    for x1, x2 in ((2.4, 3.5), (12.5, 13.6)):                                # wheels
-        els.append(box((x1, -0.15, 10.6), (x2, 3.05, 13.8), "#rubber"))
-        els.append(box((x1, -0.15, 10.6), (x2, 3.05, 13.8), "#rubber", rotation=("x", 45, (8, 1.45, 12.2))))
-    return els, {"bin_" + colour: t("bin_" + colour), "black": t("black"), "rubber": t("rubber")}, {}
+    f = "#bin_front_" + colour
+    els = [box((3.9, 1.6, 3.2), (12.1, 8.6, 12.8), b),
+           box((3.5, 8.6, 2.7), (12.5, 15.4, 13.0), b, front=f, full_front_uv=True),
+           box((3.2, 15.4, 2.3), (12.8, 16.0, 13.3), b),                      # rim
+           box((3.0, 16.0, 1.9), (13.0, 16.7, 13.7), b),                      # lid
+           box((3.6, 16.7, 3.0), (12.4, 16.9, 12.6), b),                      # lid moulding
+           box((6.0, 15.4, 1.5), (10.0, 16.4, 1.9), b),                       # lid grip
+           box((3.6, 14.8, 13.0), (12.4, 15.8, 14.4), b),                     # hinge housing
+           box((4.2, 15.9, 14.0), (11.8, 16.6, 15.0), "#black"),              # handle bar
+           box((4.0, 0, 3.0), (12.0, 1.6, 4.6), b),                           # kick foot
+           box((4.4, 0, 9.6), (11.6, 1.6, 12.6), b),                          # wheel housing
+           box((2.6, 1.55, 12.15), (13.4, 2.05, 12.65), "#black")]            # axle
+    for x1, x2 in ((2.3, 3.6), (12.4, 13.7)):
+        els += wheel_x(x1, x2, 1.8, 12.4, 1.8, "#rubber")
+        els.append(box((x1 - 0.05 if x1 < 8 else x2 - 0.2, 1.2, 11.8), (x1 + 0.2 if x1 < 8 else x2 + 0.05, 2.4, 13.0), "#grey_cab"))
+    return els, {"bin_" + colour: t("bin_" + colour), "bin_front_" + colour: t("bin_front_" + colour),
+                 "black": t("black"), "rubber": t("rubber"), "grey_cab": t("grey_cab")}, {}
 
 
 def communal_bin():
@@ -274,18 +303,27 @@ def bus_stop_flag():
 
 
 def bench(kind):
+    """Park bench: two end frames with armrests, seat and back slats with gaps, a centre
+    support and feet. Wood slats on a cast iron frame, or an all steel version."""
     frame = "#black" if kind == "metal" else "#cast_iron"
+    slat = "#black" if kind == "metal" else "#wood"
     els = []
-    for x in (0.6, 14.4):
-        els += [box((x, 0, 3.6), (x + 1, 7, 4.6), frame), box((x, 0, 11), (x + 1, 15.2, 12), frame),
-                box((x, 9, 3.4), (x + 1, 9.8, 11.4), frame), box((x, 7, 3.6), (x + 1, 9, 4.4), frame)]
-    if kind == "metal":
-        els += [box((0.8, 7, 3.6), (15.2, 7.8, 11), "#black"), box((0.8, 8.4, 11.1), (15.2, 15, 11.7), "#black")]
-    else:
-        for z in (3.6, 5.6, 7.6, 9.6):
-            els.append(box((0.8, 7, z), (15.2, 7.8, z + 1.6), "#wood"))
-        for y in (9, 11, 13):
-            els.append(box((0.8, y, 11.2), (15.2, y + 1.4, 11.8), "#wood"))
+    for x in (0.6, 7.5, 14.4):
+        end = x != 7.5
+        els += [box((x, 0, 3.4), (x + 1, 6.8, 4.4), frame),                    # front leg
+                box((x, 0, 11.2), (x + 1, 6.8, 12.2), frame),                  # back leg
+                box((x, 6.2, 3.6), (x + 1, 7.0, 11.8), frame),                 # seat bearer
+                box((x, 7.0, 11.0), (x + 1, 15.6, 11.9), frame,
+                    rotation=("x", -22.5, (x + 0.5, 7.0, 11.4))),               # raked back post
+                box((x - 0.2, 0, 3.0), (x + 1.2, 0.4, 4.8), frame),            # feet
+                box((x - 0.2, 0, 10.8), (x + 1.2, 0.4, 12.6), frame)]
+        if end:
+            els += [box((x - 0.1, 10.2, 3.2), (x + 1.1, 11.0, 11.2), frame),   # armrest
+                    box((x, 7.0, 3.6), (x + 1, 10.2, 4.4), frame)]
+    for z in (3.6, 5.5, 7.4, 9.3):
+        els.append(box((0.4, 7.0, z), (15.6, 7.8, z + 1.5), slat))
+    for y in (8.6, 10.6, 12.6):
+        els.append(box((0.4, y, 11.6), (15.6, y + 1.5, 12.2), slat, rotation=("x", -22.5, (8, y, 11.9))))
     return els, {"black": t("black"), "cast_iron": t("cast_iron"), "wood": t("wood")}, {}
 
 
@@ -532,13 +570,35 @@ FURNITURE = {
 }
 
 
+# real-world sizes for things that were built too small (sx, sy, sz)
+SCALE = {
+    "bus_shelter": (1.0, 1.32, 1.1),            # 2.4 m to the roof, room to stand inside
+    "bus_shelter_london": (1.0, 1.32, 1.1),
+    "belisha_beacon": (1.15, 1.35, 1.15),       # globe at about 2.6 m
+    "pay_and_display": (1.12, 1.22, 1.12),      # 1.7 m
+    "parking_meter": (1.1, 1.1, 1.1),
+    "ev_charger": (1.1, 1.2, 1.1),              # 1.6 m
+    "keep_left_bollard": (1.1, 1.1, 1.1),
+    "hydrant_marker": (1.15, 1.15, 1.15),
+    "grit_bin": (1.08, 1.08, 1.08),
+    "dog_waste_bin": (1.05, 1.05, 1.05),
+    "litter_bin": (1.05, 1.05, 1.05),
+    "truvelo_camera": (1.1, 1.1, 1.1),
+    "emergency_phone": (1.08, 1.08, 1.08),
+    "traffic_cone": (1.0, 0.97, 1.0),
+}
+
+
 def write_furniture(name, builder, tex_keys=None):
     els, textures, opts = builder()
     textures = dict(textures)
     textures["particle"] = next(iter(textures.values()))
     mdl = G.model(textures, els, cutout=opts.get("cutout", False))
-    if opts.get("scale_y"):
-        mdl["transform"] = {"scale": [1, opts["scale_y"], 1], "origin": "corner"}
+    sx, sy, sz = SCALE.get(name, (1, 1, 1))
+    sy *= opts.get("scale_y", 1)
+    if (sx, sy, sz) != (1, 1, 1):
+        # Forge model transform, scaled about the middle of the block's floor
+        mdl["transform"] = {"scale": [sx, sy, sz], "origin": [0.5, 0, 0.5]}
     G.write_json(G.ASSETS / f"models/block/furniture/{name}.json", mdl, compact=True)
     variants = {}
     for facing, y in (("north", 0), ("east", 90), ("south", 180), ("west", 270)):
@@ -547,11 +607,17 @@ def write_furniture(name, builder, tex_keys=None):
             v["y"] = y
         variants[f"facing={facing}"] = v
     G.write_json(G.ASSETS / f"blockstates/{name}.json", {"variants": variants})
-    tall = opts.get("scale_y") or name in ("bus_shelter", "pillar_box", "belisha_beacon")
-    s = 0.35 if name == "bus_shelter" else (0.45 if tall else 0.6)
+    # inventory icon: fit the model's real size into the slot instead of a fixed scale, so
+    # small things (bollards, cones, markers) are not lost in the corner of the slot
+    lo = [min(e["from"][i] for e in els) for i in range(3)]
+    hi = [max(e["to"][i] for e in els) for i in range(3)]
+    size = max((hi[0] - lo[0]) * sx, (hi[1] - lo[1]) * sy, (hi[2] - lo[2]) * sz) / 16
+    s = round(min(1.0, max(0.22, 0.95 / max(size, 0.4))) * 0.68, 3)
+    cy = ((lo[1] + hi[1]) / 2 * sy) / 16                     # centre of the model in blocks
+    ty = round((0.5 - cy) * 16 * s, 2)
     G.write_json(G.ASSETS / f"models/item/{name}.json", {
         "parent": f"{G.MOD_ID}:block/furniture/{name}",
-        "display": {"gui": {"rotation": [30, 225, 0], "translation": [0, -2 if tall else 0, 0], "scale": [s, s, s]},
+        "display": {"gui": {"rotation": [30, 225, 0], "translation": [0, ty, 0], "scale": [s, s, s]},
                     "ground": {"translation": [0, 3, 0], "scale": [0.25, 0.25, 0.25]},
                     "fixed": {"scale": [0.5, 0.5, 0.5]},
                     "thirdperson_righthand": {"rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.375] * 3},
