@@ -212,7 +212,7 @@ def side_panel(nearside, inside):
     for ax in (FRONT_AXLE, REAR_AXLE):
         r = tx(WHEEL_R + 0.12)
         cx, cy = X(ax), Y(0.5)
-        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(0, 0, 0, 0) if not inside else WALL_DARK + (255,))
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(0, 0, 0, 0))   # open on both faces (no flicker on the tyre)
         if not inside:
             d.arc((cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3), 180, 360, fill=(30, 30, 30, 255), width=4)
     if not inside:
@@ -658,12 +658,18 @@ def shell():
                                                                       "south": "wall_dark", "east": "wall_dark", "west": "wall_dark"})
     # chassis underneath, wheel arch housings inside
     solid("Floor", (X0 + 0.1, 0.18, ZN + 0.1), (X1 - 0.1, 0.30, ZO - 0.1), "black")
-    for ax in (FRONT_AXLE, REAR_AXLE):
-        for z0, z1 in ((ZN + t, ZN + 0.32), (ZO - 0.32, ZO - t)):
-            cube("Interior", (ax - 0.62, LOWER_FLOOR, z0), (ax + 0.62, 1.0, z1),
-                 {"up": "wall_dark", "north": "black", "south": "black", "east": "black", "west": "black", "down": "black"})
-            # black arch liner visible through the cut-out
-            solid("Floor", (ax - 0.62, 0.95, z0), (ax + 0.62, 1.02, z1), "black")
+    # wheel arch housings inside: a hump over each wheel and an inner wall beyond the tyres,
+    # kept clear of the wheels (boxes through the tyres flickered on them)
+    for ax, depth in ((FRONT_AXLE, 0.42), (REAR_AXLE, 0.6)):
+        for side in (-1, 1):
+            edge = ZN + t if side < 0 else ZO - t
+            inner = edge - side * depth
+            za, zb = sorted((edge, inner))
+            cube("Interior", (ax - 0.64, 1.04, za), (ax + 0.64, 1.14, zb),
+                 {"up": "wall_dark", "down": "black", "east": "black", "west": "black", "north": "black", "south": "black"})
+            wa, wb = sorted((inner, inner - side * 0.03))
+            cube("Interior", (ax - 0.64, LOWER_FLOOR, wa), (ax + 0.64, 1.14, wb),
+                 {f: ("black" if f in ("east", "west", "down") else "wall_dark") for f in ALL})
 
 
 def wheels():
@@ -769,15 +775,15 @@ def interior():
     solid("Cab", (4.25, 1.15, 0.05), (4.45, 1.45, 0.2), "dash")          # ticket machine
     # lower deck: perch seats over the front wheel arch (nearside), facing across the bus
     for x in (2.35, 2.85):
-        seat("Seats", x, ZN + 0.45, LOWER_FLOOR + 0.25, 1)
-        SEATS.append((-(ZN + 0.45), LOWER_FLOOR + 1.25, x, -90.0, 0.0, LOWER_FLOOR, x))
+        seat("Seats", x, ZN + 0.68, LOWER_FLOOR + 0.25, 1)
+        SEATS.append((-(ZN + 0.68), LOWER_FLOOR + 1.25, x, -90.0, 0.0, LOWER_FLOOR, x))
     # wheelchair bay opposite the centre door: blue backboard
     solid("Interior", (0.3, LOWER_FLOOR + 0.3, ZO - 0.12), (1.15, 1.6, ZO - 0.05), "shell")
     solid("Interior", (0.3, 1.0, ZO - 0.2), (1.15, 1.04, ZO - 0.12), "orange")
     # rear saloon: forward-facing pairs, rear bench
     for x in (-0.25, -1.05, -1.85, -2.65, -3.45, -4.25):
         for z in zp:
-            add_seat(x, z, LOWER_FLOOR + (0.25 if -3.5 < x < -2.2 else 0.0))
+            add_seat(x, z, LOWER_FLOOR + (0.42 if -3.5 < x < -2.2 else 0.0))
     # lower deck poles and bells
     for x, z in ((DOOR1[0] - 0.05, ZN + 0.35), (DOOR1[1] - 0.15, ZN + 0.3), (DOOR2[0] - 0.05, ZN + 0.32), (DOOR2[1] + 0.05, ZN + 0.32),
                  (DOOR2[1] + 0.05, -0.3), (-0.25, 0.3), (-1.85, -0.3), (-1.85, 0.3), (-3.45, -0.3), (-3.45, 0.3), (1.5, 0.3)):

@@ -43,6 +43,8 @@ public abstract class DoubleDeckerBus extends Bus {
     private final String prefix;
     private final List<FloorObject> lowerFloors;
     private final List<FloorObject> upperFloors;
+    private final List<FloorObject> lowerFloorsMirrored;
+    private final List<FloorObject> upperFloorsMirrored;
 
     protected DoubleDeckerBus(EntityType<? extends PathfinderMob> type, Level level, BusLayout layout, String animationPrefix) {
         super(type, level);
@@ -50,6 +52,8 @@ public abstract class DoubleDeckerBus extends Bus {
         this.prefix = animationPrefix;
         this.lowerFloors = layout.floorList(false);
         this.upperFloors = layout.floorList(true);
+        this.lowerFloorsMirrored = mirror(lowerFloors);
+        this.upperFloorsMirrored = mirror(upperFloors);
         this.floorHeight = layout.lowerFloor();
         this.passengerSeatYOffset = -0.6;
         this.totalSections = 1;
@@ -65,16 +69,34 @@ public abstract class DoubleDeckerBus extends Bus {
         this.validators = new ArrayList<>(List.of(new ValidatorLocation(tm[0], tm[1], tm[2], -90.0f, -1)));
     }
 
+    private static List<FloorObject> mirror(List<FloorObject> floors) {
+        List<FloorObject> out = new ArrayList<>();
+        for (FloorObject f : floors) {
+            out.add(new FloorObject(f.forwardStart, f.forwardEnd, -f.leftMax, -f.leftMin, f.floorHeight));
+        }
+        return out;
+    }
+
+    private boolean leftTraffic() {
+        try {
+            return com.rinventor.ptm2.PTM.DATA.get(level()).LEFT_TRAFFIC;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     public BusLayout layout() {
         return layout;
     }
 
     @Override
     public void tick() {
-        super.tick();
+        // choose the deck before PTM2 places the player on a floor this tick, or a player who
+        // arrives upstairs is snapped down to the lower floor first
         if (level().isClientSide) {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> this::pickDeckForLocalPlayer);
         }
+        super.tick();
     }
 
     private void pickDeckForLocalPlayer() {
@@ -82,6 +104,11 @@ public abstract class DoubleDeckerBus extends Bus {
         boolean upper = player != null && player.distanceToSqr(this) < 200
                 && player.getY() - getY() > layout.deckSwitchHeight();
         List<FloorObject> wanted = upper ? upperFloors : lowerFloors;
+        // PTM2 mirrors seats and doors in left-hand traffic worlds but not floors, so mirror the
+        // stair ramp ourselves or it sits on the opposite side to the stairs you can see
+        if (leftTraffic()) {
+            wanted = upper ? upperFloorsMirrored : lowerFloorsMirrored;
+        }
         if (!floors.equals(wanted)) {
             floors = new ArrayList<>(wanted);
         }

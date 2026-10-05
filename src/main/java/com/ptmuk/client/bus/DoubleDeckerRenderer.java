@@ -99,13 +99,14 @@ public class DoubleDeckerRenderer<T extends DoubleDeckerBus> extends GeoEntityRe
                 if (!lit || !bus.insideDisplays) return false;
                 float[] d = layout.displayInside();
                 double w = d[0], rh = d[1] / 4.0;
-                screenRow(ps, buffers, (number + " " + dest).trim(), w * 0.75, rh, 0, 0, WHITE, SCREEN_BG, d[2]);
-                screenRow(ps, buffers, OpSystemUtil.currentClock(bus.level()), w * 0.25, rh, w * 0.75, 0, WHITE, SCREEN_BG, d[2]);
+                // offsets run right to left as seen from the seats: destination and stops on the left, clock and times on the right
+                screenRow(ps, buffers, (number + " " + dest).trim(), w * 0.75, rh, w * 0.25, 0, WHITE, SCREEN_BG, d[2]);
+                screenRow(ps, buffers, OpSystemUtil.currentClock(bus.level()), w * 0.25, rh, 0, 0, WHITE, SCREEN_BG, d[2]);
                 List<Pair<String, String>> stops = bus.nextStopsWithTimes();
                 for (int i = 0; i < 3; i++) {
                     Pair<String, String> p = stops.size() > i ? stops.get(i) : DEBUG ? Pair.of(new String[]{"Bexleyheath", "Dartford", "Woolwich"}[i], (i + 2) + " min") : null;
-                    screenRow(ps, buffers, p != null ? p.getFirst() : "", w * 0.75, rh, 0, rh * (i + 1), BLACK, SCREEN_ROW, d[2]);
-                    screenRow(ps, buffers, p != null ? p.getSecond() : "", w * 0.25, rh, w * 0.75, rh * (i + 1), BLACK, SCREEN_ROW, d[2]);
+                    screenRow(ps, buffers, p != null ? p.getFirst() : "", w * 0.75, rh, w * 0.25, rh * (i + 1), BLACK, SCREEN_ROW, d[2]);
+                    screenRow(ps, buffers, p != null ? p.getSecond() : "", w * 0.25, rh, 0, rh * (i + 1), BLACK, SCREEN_ROW, d[2]);
                 }
                 return true;
             }
