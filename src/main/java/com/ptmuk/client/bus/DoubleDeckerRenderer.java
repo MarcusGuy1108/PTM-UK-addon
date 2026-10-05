@@ -69,11 +69,16 @@ public class DoubleDeckerRenderer<T extends DoubleDeckerBus> extends GeoEntityRe
                 float[] d = layout.displayFront();
                 if (number.isBlank() && (dest == null || dest.isBlank())) {
                     label(ps, buffers, "NOT IN SERVICE", d[0], d[1], 0, 0, LED, true, d[2]);
+                } else if (layout.singleLineFront()) {
+                    // destination on the left, big route number on the right
+                    // (the offset runs right to left as seen from the front, checked in game)
+                    label(ps, buffers, dest, d[0] * 0.7, d[1] * 0.5, d[0] * 0.26, d[1] * 0.25, LED, false, d[2]);
+                    label(ps, buffers, number, d[0] * 0.22, d[1] * 0.8, d[0] * 0.02, d[1] * 0.1, LED, true, d[2]);
                 } else {
                     // as on London blinds: via points small top left, route number big top right,
                     // destination big underneath
-                    label(ps, buffers, via(bus), d[0] * 0.66, d[1] * 0.3, d[0] * 0.03, d[1] * 0.06, LED, false, d[2]);
-                    label(ps, buffers, number, d[0] * 0.26, d[1] * 0.46, d[0] * 0.71, d[1] * 0.02, LED, true, d[2]);
+                    label(ps, buffers, via(bus), d[0] * 0.66, d[1] * 0.3, d[0] * 0.31, d[1] * 0.06, LED, false, d[2]);
+                    label(ps, buffers, number, d[0] * 0.26, d[1] * 0.46, d[0] * 0.02, d[1] * 0.02, LED, true, d[2]);
                     label(ps, buffers, dest, d[0] * 0.9, d[1] * 0.44, d[0] * 0.05, d[1] * 0.52, LED, true, d[2]);
                 }
                 return true;

@@ -32,6 +32,7 @@ public final class ModItems {
     public static final List<RegistryObject<Item>> BUS_ITEMS = new ArrayList<>();
     public static final RegistryObject<Item> ALX400;
     public static final RegistryObject<Item> UK_DOUBLE_DECKER;
+    public static final RegistryObject<Item> ENVIRO400;
     public static final RegistryObject<Item> KIA_K4;
 
     static {
@@ -55,6 +56,8 @@ public final class ModItems {
         BUS_ITEMS.add(ALX400);
         UK_DOUBLE_DECKER = ITEMS.register("uk_double_decker", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.UKDD_CODE));
         BUS_ITEMS.add(UK_DOUBLE_DECKER);
+        ENVIRO400 = ITEMS.register("enviro400", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.E400_CODE));
+        BUS_ITEMS.add(ENVIRO400);
         KIA_K4 = ITEMS.register("kia_k4_gt_line_s", () -> com.ptmuk.bus.UkBuses.carItem(com.ptmuk.bus.UkBuses.K4_CODE, "red"));
         BUS_ITEMS.add(KIA_K4);
         BUS_ITEMS.add(item("london_bus_stop", ModBlocks.BUS_STOP));

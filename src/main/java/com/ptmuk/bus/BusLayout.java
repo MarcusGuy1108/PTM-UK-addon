@@ -32,6 +32,12 @@ public interface BusLayout {
 
     List<FloorObject> floorList(boolean upper);
 
+    /** Front blind with the destination and route number on one line (Enviro400) rather than
+     * London's three-part layout. */
+    default boolean singleLineFront() {
+        return false;
+    }
+
     /** Colour of the fleet number on the front. */
     default int frontIdColour() {
         return 0xFF101010;

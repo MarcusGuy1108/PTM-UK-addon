@@ -33,6 +33,7 @@ public final class UkBuses {
 
     public static final String ALX400_CODE = "124d";
     public static final String UKDD_CODE = "124e";
+    public static final String E400_CODE = "124f";
     /** Cars: 2nd character 3 = modern generation. */
     public static final String K4_CODE = "035k";
 
@@ -40,6 +41,8 @@ public final class UkBuses {
             ALX400Layout.SEAT_COUNT);
     public static final RegistryObject<EntityType<UkDoubleDecker>> UKDD_TYPE = doubleDecker(UKDD_CODE, "ukdd", UkDoubleDecker::new,
             UkddLayout.SEAT_COUNT);
+    public static final RegistryObject<EntityType<Enviro400>> E400_TYPE = doubleDecker(E400_CODE, "e400", Enviro400::new,
+            E400Layout.SEAT_COUNT);
     public static final RegistryObject<EntityType<KiaK4>> K4_TYPE = car(K4_CODE, "k4", KiaK4::new,
             // 2026 Kia K4 hatchback, built about 1.18x real size like PTM2's own cars; 1.6 T-GDi, auto
             new VehicleSpecification(2.2f, 1.7f, 5.24f, 3500.0f, 5, VehicleTypes.CAR, 1, false, false, EngineTypes.PETROL,
