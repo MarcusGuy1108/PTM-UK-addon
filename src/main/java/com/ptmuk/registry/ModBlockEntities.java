@@ -35,6 +35,10 @@ public final class ModBlockEntities {
     public static final RegistryObject<BlockEntityType<com.ptmuk.sign.BusStopBlockEntity>> BUS_STOP = BLOCK_ENTITIES.register(
             "london_bus_stop", () -> BlockEntityType.Builder.of(com.ptmuk.sign.BusStopBlockEntity::new, ModBlocks.BUS_STOP.get()).build(null));
 
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<com.ptmuk.sign.CountdownSignBlockEntity>> COUNTDOWN_SIGN = BLOCK_ENTITIES.register(
+            "bus_countdown_sign", () -> BlockEntityType.Builder.of(com.ptmuk.sign.CountdownSignBlockEntity::new, ModBlocks.COUNTDOWN_SIGN.get()).build(null));
+
     private ModBlockEntities() {
     }
 }

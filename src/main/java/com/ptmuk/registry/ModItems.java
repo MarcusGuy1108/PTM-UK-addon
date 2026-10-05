@@ -36,6 +36,8 @@ public final class ModItems {
     public static final RegistryObject<Item> ALX400_LEN;
     public static final RegistryObject<Item> ENVIRO400_LEN;
     public static final RegistryObject<Item> KIA_K4;
+    public static final RegistryObject<Item> CUBE_CARD;
+    public static final RegistryObject<Item> BUS_PASS;
 
     static {
         register(ModBlocks.POLES, POLE_ITEMS);
@@ -66,8 +68,20 @@ public final class ModItems {
         BUS_ITEMS.add(ENVIRO400_LEN);
         KIA_K4 = ITEMS.register("kia_k4_gt_line_s", () -> com.ptmuk.bus.UkBuses.carItem(com.ptmuk.bus.UkBuses.K4_CODE, "red"));
         BUS_ITEMS.add(KIA_K4);
+        CUBE_CARD = ITEMS.register("cube_card", com.ptmuk.fare.CubeCardItem::new);
+        BUS_ITEMS.add(CUBE_CARD);
+        BUS_PASS = ITEMS.register("bus_pass", com.ptmuk.fare.BusPassItem::new);
+        BUS_ITEMS.add(BUS_PASS);
         BUS_ITEMS.add(item("london_bus_stop", ModBlocks.BUS_STOP));
+        BUS_ITEMS.add(item("bus_countdown_sign", ModBlocks.COUNTDOWN_SIGN));
+        register(ModBlocks.BUS_FURNITURE, BUS_ITEMS);
         register(ModBlocks.FURNITURE, STREET_ITEMS);
+        // the stop furniture shows in the buses tab as well
+        for (RegistryObject<Item> item : List.copyOf(STREET_ITEMS)) {
+            if (java.util.Set.of("bus_shelter", "bus_shelter_london", "bus_stop_flag").contains(item.getId().getPath())) {
+                BUS_ITEMS.add(item);
+            }
+        }
         register(ModBlocks.FENCES, STREET_ITEMS);
         register(ModBlocks.BUILDING, BUILDING_ITEMS);
     }

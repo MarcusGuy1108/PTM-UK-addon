@@ -20,6 +20,7 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.DIRECTION_SIGN.get(), DirectionSignRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.VMS.get(), VmsRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.BUS_STOP.get(), com.ptmuk.client.sign.BusStopRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.COUNTDOWN_SIGN.get(), com.ptmuk.client.sign.CountdownSignRenderer::new);
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.ALX400_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "alx400"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.UKDD_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "ukdd"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.E400_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "e400"));

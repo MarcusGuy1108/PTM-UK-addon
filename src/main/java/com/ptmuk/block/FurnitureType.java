@@ -47,7 +47,12 @@ public enum FurnitureType {
     ROAD_CLOSED_SIGN("road_closed_sign", 1, 0, 6, 15, 18, 11, 0, SoundType.METAL),
     CONCRETE_BARRIER("concrete_barrier", 0, 0, 3, 16, 14, 13, 0, SoundType.STONE),
     EMERGENCY_PHONE("emergency_phone", 4, 0, 5, 12, 22, 11, 0, SoundType.METAL),
-    MARKER_POST("marker_post", 6.5, 0, 7, 9.5, 18, 9, 0, SoundType.STONE);
+    MARKER_POST("marker_post", 6.5, 0, 7, 9.5, 18, 9, 0, SoundType.STONE),
+    // bus stuff (in the buses tab): readers and machines take cards, the markings are road decals
+    CARD_READER("card_reader", 5, 0, 5, 11, 21, 11, 3, SoundType.METAL),
+    TOP_UP_MACHINE("top_up_machine", 2, 0, 3, 14, 24, 13, 4, SoundType.METAL),
+    BUS_STOP_MARKING("bus_stop_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
+    BUS_LANE_MARKING("bus_lane_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE);
 
     private final String id;
     public final double[] box;

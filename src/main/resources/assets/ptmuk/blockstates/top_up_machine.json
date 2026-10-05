@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/top_up_machine"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/top_up_machine",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/top_up_machine",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/top_up_machine",
+   "y": 270
+  }
+ }
+}

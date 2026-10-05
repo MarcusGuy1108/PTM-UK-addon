@@ -30,6 +30,7 @@ import bus_alx400  # noqa: E402
 import bus_ukdd  # noqa: E402
 import bus_e400  # noqa: E402
 import car_k4  # noqa: E402
+import bus_extras  # noqa: E402
 
 MOD_ID = "ptmuk"
 ROOT = Path(__file__).resolve().parent.parent
@@ -861,6 +862,7 @@ def write_lang():
     lang.update(motorway.lang(sys.modules[__name__]))
     lang.update(pylons.lang(sys.modules[__name__]))
     lang.update(building.lang(sys.modules[__name__]))
+    lang.update(bus_extras.lang())
     lang.update({"item.ptmuk.alx400": "Alexander ALX400 (Double Decker)", "entity.ptmuk.ptm_124d_alx400": "Alexander ALX400",
                  "item.ptmuk.uk_double_decker": "UK Double Decker", "entity.ptmuk.ptm_124e_ukdd": "UK Double Decker",
                  "item.ptmuk.enviro400": "Alexander Dennis Enviro400 (London, Double Decker)",
@@ -881,7 +883,7 @@ def write_data():
     fences = [f"{MOD_ID}:{n}" for n in furniture.FENCES]
     everything = [f"{MOD_ID}:{n}" for n in POLES] + signals + [f"{MOD_ID}:{n}" for n in ACCESSORIES] + \
         [f"{MOD_ID}:{n}" for n in furniture.FURNITURE] + fences + \
-        [f"{MOD_ID}:{n}" for n in signs.SIGNS] + [f"{MOD_ID}:london_bus_stop"] + [f"{MOD_ID}:{n}" for n in motorway.NAMES]
+        [f"{MOD_ID}:{n}" for n in signs.SIGNS] + [f"{MOD_ID}:london_bus_stop", f"{MOD_ID}:bus_countdown_sign"] + [f"{MOD_ID}:{n}" for n in motorway.NAMES]
     write_json(DATA / "minecraft/tags/blocks/fences.json", {"replace": False, "values": fences})
     write_json(DATA / "ptm2/tags/items/vehicles.json", {"replace": False, "values": [f"{MOD_ID}:alx400", f"{MOD_ID}:uk_double_decker", f"{MOD_ID}:enviro400", f"{MOD_ID}:alx400_len", f"{MOD_ID}:enviro400_len", f"{MOD_ID}:kia_k4_gt_line_s"]})
     loot = DATA / MOD_ID / "loot_tables"
@@ -925,6 +927,7 @@ def main():
         write_pole(name, radius, surface, collar, cap, tex)
     furniture.generate(sys.modules[__name__], tex)
     signs.generate(sys.modules[__name__])
+    bus_extras.generate(sys.modules[__name__])
     motorway.generate(sys.modules[__name__])
     pylons.generate(sys.modules[__name__])
     building.generate(sys.modules[__name__])

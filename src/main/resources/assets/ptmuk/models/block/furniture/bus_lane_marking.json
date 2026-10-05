@@ -1,0 +1,1 @@
+{"textures":{"bus_lane_marking":"ptmuk:block/furniture/bus_lane_marking","particle":"ptmuk:block/furniture/bus_lane_marking"},"elements":[{"from":[-4,0.05,-16],"to":[20,0.1,32],"faces":{"up":{"texture":"#bus_lane_marking","uv":[0,0,16,16],"rotation":180}}}],"render_type":"minecraft:cutout_mipped"}

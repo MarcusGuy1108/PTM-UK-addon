@@ -8,6 +8,7 @@ import math
 import numpy as np
 from PIL import Image
 
+import bus_extras as B
 import furniture_hd as H
 import furniture_textures as F
 
@@ -115,6 +116,11 @@ def make_textures():
         "sos": s(H.sos_panel(), p + "sos_panel"),
         "marker_plate": s(F.marker_plate(), p + "marker_plate"),
         "w_beam": s(F.w_beam(), p + "w_beam"),
+        "reader": s(B.reader_face(), p + "card_reader"),
+        "reader_screen": s(B.reader_screen(), p + "card_reader_screen"),
+        "top_up": s(B.top_up_face(), p + "top_up_machine_face"),
+        "bus_stop_marking": s(B.marking(["BUS", "STOP"], B.MARK_YELLOW), p + "bus_stop_marking"),
+        "bus_lane_marking": s(B.marking(["BUS", "LANE"], B.MARK_WHITE), p + "bus_lane_marking"),
     })
     for name, colour in BIN_COLOURS.items():
         TEX[f"bin_{name}"] = s(H.plastic(colour), p + f"bin_{name}")
@@ -525,6 +531,39 @@ def marker_post():
     return els, {"white": t("white"), "marker_plate": t("marker_plate"), "red": t("red")}, {}
 
 
+def card_reader():
+    """Stand-alone card reader (as at tram stops): yellow head on a grey post, with the reader
+    pad and a little screen on the front."""
+    els = cyl(8, 8, 1.0, 0.5, 15, "#grey_cab")
+    els += [box((6.2, 0, 6.2), (9.8, 0.6, 9.8), "#dark"),
+            box((4.6, 14.6, 6), (11.4, 21.2, 10), "#yellow"),
+            box((4.4, 21.2, 5.8), (11.6, 21.8, 10.2), "#dark"),
+            face(5.8, 15.4, 10.2, 19.8, 5.97, "reader", emissive=True),
+            face(6.2, 19.95, 9.8, 21.05, 5.97, "reader_screen", emissive=True)]
+    return els, {"grey_cab": t("grey_cab"), "dark": t("dark"), "yellow": t("yellow"), "reader": t("reader"),
+                 "reader_screen": t("reader_screen")}, {}
+
+
+def top_up_machine():
+    """Ticket and top-up machine: a cabinet on a plinth with a hood over the face."""
+    els = [box((3, 0, 4.5), (13, 1.2, 12), "#dark"),
+           box((2.5, 1.2, 4.5), (13.5, 22.5, 12), "#blue_metal"),
+           box((2.2, 22.5, 3.4), (13.8, 24, 12.3), "#dark"),
+           box((2.2, 3.0, 3.4), (2.6, 22.5, 4.5), "#dark"),
+           box((13.4, 3.0, 3.4), (13.8, 22.5, 4.5), "#dark"),
+           face(2.9, 3.6, 13.1, 21.7, 4.47, "top_up")]
+    return els, {"dark": t("dark"), "blue_metal": t("blue_metal"), "top_up": t("top_up")}, {}
+
+
+def road_marking(tex):
+    """Road lettering laid on the road, 1.5 blocks wide and 3 long (the block is the middle), to
+    read for a driver coming from where the player stood when placing it."""
+    top = box((-4, 0.05, -16), (20, 0.1, 32), "#" + tex, faces=("up",))
+    top["faces"]["up"]["uv"] = [0, 0, 16, 16]
+    top["faces"]["up"]["rotation"] = 180
+    return [top], {tex: t(tex)}, {"cutout": True}
+
+
 FURNITURE = {
     "wheelie_bin_black": (lambda: wheelie_bin("black"), "Wheelie Bin (Black)"),
     "wheelie_bin_grey": (lambda: wheelie_bin("grey"), "Wheelie Bin (Grey)"),
@@ -567,6 +606,10 @@ FURNITURE = {
     "concrete_barrier": (concrete_barrier, "Concrete Step Barrier"),
     "emergency_phone": (emergency_phone, "Motorway Emergency Phone"),
     "marker_post": (marker_post, "Motorway Marker Post"),
+    "card_reader": (card_reader, "Card Reader"),
+    "top_up_machine": (top_up_machine, "Ticket & Top-up Machine"),
+    "bus_stop_marking": (lambda: road_marking("bus_stop_marking"), "BUS STOP Road Marking"),
+    "bus_lane_marking": (lambda: road_marking("bus_lane_marking"), "BUS LANE Road Marking"),
 }
 
 
@@ -586,6 +629,7 @@ SCALE = {
     "truvelo_camera": (1.1, 1.1, 1.1),
     "emergency_phone": (1.08, 1.08, 1.08),
     "traffic_cone": (1.0, 0.97, 1.0),
+    "top_up_machine": (1.1, 1.15, 1.1),          # 1.75 m to the top of the hood
 }
 
 
@@ -743,6 +787,7 @@ ROAD_SIGNS = {
     "roadworks_sign": (lambda: F.warning("roadworks"), 12, "Road Works Sign"),
     "speed_camera_sign": (F.speed_camera_sign, 12, "Speed Camera Sign"),
 }
+ROAD_SIGNS.update(B.ROAD_SIGNS)
 
 SIGN_FACE_Z = 10.2
 SIGN_BACK_Z = 10.45

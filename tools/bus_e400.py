@@ -14,6 +14,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+import bus_extras
+
 import livery
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +53,7 @@ DOOR2 = (-1.5, -0.32)                  # exit, nearside, just ahead of the rear 
 DOOR_TOP = 2.2
 STAIRS = (1.2, 3.3)                    # offside, rising towards the rear
 STAIR_Z = (0.25, 1.22)
+READER = (3.99, 1.17)                  # card reader centre: x along the bus, height
 CAB = (3.62, X1)
 # window groups: (x from, x to, panes); the offside has a long blank panel by the stairs
 LOW_WINDOWS_NEAR = ((-0.2, 3.22, 3), (-3.62, -1.6, 2))
@@ -634,6 +637,7 @@ def build_textures():
     a.add("advert_near", advert_image("near"))
     a.add("advert_off", advert_image("off"))
     a.add("moquette", moquette())
+    a.add("reader", bus_extras.reader_face(48))
     a.add("carpet", carpet())
     a.add("headlamp", lamp(False))
     a.add("headlamp_on", lamp(True))
@@ -1045,6 +1049,10 @@ def interior():
         cube("SteeringWheel", (4.71, 1.32 - 0.2, 0.71), (4.73, 1.32 + 0.2, 0.73), {f: "black" for f in ALL},
              rotation=[rot, 0, 0], pivot=(4.72, 1.32, 0.72))
     solid("Cab", (4.25, 1.15, 0.05), (4.45, 1.45, 0.2), "dash")          # ticket machine
+    # card reader pod on the cab screen behind it, its yellow ring facing the entrance (the
+    # layout's validator is here, so card taps on the bus are made at this spot)
+    solid("Cab", (READER[0] - 0.13, READER[1] - 0.13, 0.05), (READER[0] + 0.13, READER[1] + 0.13, 0.17), "dash")
+    cube("Cab", (READER[0] - 0.11, READER[1] - 0.11, 0.035), (READER[0] + 0.11, READER[1] + 0.11, 0.05), {"north": "reader"})
     # lower deck: perch seats over the front wheel arch (nearside), facing across the bus
     for x in (2.45, 2.95):
         seat("Seats", x, ZN + 0.68, LOWER_FLOOR + 0.25, 1)
@@ -1422,7 +1430,7 @@ public final class E400Layout implements BusLayout {{
     public static final double DECK_SWITCH_HEIGHT = {f((LOWER_FLOOR + UPPER_FLOOR) / 2)};
     public static final double DOOR1_FORWARD = {f(sum(DOOR1) / 2)};
     public static final double DOOR2_FORWARD = {f(sum(DOOR2) / 2)};
-    public static final double[] TICKET_MACHINE = {{-0.12, 1.3, 4.35}};
+    public static final double[] TICKET_MACHINE = {{-0.04, {READER[1]}, {READER[0]}}};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
     // label yaws measured in game: 90 faces the front, 180 the nearside, 270 the rear
     public static final float[] DISPLAY_FRONT = {{{f(DISPLAY_FRONT[2])}f, {f(DISPLAY_FRONT[3])}f, 90.0f}};

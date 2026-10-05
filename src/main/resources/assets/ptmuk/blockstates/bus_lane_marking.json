@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/bus_lane_marking"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/bus_lane_marking",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/bus_lane_marking",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/bus_lane_marking",
+   "y": 270
+  }
+ }
+}

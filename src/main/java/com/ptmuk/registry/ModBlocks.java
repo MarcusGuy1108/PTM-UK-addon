@@ -40,6 +40,10 @@ public final class ModBlocks {
     public static final Map<String, RegistryObject<Block>> SIGNALS = new LinkedHashMap<>();
     /** Street furniture, in creative-tab order. */
     public static final Map<String, RegistryObject<Block>> FURNITURE = new LinkedHashMap<>();
+    /** Bus furniture (card readers, machines, road markings), in the buses tab. */
+    public static final Map<String, RegistryObject<Block>> BUS_FURNITURE = new LinkedHashMap<>();
+    public static final Set<FurnitureType> BUS_TYPES = EnumSet.of(FurnitureType.CARD_READER, FurnitureType.TOP_UP_MACHINE,
+            FurnitureType.BUS_STOP_MARKING, FurnitureType.BUS_LANE_MARKING);
     /** Fences and railings. */
     public static final Map<String, RegistryObject<Block>> FENCES = new LinkedHashMap<>();
     /** Every accessory, in creative-tab order. */
@@ -50,6 +54,7 @@ public final class ModBlocks {
     public static final Map<String, RegistryObject<Block>> MOTORWAY = new LinkedHashMap<>();
     public static final RegistryObject<Block> VMS;
     public static final RegistryObject<Block> BUS_STOP = BLOCKS.register("london_bus_stop", com.ptmuk.sign.BusStopBlock::new);
+    public static final RegistryObject<Block> COUNTDOWN_SIGN = BLOCKS.register("bus_countdown_sign", com.ptmuk.sign.CountdownSignBlock::new);
     /** UK building materials: full blocks, then their slabs. */
     public static final Map<String, RegistryObject<Block>> BUILDING = new LinkedHashMap<>();
     /** Transmission towers, one block per tower type (each cell of the tower is a state). */
@@ -66,7 +71,12 @@ public final class ModBlocks {
             }
         }
         for (FurnitureType type : FurnitureType.values()) {
-            FURNITURE.put(type.id(), BLOCKS.register(type.id(), () -> new FurnitureBlock(type)));
+            RegistryObject<Block> block = BLOCKS.register(type.id(), () -> switch (type) {
+                case CARD_READER -> new com.ptmuk.fare.CardReaderBlock(type);
+                case TOP_UP_MACHINE -> new com.ptmuk.fare.TopUpMachineBlock(type);
+                default -> new FurnitureBlock(type);
+            });
+            (BUS_TYPES.contains(type) ? BUS_FURNITURE : FURNITURE).put(type.id(), block);
         }
         fence("palisade_fence", SoundType.METAL);
         fence("black_railings", SoundType.METAL);

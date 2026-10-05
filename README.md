@@ -144,6 +144,40 @@ Breaking any part removes the whole tower. In survival you get the builder back.
 
 **Overhead Line Tool:** right-click a tower, then the next one, to string the conductors between them. Spans can be up to 256 blocks. Each conductor connects to its partner on the other tower, with a realistic sag; 400 kV lines are drawn as twin bundles, plus the earth wire. Sneak + right-click a tower to take down its spans. The wires are drawn by the client, so Distant Horizons doesn't show them beyond your normal render distance.
 
+### Buses and cars
+
+In the **UK Buses & Cars** tab. These are PTM2 vehicles, so they drive, take routes and carry passengers like PTM2's own:
+
+- **Alexander ALX400** and **Alexander Dennis Enviro400** (London spec): dual door, red, with a Stagecoach-style interior.
+- **UK Double Decker**: the original stand-alone design.
+- **Len Livery** versions of the ALX400 and Enviro400: red at the front fading to white at the back, with yellow and black stripes and music notes. To paint your own artwork on the white part, override `assets/ptmuk/textures/entity/bus/alx400_len.png` or `e400_len.png` in a resource pack. Also override the matching `_left.png` file, which is used with left-hand traffic on.
+- **Kia K4 GT-Line S** (red), as a car.
+
+With PTM2's left-hand traffic setting on, the buses have their doors on the left, as in the UK. All three have:
+
+- Working upper decks and stairs.
+- Destination blinds (front, side and rear) and inside next-stop screens.
+- Lights that glow at night.
+- Working mirrors.
+- A yellow card reader by the entrance.
+
+### Fares and bus stop kit
+
+- **Cube Card** (pay as you go):
+  - Holds credit in PTM2 money. Right-click by a bus's yellow card reader to pay the fare, which is the world's PTM2 single ticket price.
+  - Any tap within an hour of a paid one is free (a hopper fare).
+  - Right-click anywhere else to see the balance.
+- **Bus Pass**: free travel; every tap is accepted.
+- PTM2's own **bank card** works contactless (the fare comes straight from the bank account). PTM2's **transport card** uses one of its rides.
+- Taps work on the reader of any PTM2 vehicle with a validator, not only these buses.
+- **Ticket & Top-up Machine**:
+  - Right-click with a Cube Card to add ten fares of credit (sneak for one fare), paid from your PTM2 bank account.
+  - Right-click with an empty hand for a new card.
+- **Card Reader**: a stand-alone reader on a post. An accepted tap gives a one-second redstone pulse, for doors or gates.
+- **Bus Countdown Sign**: a London-style live arrivals board. Place it inside or next to a PTM2 stop and it shows the next three buses from PTM2's own departures, plus the stop name and the time. It stands on a pole, or hangs from a shelter roof.
+- **Road markings**: BUS STOP (yellow) and BUS LANE (white). They read for traffic coming from where you stood when placing them.
+- **Road signs** (in the road signs tab): bus lane, buses only, bus stop clearway.
+
 ## How it works with PTM2
 
 The UK signals extend PTM2's own `TrafficLight` block, so as far as PTM2 is concerned they *are* PTM2 traffic lights:

@@ -16,7 +16,7 @@ public final class UkddLayout implements BusLayout {
     public static final double DECK_SWITCH_HEIGHT = 1.340;
     public static final double DOOR1_FORWARD = 4.350;
     public static final double DOOR2_FORWARD = 0.950;
-    public static final double[] TICKET_MACHINE = {-0.12, 1.3, 4.35};
+    public static final double[] TICKET_MACHINE = {-0.04, 1.17, 3.99};
     /** Display sizes for the renderer: width, height (blocks) and label yaw. */
     // label yaws measured in game: 90 faces the front, 180 the nearside, 270 the rear
     public static final float[] DISPLAY_FRONT = {1.680f, 0.440f, 90.0f};
