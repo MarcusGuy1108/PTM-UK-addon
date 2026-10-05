@@ -21,14 +21,12 @@ public abstract class TransportModelDataMixin {
         }
     }
 
-    /** So transport companies and depots can run our buses too. */
+    /** So transport companies and depots can run our buses (and list our cars) too. */
     @Inject(method = "models", at = @At("RETURN"))
     private static void ptmuk$models(VehicleTypes type, CallbackInfoReturnable<List<String>> cir) {
-        if (type == VehicleTypes.BUS) {
-            for (String code : UkBuses.models()) {
-                if (!cir.getReturnValue().contains(code)) {
-                    cir.getReturnValue().add(code);
-                }
+        for (String code : UkBuses.models(type)) {
+            if (!cir.getReturnValue().contains(code)) {
+                cir.getReturnValue().add(code);
             }
         }
     }

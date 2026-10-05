@@ -22,5 +22,6 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.BUS_STOP.get(), com.ptmuk.client.sign.BusStopRenderer::new);
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.ALX400_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "alx400"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.UKDD_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "ukdd"));
+        event.registerEntityRenderer(com.ptmuk.bus.UkBuses.K4_TYPE.get(), com.ptmuk.client.bus.KiaK4Renderer::new);
     }
 }

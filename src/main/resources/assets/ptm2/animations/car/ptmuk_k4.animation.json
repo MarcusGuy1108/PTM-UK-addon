@@ -1,0 +1,496 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "k4.door1_open": {
+   "bones": {
+    "Door1": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        -65,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.door1_close": {
+   "bones": {
+    "Door1": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        -65,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.door2_open": {
+   "bones": {
+    "Door2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        65,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.door2_close": {
+   "bones": {
+    "Door2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        65,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.door3_open": {
+   "bones": {
+    "Door3": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        -65,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.door3_close": {
+   "bones": {
+    "Door3": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        -65,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.door4_open": {
+   "bones": {
+    "Door4": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        65,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.door4_close": {
+   "bones": {
+    "Door4": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        65,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.trunk_open": {
+   "bones": {
+    "Trunk": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        70,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.trunk_close": {
+   "bones": {
+    "Trunk": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        70,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.6,
+   "loop": "hold_on_last_frame"
+  },
+  "k4.front_lights": {
+   "bones": {
+    "FrontLights": {
+     "position": [
+      0,
+      0,
+      -0.32
+     ]
+    }
+   },
+   "loop": true
+  },
+  "k4.stop_lights": {
+   "bones": {
+    "StopLights": {
+     "position": [
+      0,
+      0,
+      0.32
+     ]
+    }
+   },
+   "loop": true
+  },
+  "k4.reverse_lights": {
+   "bones": {
+    "BackLights": {
+     "position": [
+      0,
+      0,
+      0.32
+     ]
+    }
+   },
+   "loop": true
+  },
+  "k4.left_signal": {
+   "bones": {
+    "FrontLeftTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        -0.32
+       ]
+      },
+      "0.4": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "BackLeftTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0.32
+       ]
+      },
+      "0.4": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "LeftTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0.32,
+        0,
+        0
+       ]
+      },
+      "0.4": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.8,
+   "loop": true
+  },
+  "k4.right_signal": {
+   "bones": {
+    "FrontRightTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        -0.32
+       ]
+      },
+      "0.4": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "BackRightTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0.32
+       ]
+      },
+      "0.4": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "RightTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        -0.32,
+        0,
+        0
+       ]
+      },
+      "0.4": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 0.8,
+   "loop": true
+  },
+  "k4.wipers": {
+   "bones": {
+    "1": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        0,
+        -75
+       ]
+      },
+      "1.2": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.6": {
+       "vector": [
+        0,
+        0,
+        -75
+       ]
+      },
+      "1.2": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.2,
+   "loop": true
+  },
+  "k4.wipers_off": {
+   "bones": {},
+   "loop": true
+  },
+  "k4.back_wiper": {
+   "bones": {
+    "BackWiper": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "0.8": {
+       "vector": [
+        0,
+        0,
+        -100
+       ]
+      },
+      "1.6": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.6,
+   "loop": true
+  },
+  "k4.null": {
+   "bones": {},
+   "loop": true
+  }
+ }
+}

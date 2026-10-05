@@ -1,0 +1,6 @@
+{
+ "parent": "minecraft:item/generated",
+ "textures": {
+  "layer0": "ptmuk:item/kia_k4_gt_line_s"
+ }
+}
