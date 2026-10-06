@@ -175,7 +175,11 @@ def lens_classic(colour, lit, symbol=None):
     rim = np.clip((d - R * 0.92) / (R * 0.08), 0, 1)
     rgb = rgb * (1 - 0.75 * rim)[..., None] + np.array([22, 22, 21.0]) * (0.75 * rim)[..., None]
     rgb += noise((LENS, LENS, 1), 1.5)
-    return to_image(rgb, _round_alpha(x, y, R))
+    alpha = _round_alpha(x, y, R)
+    # black outside the lens: the lit lamps are drawn additively (ClassicLampRenderer), which
+    # ignores alpha, so any colour in the corners showed as a glowing square
+    rgb = rgb * (alpha / 255.0)[..., None]
+    return to_image(rgb, alpha)
 
 
 def fit_mask(mask, scale, dx=0.0):
