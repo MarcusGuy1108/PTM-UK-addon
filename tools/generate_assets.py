@@ -420,9 +420,10 @@ def hood(style, kind, cx, cy, dia, rnd):
     if kind == "low_level_cycle":
         return hood_ring(cx, cy, r, steps(22.5, 157.5), lambda p: 1.1 + 0.5 * math.sin(math.radians(p)), t=0.25)
     if style == "led":
-        # Helios-style cowl: deep at the top, cut back towards the sides, open underneath
-        return hood_ring(cx, cy, r, steps(-22.5, 202.5),
-                         lambda p: 2.9 * (0.36 + 0.64 * max(0.0, math.sin(math.radians(p)))))
+        # LED cowl as on the photos: a full tube cut at an angle, long at the top (about the
+        # lens diameter) and running down to a short lip at the bottom, on a slim housing
+        return hood_ring(cx, cy, r, steps(-67.5, 247.5),
+                         lambda p: dia * 0.95 * (0.14 + 0.86 * (math.sin(math.radians(p)) + 1) / 2))
     if style == "classic_large_green":
         # older "pods": long at the top, cut back steeply towards the bottom
         return hood_ring(cx, cy, r + 0.05, steps(-67.5, 247.5),
@@ -437,7 +438,7 @@ def face_set_back(style):
     """How far (px) the front of the head sits back from the standard face: LED heads have a
     slim black housing, so their face (with its full-length cowls and lenses) is set back
     towards the board and the head stands out less from the pole."""
-    return 1.6 if style == "led" else 0.0
+    return 2.0 if style == "led" else 0.0
 
 
 def shift_z(elements, dz):
