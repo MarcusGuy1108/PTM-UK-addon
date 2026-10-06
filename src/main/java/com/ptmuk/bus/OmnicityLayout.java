@@ -23,7 +23,7 @@ public final class OmnicityLayout implements BusLayout {
     public static final float[] DISPLAY_SIDE = {1.711f, 0.283f, 180.0f};
     public static final float[] DISPLAY_REAR = {0.850f, 0.354f, 270.0f};
     public static final float[] DISPLAY_INSIDE = {0.732f, 0.354f, 270.0f};
-    public static final int SEAT_COUNT = 78;
+    public static final int SEAT_COUNT = 75;
 
     private OmnicityLayout() {
     }
@@ -62,22 +62,19 @@ public final class OmnicityLayout implements BusLayout {
                 new SeatLocation(-0.979, 1.038, 1.263, 0.0f, false, 0.000, 0.425, 1.357),
                 new SeatLocation(-0.555, 1.038, 0.319, 0.0f, false, 0.000, 0.425, 0.413),
                 new SeatLocation(-0.979, 1.038, 0.319, 0.0f, false, 0.000, 0.425, 0.413),
-                new SeatLocation(0.979, 1.534, -3.398, 0.0f, false, 0.000, 0.920, -3.304),
-                new SeatLocation(0.555, 1.534, -3.398, 0.0f, false, 0.000, 0.920, -3.304),
-                new SeatLocation(-0.555, 1.534, -3.398, 0.0f, false, 0.000, 0.920, -3.304),
-                new SeatLocation(-0.979, 1.534, -3.398, 0.0f, false, 0.000, 0.920, -3.304),
-                new SeatLocation(0.979, 1.534, -4.342, 0.0f, false, 0.000, 0.920, -4.248),
-                new SeatLocation(0.555, 1.534, -4.342, 0.0f, false, 0.000, 0.920, -4.248),
-                new SeatLocation(-0.555, 1.534, -4.342, 0.0f, false, 0.000, 0.920, -4.248),
-                new SeatLocation(-0.979, 1.534, -4.342, 0.0f, false, 0.000, 0.920, -4.248),
-                new SeatLocation(0.979, 1.038, -5.286, 0.0f, false, 0.000, 0.425, -5.192),
-                new SeatLocation(0.555, 1.038, -5.286, 0.0f, false, 0.000, 0.425, -5.192),
-                new SeatLocation(-0.555, 1.038, -5.286, 0.0f, false, 0.000, 0.425, -5.192),
-                new SeatLocation(-0.979, 1.038, -5.286, 0.0f, false, 0.000, 0.425, -5.192),
-                new SeatLocation(0.979, 1.392, -5.994, 0.0f, false, 0.000, 0.779, -5.900),
-                new SeatLocation(0.555, 1.392, -5.994, 0.0f, false, 0.000, 0.779, -5.900),
-                new SeatLocation(-0.555, 1.392, -5.994, 0.0f, false, 0.000, 0.779, -5.900),
-                new SeatLocation(-0.979, 1.392, -5.994, 0.0f, false, 0.000, 0.779, -5.900),
+                new SeatLocation(1.050, 1.534, -2.985, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(0.637, 1.534, -2.985, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(1.050, 1.534, -3.929, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(0.637, 1.534, -3.929, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(-1.050, 1.534, -2.985, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(-0.637, 1.534, -2.985, 0.0f, false, 0.000, 0.920, -2.891),
+                new SeatLocation(-1.050, 1.534, -3.929, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(-0.637, 1.534, -3.929, 0.0f, false, 0.000, 0.920, -3.835),
+                new SeatLocation(0.909, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
+                new SeatLocation(0.496, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
+                new SeatLocation(-0.000, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
+                new SeatLocation(-0.496, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
+                new SeatLocation(-0.909, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
                 new SeatLocation(0.979, 3.481, 5.629, 0.0f, false, 0.000, 2.867, 5.723),
                 new SeatLocation(0.555, 3.481, 5.629, 0.0f, false, 0.000, 2.867, 5.723),
                 new SeatLocation(-0.555, 3.481, 5.629, 0.0f, false, 0.000, 2.867, 5.723),
@@ -155,6 +152,10 @@ public final class OmnicityLayout implements BusLayout {
                     new FloorObject(3.206, 3.481, 0.295, 1.440, 2.053f),
                     new FloorObject(3.481, 3.756, 0.295, 1.440, 2.325f),
                     new FloorObject(3.756, 4.032, 0.295, 1.440, 2.596f),
-                    new FloorObject(4.032, 4.307, 0.295, 1.440, 2.867f)));
+                    new FloorObject(4.032, 4.307, 0.295, 1.440, 2.867f),
+                    new FloorObject(-4.720, -4.272, -3.009, 3.009, 0.673f),
+                    new FloorObject(-6.230, -4.720, -3.009, 3.009, 0.920f),
+                    new FloorObject(-4.272, -2.360, -3.009, -0.342, 0.920f),
+                    new FloorObject(-4.272, -2.360, 0.342, 3.009, 0.920f)));
     }
 }

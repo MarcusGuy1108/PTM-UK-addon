@@ -65,6 +65,16 @@ STAIR_RAIL_SENSE = -1                  # flip if the stair handrail slopes the w
 READER = (4.34, 1.17)                  # card reader centre: x along the bus, height
 CAB = (3.97, X1)
 FS, RS = 0.35, -0.35                   # Enviro400 interior positions moved forward / back by these
+# lower deck behind the centre door, as on London OmniCitys: a raised box each side over the
+# rear axle (two forward-facing pairs on a plinth, walled off from the gangway by a tall panel
+# along its whole length), then the gangway steps up to a back row of five over the engine
+POD = (-3.62, -2.0, 0.42)              # x from, x to, plinth height
+POD_ROWS = (-2.45, -3.25)
+POD_Z = (0.96, 0.54)                  # |z| of the window and gangway seats in the boxes
+POD_PANEL = 0.29                       # |z| of the gangway face of the tall panels
+POD_PANEL_TOP = POD[2] + 1.25          # panel height above the lower floor: level with the seat tops
+REAR_STEPS = ((-4.0, POD[0], 0.21), (X0 + 0.12, -4.0, 0.42))   # gangway steps up to the back row
+BACK_ROW = -4.6
 # window groups: (x from, x to, panes); the offside has a blank panel by the stairs
 LOW_WINDOWS_NEAR = ((-0.55, 3.57, 3), (-4.1, -1.97, 2))
 LOW_WINDOWS_OFF = ((-4.1, 1.42, 4),)
@@ -1139,20 +1149,42 @@ def interior():
     # wheelchair bay opposite the centre door: blue backboard and a rail
     solid("Interior", (DOOR2[0], LOWER_FLOOR + 0.3, ZO - 0.12), (DOOR2[1], 1.6, ZO - 0.05), "shell")
     solid("Interior", (DOOR2[0], 1.0, ZO - 0.2), (DOOR2[1], 1.04, ZO - 0.12), "orange")
-    # rear saloon behind the centre door, raised over the axle and the engine
-    for x in (-2.45 + RS, -3.25 + RS, -4.05 + RS, -4.65 + RS):
-        for z in zp:
-            add_seat(x, z, LOWER_FLOOR + (0.42 if -3.5 + RS < x < -2.2 + RS else 0.3 if x < -4.5 + RS else 0.0))
-    # raised floors under the seats over the rear axle and the engine (they floated before)
-    for (xa, xb, h) in ((-3.7 + RS, -2.0 + RS, 0.42), (X0 + 0.1, -4.3 + RS, 0.3)):
-        for za, zb in ((ZN + 0.05, -0.3), (0.3, ZO - 0.05)):
-            cube("Interior", (xa, LOWER_FLOOR, za), (xb, LOWER_FLOOR + h, zb),
-                 {"up": "carpet", "north": "wall_dark", "south": "wall_dark", "east": "yellow", "west": "wall_dark"})
+    # rear saloon behind the centre door, as on London OmniCitys: a raised box each side over
+    # the rear axle with two forward-facing pairs, a tall panel along the gangway the full length
+    # of the box (the gangway runs between them like a corridor), then two steps up to the back
+    # row of five across the bus
+    x0, x1, ph = POD
+    top = LOWER_FLOOR + ph
+    for side in (-1, 1):
+        wall = ZN + T if side < 0 else ZO - T
+        za, zb = sorted((wall, side * POD_PANEL))
+        cube("Interior", (x0, LOWER_FLOOR, za), (x1, top, zb),
+             {"up": "carpet", "east": "wall_dark", "north": "wall_dark", "south": "wall_dark", "west": "wall_dark"})
+        solid("Interior", (x1 - 0.04, top - 0.03, za), (x1 + 0.004, top + 0.003, zb), "yellow")     # nosing
+        pa, pb = sorted((side * POD_PANEL, side * (POD_PANEL + 0.04)))
+        solid("Interior", (x0, LOWER_FLOOR, pa), (x1, LOWER_FLOOR + POD_PANEL_TOP, pb), "wall")
+        solid("Interior", (x0, LOWER_FLOOR + POD_PANEL_TOP, pa - 0.005), (x1, LOWER_FLOOR + POD_PANEL_TOP + 0.03, pb + 0.005),
+              "wall_dark")
+        for x in POD_ROWS:
+            for z in POD_Z:
+                add_seat(x, side * z, top)
+    for xa, xb, h in REAR_STEPS:
+        cube("Interior", (xa, LOWER_FLOOR, ZN + 0.12), (xb, LOWER_FLOOR + h, ZO - 0.12),
+             {"up": "carpet", "east": "wall_dark", "north": "wall_dark", "south": "wall_dark", "west": "wall_dark"})
+        solid("Interior", (xb - 0.04, LOWER_FLOOR + h - 0.03, ZN + 0.12), (xb + 0.004, LOWER_FLOOR + h + 0.003, ZO - 0.12),
+              "yellow")
+    for z in (-0.84, -0.42, 0.0, 0.42, 0.84):
+        add_seat(BACK_ROW, z, LOWER_FLOOR + REAR_STEPS[-1][2])
     # lower deck poles and bells
     for x, z in ((DOOR1[0] - 0.05, ZN + 0.35), (DOOR1[1] - 0.15, ZN + 0.3), (DOOR2[0] - 0.05, ZN + 0.32), (DOOR2[1] + 0.05, ZN + 0.32),
-                 (DOOR2[1] + 0.05, -0.3), (0.0 + FS, 0.3), (1.6 + FS, -0.3), (-2.45 + RS, -0.3), (-2.45 + RS, 0.3),
-                 (-4.05 + RS, -0.3), (-4.05 + RS, 0.3)):
+                 (DOOR2[1] + 0.05, -0.3), (0.0 + FS, 0.3), (1.6 + FS, -0.3)):
         pole("Interior", x, z, LOWER_FLOOR, LOWER_CEIL)
+        bell("Interior", x, z, 1.45)
+    # poles at the front and back corners of the raised boxes, on the gangway side
+    for x, z in ((POD[1] + 0.03, -POD_PANEL + 0.02), (POD[1] + 0.03, POD_PANEL - 0.02),
+                 (POD[0] - 0.03, -POD_PANEL + 0.02), (POD[0] - 0.03, POD_PANEL - 0.02)):
+        y0 = LOWER_FLOOR + (REAR_STEPS[0][2] if x < POD[0] else 0.0)
+        pole("Interior", x, z, y0, LOWER_CEIL)
         bell("Interior", x, z, 1.45)
     for z in (-0.45, 0.45):
         solid("Interior", (X0 + 0.4, LOWER_CEIL - 0.08, z - 0.02), (CAB[0], LOWER_CEIL - 0.04, z + 0.02), "orange")
@@ -1502,6 +1534,12 @@ def floors(upper):
         out.append((xa, xa + run, STAIR_Z[0], STAIR_Z[1], LOWER_FLOOR + (i + 1) * rise))
     if upper:
         out.append((X0, X1, -W, W, UPPER_FLOOR))
+    else:
+        # the gangway steps up to the back row, and the raised boxes either side of it
+        for xa, xb, h in REAR_STEPS:
+            out.append((xa, xb, -W, W, LOWER_FLOOR + h))
+        out.append((POD[0], POD[1], -W, -POD_PANEL, LOWER_FLOOR + POD[2]))
+        out.append((POD[0], POD[1], POD_PANEL, W, LOWER_FLOOR + POD[2]))
     return out
 
 
