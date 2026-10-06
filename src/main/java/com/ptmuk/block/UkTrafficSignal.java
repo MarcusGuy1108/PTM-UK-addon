@@ -39,7 +39,7 @@ public class UkTrafficSignal extends TrafficLight {
         super(type.lightCount, type.direction, type.pedestrian, false);
         this.style = style;
         this.type = type;
-        registerDefaultState(defaultBlockState().setValue(RED_AMBER, false).setValue(BOARD, type.boardable));
+        registerDefaultState(defaultBlockState().setValue(RED_AMBER, false).setValue(BOARD, type.boardable && style != SignalStyle.LED_SLIM));
     }
 
     public SignalStyle getStyle() {

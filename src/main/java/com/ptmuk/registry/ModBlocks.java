@@ -117,7 +117,7 @@ public final class ModBlocks {
             case CYCLE, LOW_LEVEL_CYCLE, PUFFIN, TOUCAN -> EnumSet.of(SignalStyle.LED);
             case PELICAN -> EnumSet.of(SignalStyle.LED, SignalStyle.CLASSIC);
             case STANDARD -> EnumSet.allOf(SignalStyle.class);
-            default -> EnumSet.of(SignalStyle.LED, SignalStyle.LED_TUNNEL, SignalStyle.CLASSIC);
+            default -> EnumSet.of(SignalStyle.LED, SignalStyle.LED_SLIM, SignalStyle.LED_TUNNEL, SignalStyle.CLASSIC);
         };
     }
 

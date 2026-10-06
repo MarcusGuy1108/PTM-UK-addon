@@ -1,0 +1,7 @@
+{
+ "variants": {
+  "": {
+   "model": "ptmuk:block/led_slim_signal/body_center_y0"
+  }
+ }
+}

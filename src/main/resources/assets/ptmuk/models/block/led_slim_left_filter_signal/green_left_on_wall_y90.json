@@ -1,0 +1,1 @@
+{"textures":{"particle":"ptmuk:block/signal/led_green_left_on","glass":"ptmuk:block/signal/led_green_left_on","lens":"ptmuk:block/signal/led_green_left_on"},"elements":[{"from":[4.15,0.907,12.24],"to":[4.2,4.427,15.76],"faces":{"east":{"texture":"#glass","uv":[0,0,16,16]}},"shade":false,"forge_data":{"block_light":15,"sky_light":15}}],"render_type":"minecraft:cutout_mipped"}

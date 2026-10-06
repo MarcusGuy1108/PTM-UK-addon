@@ -273,7 +273,7 @@ def walking_man_mask():
 
 # ----------------------------------------------------------------- housings, faceplates, boards
 
-BASES = {"led": (23, 24, 26), "led_tunnel": (27, 28, 31), "classic": (31, 32, 31), "classic_large_green": (33, 34, 34)}
+BASES = {"led": (23, 24, 26), "led_slim": (22, 23, 25), "led_tunnel": (27, 28, 31), "classic": (31, 32, 31), "classic_large_green": (33, 34, 34)}
 
 
 def housing(style, size=64):
