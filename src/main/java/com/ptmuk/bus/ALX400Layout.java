@@ -23,7 +23,7 @@ public final class ALX400Layout implements BusLayout {
     public static final float[] DISPLAY_SIDE = {1.652f, 0.260f, 180.0f};
     public static final float[] DISPLAY_REAR = {0.732f, 0.354f, 270.0f};
     public static final float[] DISPLAY_INSIDE = {0.732f, 0.354f, 270.0f};
-    public static final int SEAT_COUNT = 76;
+    public static final int SEAT_COUNT = 77;
 
     private ALX400Layout() {
     }
@@ -74,6 +74,7 @@ public final class ALX400Layout implements BusLayout {
                 new SeatLocation(0.555, 1.392, -5.581, 0.0f, false, 0.000, 0.779, -5.487),
                 new SeatLocation(-0.555, 1.392, -5.581, 0.0f, false, 0.000, 0.779, -5.487),
                 new SeatLocation(-0.979, 1.392, -5.581, 0.0f, false, 0.000, 0.779, -5.487),
+                new SeatLocation(-0.000, 1.392, -5.581, 0.0f, false, 0.000, 0.779, -5.487),
                 new SeatLocation(0.979, 3.505, 5.216, 0.0f, false, 0.000, 2.891, 5.310),
                 new SeatLocation(0.555, 3.505, 5.216, 0.0f, false, 0.000, 2.891, 5.310),
                 new SeatLocation(-0.555, 3.505, 5.216, 0.0f, false, 0.000, 2.891, 5.310),
@@ -131,26 +132,28 @@ public final class ALX400Layout implements BusLayout {
     public static List<FloorObject> floors(boolean upper) {
         if (upper) {
             return new ArrayList<>(List.of(
-                    new FloorObject(3.619, 3.894, 0.295, 1.440, 0.699f),
-                    new FloorObject(3.343, 3.619, 0.295, 1.440, 0.973f),
-                    new FloorObject(3.068, 3.343, 0.295, 1.440, 1.247f),
-                    new FloorObject(2.793, 3.068, 0.295, 1.440, 1.521f),
+                    new FloorObject(1.416, 1.691, 0.295, 1.440, 0.699f),
+                    new FloorObject(1.691, 1.967, 0.295, 1.440, 0.973f),
+                    new FloorObject(1.967, 2.242, 0.295, 1.440, 1.247f),
+                    new FloorObject(2.242, 2.517, 0.295, 1.440, 1.521f),
                     new FloorObject(2.517, 2.793, 0.295, 1.440, 1.795f),
-                    new FloorObject(2.242, 2.517, 0.295, 1.440, 2.069f),
-                    new FloorObject(1.967, 2.242, 0.295, 1.440, 2.343f),
-                    new FloorObject(1.691, 1.967, 0.295, 1.440, 2.617f),
-                    new FloorObject(1.416, 1.691, 0.295, 1.440, 2.891f),
+                    new FloorObject(2.793, 3.068, 0.295, 1.440, 2.069f),
+                    new FloorObject(3.068, 3.343, 0.295, 1.440, 2.343f),
+                    new FloorObject(3.343, 3.619, 0.295, 1.440, 2.617f),
+                    new FloorObject(3.619, 3.894, 0.295, 1.440, 2.891f),
                     new FloorObject(-6.018, 6.018, -3.009, 3.009, 2.891f)));
         }
         return new ArrayList<>(List.of(
-                    new FloorObject(3.619, 3.894, 0.295, 1.440, 0.699f),
-                    new FloorObject(3.343, 3.619, 0.295, 1.440, 0.973f),
-                    new FloorObject(3.068, 3.343, 0.295, 1.440, 1.247f),
-                    new FloorObject(2.793, 3.068, 0.295, 1.440, 1.521f),
+                    new FloorObject(1.416, 1.691, 0.295, 1.440, 0.699f),
+                    new FloorObject(1.691, 1.967, 0.295, 1.440, 0.973f),
+                    new FloorObject(1.967, 2.242, 0.295, 1.440, 1.247f),
+                    new FloorObject(2.242, 2.517, 0.295, 1.440, 1.521f),
                     new FloorObject(2.517, 2.793, 0.295, 1.440, 1.795f),
-                    new FloorObject(2.242, 2.517, 0.295, 1.440, 2.069f),
-                    new FloorObject(1.967, 2.242, 0.295, 1.440, 2.343f),
-                    new FloorObject(1.691, 1.967, 0.295, 1.440, 2.617f),
-                    new FloorObject(1.416, 1.691, 0.295, 1.440, 2.891f)));
+                    new FloorObject(2.793, 3.068, 0.295, 1.440, 2.069f),
+                    new FloorObject(3.068, 3.343, 0.295, 1.440, 2.343f),
+                    new FloorObject(3.343, 3.619, 0.295, 1.440, 2.617f),
+                    new FloorObject(3.619, 3.894, 0.295, 1.440, 2.891f),
+                    new FloorObject(-5.369, -5.098, -0.354, 0.354, 0.602f),
+                    new FloorObject(-5.900, -5.369, -0.354, 0.354, 0.779f)));
     }
 }

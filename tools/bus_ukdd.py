@@ -48,8 +48,10 @@ FRONT_AXLE, REAR_AXLE, WHEEL_R = 2.85, -2.85, 0.5
 DOOR1 = (3.75, 4.95)                   # front entrance, nearside
 DOOR2 = (0.35, 1.55)                   # centre exit, nearside
 DOOR_TOP = 2.02
-STAIRS = (1.2, 3.3)                    # offside, rising towards the rear
+STAIRS = (1.2, 3.3)                    # offside behind the cab, rising towards the front
 STAIR_Z = (0.25, 1.22)
+STAIR_COVER = 0.35                     # the ceiling carries on over the bottom of the stairs
+STAIR_RAIL_SENSE = -1                  # flip if the stair handrail slopes the wrong way
 READER = (3.99, 1.17)                  # card reader centre: x along the bus, height
 CAB = (3.65, X1)
 DISPLAY_FRONT = (0.84, 2.6, 1.68, 0.44)    # half-width z, top y, width, height
@@ -428,6 +430,7 @@ def build_textures():
     a.add("moquette", moquette())
     a.add("reader", bus_extras.reader_face(48))
     a.add("instruments", bus_extras.instrument_panel())
+    a.add("cab_glass", bus_extras.cab_glass())
     a.add("carpet", carpet())
     a.add("stopping_off", lit_panel("BUS STOPPING", (160, 24), (70, 20, 20), (20, 20, 22)))
     a.add("stopping_on", lit_panel("BUS STOPPING", (160, 24), (255, 60, 40), (30, 10, 10)))
@@ -662,7 +665,8 @@ def shell():
     cube("Floor", (X0 + t, 0.30, ZN + t), (X1 - t, LOWER_FLOOR, ZO - t), {"up": "carpet", "down": "black"})
     # upper floor / lower ceiling, with the stairwell opening on the offside
     for (xa, xb, za, zb) in ((X0 + t, STAIRS[0], ZN + t, ZO - t), (STAIRS[1], CAB[0], ZN + t, ZO - t),
-                             (STAIRS[0], STAIRS[1], ZN + t, STAIR_Z[0]), (CAB[0], X1 - t, ZN + t, ZO - t)):
+                             (STAIRS[0], STAIRS[1], ZN + t, STAIR_Z[0]), (CAB[0], X1 - t, ZN + t, ZO - t),
+                             (STAIRS[0], STAIRS[0] + STAIR_COVER, STAIR_Z[0], ZO - t)):
         cube("Floor", (xa, LOWER_CEIL, za), (xb, UPPER_FLOOR, zb), {"up": "carpet", "down": "ceiling", "north": "wall_dark",
                                                                       "south": "wall_dark", "east": "wall_dark", "west": "wall_dark"})
     # chassis underneath, wheel arch housings inside
@@ -671,6 +675,8 @@ def shell():
     # kept clear of the wheels (boxes through the tyres flickered on them)
     for ax, depth in ((FRONT_AXLE, 0.42), (REAR_AXLE, 0.6)):
         for side in (-1, 1):
+            if ax == FRONT_AXLE and side > 0:
+                continue       # the offside front arch is under the stairs (it poked up through a step)
             edge = ZN + t if side < 0 else ZO - t
             inner = edge - side * depth
             za, zb = sorted((edge, inner))
@@ -777,8 +783,14 @@ def interior():
     SEATS.append((-0.72, LOWER_FLOOR + 0.57, 4.27, 0.0, -0.72, LOWER_FLOOR, 4.35))
     seat("Cab", 4.35, 0.72, LOWER_FLOOR + 0.05, 1, width=0.5)
     # cab: partition, dashboard, steering wheel, ticket machine
-    solid("Cab", (CAB[0], LOWER_FLOOR, 0.2), (CAB[0] + 0.05, 1.7, ZO - 0.04), "cab")
-    solid("Cab", (CAB[0], LOWER_FLOOR, 0.17), (X1 - 0.3, 1.25, 0.22), "cab")
+    # the cab is boxed in: a back wall up to the ceiling, and on the gangway side a solid panel
+    # with glass above it up to the ceiling, framed
+    solid("Cab", (CAB[0], LOWER_FLOOR, 0.2), (CAB[0] + 0.05, LOWER_CEIL, ZO - 0.04), "cab")
+    solid("Cab", (CAB[0], LOWER_FLOOR, 0.17), (X1 - 0.34, 1.25, 0.22), "cab")
+    cube("Cab", (CAB[0] + 0.05, 1.25, 0.185), (X1 - 0.36, LOWER_CEIL, 0.205), {"north": "cab_glass", "south": "cab_glass"})
+    solid("Cab", (CAB[0], LOWER_CEIL - 0.05, 0.17), (X1 - 0.34, LOWER_CEIL, 0.22), "cab")
+    solid("Cab", (X1 - 0.38, 1.25, 0.17), (X1 - 0.34, LOWER_CEIL, 0.22), "cab")
+    solid("Cab", (CAB[0] + 0.6, 1.25, 0.175), (CAB[0] + 0.63, LOWER_CEIL, 0.215), "cab")
     # dashboard: a shelf right across under the windscreen, lower in front of the driver so
     # the driver's legs (straight out, about 0.86-1.08 m up) pass over it; the binnacle with the
     # instruments sits above the legs behind the wheel, and a switch panel by the offside window
@@ -829,21 +841,39 @@ def interior():
         bell("Interior", x, z, 1.45)
     for z in (-0.45, 0.45):
         solid("Interior", (X0 + 0.3, LOWER_CEIL - 0.08, z - 0.02), (CAB[0], LOWER_CEIL - 0.04, z + 0.02), "orange")
-    # staircase on the offside, rising towards the rear
+    # staircase on the offside behind the cab, rising towards the front (as on London buses):
+    # you step on at the back end or from the gangway beside the lower steps, and come out at
+    # the top just behind the cab
     n = 8
     run = (STAIRS[1] - STAIRS[0]) / n
     rise = (UPPER_FLOOR - LOWER_FLOOR) / n
     for i in range(n):
-        xb = STAIRS[1] - i * run
+        xa = STAIRS[0] + i * run
         top = LOWER_FLOOR + (i + 1) * rise
-        cube("Stairs", (xb - run, LOWER_FLOOR, STAIR_Z[0]), (xb, top, STAIR_Z[1]),
-             {"up": "carpet", "east": "yellow", "north": "wall_dark", "south": "wall_dark", "west": "wall_dark"})
-    # the side screen runs along the upper part only: the bottom steps are open to the gangway,
-    # so you step on from the aisle (not through the cab), with a grab pole at the screen's end
-    open_x = STAIRS[1] - 4 * run
-    solid("Stairs", (STAIRS[0], LOWER_FLOOR, STAIR_Z[0] - 0.04), (open_x, UPPER_FLOOR + 0.9, STAIR_Z[0]), "wall")
-    solid("Stairs", (STAIRS[0], UPPER_FLOOR + 0.9, STAIR_Z[0] - 0.05), (open_x, UPPER_FLOOR + 0.95, STAIR_Z[0] + 0.01), "orange")
+        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1]),
+             {"up": "carpet", "west": "yellow", "north": "wall_dark", "south": "wall_dark", "east": "wall_dark"})
+    # lower deck: a solid wall right across the back end of the stairs (the seats behind see a
+    # panel, not the steps); on the gangway side the bottom three steps are open to step on,
+    # then a kick panel with glass above up to the ceiling runs on to the cab, as on the photos,
+    # with a grab pole where it starts and a handrail following the stairs
+    solid("Stairs", (STAIRS[0] - 0.04, LOWER_FLOOR, STAIR_Z[0] - 0.04), (STAIRS[0], LOWER_CEIL, ZO - 0.04), "wall")
+    solid("Stairs", (STAIRS[0] - 0.07, 0.95, STAIR_Z[0] + 0.05), (STAIRS[0] - 0.04, 0.99, ZO - 0.1), "orange")
+    open_x = STAIRS[0] + 3 * run
+    solid("Stairs", (open_x, LOWER_FLOOR, STAIR_Z[0] - 0.04), (CAB[0], LOWER_FLOOR + 0.3, STAIR_Z[0]), "wall")
+    cube("Stairs", (open_x, LOWER_FLOOR + 0.3, STAIR_Z[0] - 0.03), (CAB[0], LOWER_CEIL, STAIR_Z[0] - 0.01),
+         {"north": "cab_glass", "south": "cab_glass"})
     solid("Stairs", (open_x - 0.02, LOWER_FLOOR, STAIR_Z[0] - 0.05), (open_x + 0.02, LOWER_CEIL, STAIR_Z[0] - 0.01), "orange")
+    slope = math.atan2(UPPER_FLOOR - LOWER_FLOOR, STAIRS[1] - STAIRS[0])
+    span = (STAIRS[1] - STAIRS[0]) / math.cos(slope)
+    mx, my = (STAIRS[0] + STAIRS[1]) / 2, (LOWER_FLOOR + UPPER_FLOOR) / 2 + 0.92
+    solid("Stairs", (mx - span / 2, my - 0.02, STAIR_Z[0] + 0.04), (mx + span / 2, my + 0.02, STAIR_Z[0] + 0.08), "orange",
+          rotation=[0, 0, STAIR_RAIL_SENSE * math.degrees(slope)], pivot=(mx, my, STAIR_Z[0] + 0.06))
+    # upper deck: a guard round the stairwell, open at the top (front) end on the gangway side
+    gx = STAIRS[0] + STAIR_COVER
+    solid("Stairs", (gx, UPPER_FLOOR, STAIR_Z[0] - 0.04), (STAIRS[1] - 0.75, UPPER_FLOOR + 0.9, STAIR_Z[0]), "wall")
+    solid("Stairs", (gx, UPPER_FLOOR + 0.9, STAIR_Z[0] - 0.05), (STAIRS[1] - 0.75, UPPER_FLOOR + 0.95, STAIR_Z[0] + 0.01), "orange")
+    solid("Stairs", (gx - 0.04, UPPER_FLOOR, STAIR_Z[0] - 0.04), (gx, UPPER_FLOOR + 0.9, ZO - 0.04), "wall")
+    solid("Stairs", (gx - 0.05, UPPER_FLOOR + 0.9, STAIR_Z[0] - 0.05), (gx + 0.01, UPPER_FLOOR + 0.95, ZO - 0.04), "orange")
     # upper deck: forward-facing pairs, front row at the big front windows, rear bench of five
     xs = [4.5 - 0.78 * k for k in range(12)]
     for x in xs:
@@ -879,11 +909,11 @@ def interior():
             lz = z + sign * (0.035 + depth + 0.05)
             cube("Interior", (xa, ly - 0.03, lz - 0.05), (xb, ly, lz + 0.05), {"down": "lamp_on", "north": "wall", "south": "wall"})
     # inside displays: next stop screens facing the rear, lower and upper deck
-    for name, x, y in (("Display5", CAB[0] - 0.6, 2.05), ("Display6", X1 - 0.12, UPPER_CEIL - 0.04)):
+    for name, x, y in (("Display5", STAIRS[0] - 0.09, LOWER_CEIL - 0.04), ("Display6", X1 - 0.12, UPPER_CEIL - 0.04)):
         w, h = 0.62, 0.3
-        # the lower deck screen hangs over the gangway a little way back from the cab, so it is
-        # not over the driver's seat (where it showed through the cab windows) or the stairs
-        zc = -0.1 if name == "Display5" else 0.0
+        # the lower deck screen sits on top of the wall across the back of the stairs, facing
+        # the seats behind (as on the photos); the upper deck one hangs at the front
+        zc = (STAIR_Z[0] + ZO) / 2 if name == "Display5" else 0.0
         bone(name, "Interior", (x - 0.012, y, zc + w / 2))
         solid(name, (x, y - h - 0.02, zc - w / 2 - 0.02), (x + 0.04, y + 0.02, zc + w / 2 + 0.02), "black", parent="Interior")
     # BUS STOPPING signs (unlit face; the lit one slides forward when the bell has been rung)
@@ -1103,8 +1133,8 @@ def floors(upper):
     run = (STAIRS[1] - STAIRS[0]) / n
     rise = (UPPER_FLOOR - LOWER_FLOOR) / n
     for i in range(n):
-        xb = STAIRS[1] - i * run
-        out.append((xb - run, xb, STAIR_Z[0], STAIR_Z[1], LOWER_FLOOR + (i + 1) * rise))
+        xa = STAIRS[0] + i * run
+        out.append((xa, xa + run, STAIR_Z[0], STAIR_Z[1], LOWER_FLOOR + (i + 1) * rise))
     if upper:
         out.append((X0, X1, -W, W, UPPER_FLOOR))
     return out

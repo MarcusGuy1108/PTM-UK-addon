@@ -155,6 +155,18 @@ def instrument_panel(w=96, h=40):
     return p.done()
 
 
+def cab_glass(w=32, h=64):
+    """Clear glass for the cab screens (the bus renders cut-out, so the pane itself is empty):
+    a faint band of etched dots near the bottom and a light edge so it still reads as glass."""
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for y in range(int(h * 0.72), int(h * 0.84), 3):
+        for x in range((y // 3) % 2, w, 3):
+            d.point((x, y), fill=(214, 222, 228, 255))
+    d.rectangle((0, 0, w - 1, h - 1), outline=(150, 160, 168, 255))
+    return img
+
+
 def reader_screen(w=96, h=30):
     """The reader's little screen: TOUCH CARD in white on blue."""
     p = Panel(w, h, (18, 46, 110))

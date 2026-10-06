@@ -127,24 +127,24 @@ public final class UkddLayout implements BusLayout {
     public static List<FloorObject> floors(boolean upper) {
         if (upper) {
             return new ArrayList<>(List.of(
-                    new FloorObject(3.584, 3.894, 0.295, 1.440, 0.732f),
-                    new FloorObject(3.274, 3.584, 0.295, 1.440, 1.015f),
-                    new FloorObject(2.965, 3.274, 0.295, 1.440, 1.298f),
-                    new FloorObject(2.655, 2.965, 0.295, 1.440, 1.581f),
-                    new FloorObject(2.345, 2.655, 0.295, 1.440, 1.864f),
-                    new FloorObject(2.035, 2.345, 0.295, 1.440, 2.148f),
-                    new FloorObject(1.726, 2.035, 0.295, 1.440, 2.431f),
-                    new FloorObject(1.416, 1.726, 0.295, 1.440, 2.714f),
+                    new FloorObject(1.416, 1.726, 0.295, 1.440, 0.732f),
+                    new FloorObject(1.726, 2.035, 0.295, 1.440, 1.015f),
+                    new FloorObject(2.035, 2.345, 0.295, 1.440, 1.298f),
+                    new FloorObject(2.345, 2.655, 0.295, 1.440, 1.581f),
+                    new FloorObject(2.655, 2.965, 0.295, 1.440, 1.864f),
+                    new FloorObject(2.965, 3.274, 0.295, 1.440, 2.148f),
+                    new FloorObject(3.274, 3.584, 0.295, 1.440, 2.431f),
+                    new FloorObject(3.584, 3.894, 0.295, 1.440, 2.714f),
                     new FloorObject(-6.018, 6.018, -3.009, 3.009, 2.714f)));
         }
         return new ArrayList<>(List.of(
-                    new FloorObject(3.584, 3.894, 0.295, 1.440, 0.732f),
-                    new FloorObject(3.274, 3.584, 0.295, 1.440, 1.015f),
-                    new FloorObject(2.965, 3.274, 0.295, 1.440, 1.298f),
-                    new FloorObject(2.655, 2.965, 0.295, 1.440, 1.581f),
-                    new FloorObject(2.345, 2.655, 0.295, 1.440, 1.864f),
-                    new FloorObject(2.035, 2.345, 0.295, 1.440, 2.148f),
-                    new FloorObject(1.726, 2.035, 0.295, 1.440, 2.431f),
-                    new FloorObject(1.416, 1.726, 0.295, 1.440, 2.714f)));
+                    new FloorObject(1.416, 1.726, 0.295, 1.440, 0.732f),
+                    new FloorObject(1.726, 2.035, 0.295, 1.440, 1.015f),
+                    new FloorObject(2.035, 2.345, 0.295, 1.440, 1.298f),
+                    new FloorObject(2.345, 2.655, 0.295, 1.440, 1.581f),
+                    new FloorObject(2.655, 2.965, 0.295, 1.440, 1.864f),
+                    new FloorObject(2.965, 3.274, 0.295, 1.440, 2.148f),
+                    new FloorObject(3.274, 3.584, 0.295, 1.440, 2.431f),
+                    new FloorObject(3.584, 3.894, 0.295, 1.440, 2.714f)));
     }
 }
