@@ -1035,33 +1035,40 @@ SEATS = []        # (right, height, forward, yaw, drop_right, drop_height, drop_
 
 
 def add_seat(x, z, floor, facing=1, yaw=None):
-    seat("Seats", x, z, floor, facing)
-    SEATS.append((-z, floor + 0.52, x, (0.0 if facing > 0 else 180.0) if yaw is None else yaw, 0.0, floor, x))
+    seat("Seats", x, z, floor, facing, width=0.42)
+    # a seated Minecraft body is 1 m wide across the arms and its legs reach 0.75 m forward, so
+    # sit passengers back in the seat and window passengers a little inboard of the cushion
+    pz = z - math.copysign(0.07, z) if abs(z) > 0.7 else z
+    SEATS.append((-pz, floor + 0.52, x - facing * 0.08, (0.0 if facing > 0 else 180.0) if yaw is None else yaw,
+                  0.0, floor, x))
 
 
 def interior():
-    zp = (-0.98, -0.53, 0.53, 0.98)       # seat centres across the bus, aisle in the middle
+    zp = (-0.9, -0.47, 0.47, 0.9)         # seat centres across the bus, aisle in the middle
     # driver first: PTM2 treats seat 0 as the driver's seat
-    SEATS.append((-0.72, LOWER_FLOOR + 0.57, 4.35, 0.0, -0.72, LOWER_FLOOR, 4.35))
+    SEATS.append((-0.72, LOWER_FLOOR + 0.57, 4.27, 0.0, -0.72, LOWER_FLOOR, 4.35))
     seat("Cab", 4.35, 0.72, LOWER_FLOOR + 0.05, 1, width=0.5)
     # cab: partition, dashboard, steering wheel, ticket machine
     solid("Cab", (CAB[0], LOWER_FLOOR, 0.2), (CAB[0] + 0.05, 1.7, ZO - 0.04), "cab")
     solid("Cab", (CAB[0], LOWER_FLOOR, 0.17), (X1 - 0.3, 1.25, 0.22), "cab")
-    # dashboard: a shelf right across under the windscreen, the driver's binnacle with the
-    # instruments facing the seat, and a switch panel by the offside window
-    solid("Cab", (X1 - 0.34, 0.82, ZN + 0.18), (X1 - 0.06, 1.04, ZO - 0.06), "dash")
-    solid("Cab", (X1 - 0.36, 1.04, ZN + 0.2), (X1 - 0.08, 1.07, ZO - 0.08), "grey")
-    solid("Cab", (X1 - 0.5, 0.78, ZO - 0.82), (X1 - 0.3, 1.1, ZO - 0.12), "dash")
-    cube("Cab", (X1 - 0.52, 0.86, ZO - 0.78), (X1 - 0.5, 1.08, ZO - 0.16), {"west": "instruments"})
-    solid("Cab", (X1 - 0.55, 1.1, ZO - 0.84), (X1 - 0.3, 1.14, ZO - 0.1), "black")
-    solid("Cab", (4.0, LOWER_FLOOR + 0.35, ZO - 0.16), (X1 - 0.5, 1.02, ZO - 0.05), "dash")
-    solid("Cab", (4.05, 1.02, ZO - 0.15), (X1 - 0.55, 1.04, ZO - 0.06), "black")
+    # dashboard: a shelf right across under the windscreen, lower in front of the driver so
+    # the driver's legs (straight out, about 0.86-1.08 m up) pass over it; the binnacle with the
+    # instruments sits above the legs behind the wheel, and a switch panel by the offside window
+    solid("Cab", (X1 - 0.34, 0.82, ZN + 0.18), (X1 - 0.06, 1.04, ZO - 0.9), "dash")
+    solid("Cab", (X1 - 0.36, 1.04, ZN + 0.2), (X1 - 0.08, 1.07, ZO - 0.92), "grey")
+    solid("Cab", (X1 - 0.2, 0.6, ZO - 0.9), (X1 - 0.06, 0.84, ZO - 0.06), "dash")
+    solid("Cab", (X1 - 0.24, 1.12, ZO - 0.9), (X1 - 0.06, 1.18, ZO - 0.06), "grey")
+    solid("Cab", (X1 - 0.27, 1.12, ZO - 0.82), (X1 - 0.12, 1.36, ZO - 0.12), "dash")
+    cube("Cab", (X1 - 0.29, 1.15, ZO - 0.78), (X1 - 0.27, 1.34, ZO - 0.16), {"west": "instruments"})
+    solid("Cab", (X1 - 0.31, 1.36, ZO - 0.84), (X1 - 0.12, 1.4, ZO - 0.1), "black")
+    solid("Cab", (4.0, LOWER_FLOOR + 0.35, ZO - 0.16), (X1 - 0.5, 0.84, ZO - 0.05), "dash")
+    solid("Cab", (4.05, 0.84, ZO - 0.15), (X1 - 0.55, 0.86, ZO - 0.06), "black")
     # steering wheel: a round rim with three spokes and a hub on its column, tilted back like a
     # bus wheel; the renderer turns the SteeringWheel bone about its own axis
-    hub = (X1 - 0.33, 1.2, 0.72)
+    hub = (X1 - 0.4, 1.3, 0.72)
     bone("SteeringTilt", "Vehicle", hub, rotation=[0, 0, STEER_TILT])
     bone("SteeringWheel", "SteeringTilt", hub)
-    solid("SteeringTilt", (hub[0] - 0.035, 0.95, hub[2] - 0.035), (hub[0] + 0.035, hub[1] - 0.02, hub[2] + 0.035), "black")
+    solid("SteeringTilt", (hub[0] - 0.035, hub[1] - 0.16, hub[2] - 0.035), (hub[0] + 0.035, hub[1] - 0.02, hub[2] + 0.035), "black")
     r, seg = 0.23, 2 * math.pi * 0.23 / 16 * 1.12
     for i in range(16):
         cube("SteeringWheel", (hub[0] + r - 0.017, hub[1] - 0.017, hub[2] - seg / 2),
@@ -1115,8 +1122,12 @@ def interior():
         top = LOWER_FLOOR + (i + 1) * rise
         cube("Stairs", (xb - run, LOWER_FLOOR, STAIR_Z[0]), (xb, top, STAIR_Z[1]),
              {"up": "carpet", "east": "yellow", "north": "wall_dark", "south": "wall_dark", "west": "wall_dark"})
-    solid("Stairs", (STAIRS[0], LOWER_FLOOR, STAIR_Z[0] - 0.04), (STAIRS[1] + 0.1, UPPER_FLOOR + 0.9, STAIR_Z[0]), "wall")
-    solid("Stairs", (STAIRS[0], UPPER_FLOOR + 0.9, STAIR_Z[0] - 0.05), (STAIRS[1] + 0.1, UPPER_FLOOR + 0.95, STAIR_Z[0] + 0.01), "orange")
+    # the side screen runs along the upper part only: the bottom steps are open to the gangway,
+    # so you step on from the aisle (not through the cab), with a grab pole at the screen's end
+    open_x = STAIRS[1] - 4 * run
+    solid("Stairs", (STAIRS[0], LOWER_FLOOR, STAIR_Z[0] - 0.04), (open_x, UPPER_FLOOR + 0.9, STAIR_Z[0]), "wall")
+    solid("Stairs", (STAIRS[0], UPPER_FLOOR + 0.9, STAIR_Z[0] - 0.05), (open_x, UPPER_FLOOR + 0.95, STAIR_Z[0] + 0.01), "orange")
+    solid("Stairs", (open_x - 0.02, LOWER_FLOOR, STAIR_Z[0] - 0.05), (open_x + 0.02, LOWER_CEIL, STAIR_Z[0] - 0.01), "orange")
     # upper deck: forward-facing pairs, front row at the big front windows, rear bench of five
     xs = [4.5 - 0.78 * k for k in range(12)]
     for x in xs:
@@ -1416,7 +1427,7 @@ def write_icon():
 
 def floors(upper):
     out = []
-    n = 8
+    n = 9
     run = (STAIRS[1] - STAIRS[0]) / n
     rise = (UPPER_FLOOR - LOWER_FLOOR) / n
     for i in range(n):
