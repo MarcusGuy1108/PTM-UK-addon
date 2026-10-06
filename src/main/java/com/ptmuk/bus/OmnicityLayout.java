@@ -23,7 +23,7 @@ public final class OmnicityLayout implements BusLayout {
     public static final float[] DISPLAY_SIDE = {1.711f, 0.283f, 180.0f};
     public static final float[] DISPLAY_REAR = {0.850f, 0.354f, 270.0f};
     public static final float[] DISPLAY_INSIDE = {0.732f, 0.354f, 270.0f};
-    public static final int SEAT_COUNT = 75;
+    public static final int SEAT_COUNT = 73;
 
     private OmnicityLayout() {
     }
@@ -73,8 +73,6 @@ public final class OmnicityLayout implements BusLayout {
                 new SeatLocation(0.909, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
                 new SeatLocation(0.496, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
                 new SeatLocation(-0.000, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
-                new SeatLocation(-0.496, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
-                new SeatLocation(-0.909, 1.534, -5.522, 0.0f, false, 0.000, 0.920, -5.428),
                 new SeatLocation(0.979, 3.481, 5.629, 0.0f, false, 0.000, 2.867, 5.723),
                 new SeatLocation(0.555, 3.481, 5.629, 0.0f, false, 0.000, 2.867, 5.723),
                 new SeatLocation(-0.555, 3.481, 5.629, 0.0f, false, 0.000, 2.867, 5.723),

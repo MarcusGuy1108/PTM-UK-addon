@@ -984,13 +984,13 @@ def shell():
                  {"up": "wall_dark", "down": "black", "east": "black", "west": "black", "north": "black", "south": "black"})
             wa, wb = sorted((inner, inner - side * 0.03))
             cube("Interior", (ax - 0.64, LOWER_FLOOR, wa), (ax + 0.64, 1.14, wb),
-                 {f: ("black" if f in ("east", "west", "down") else "wall_dark") for f in ALL})
+                 {f: ("black" if f in ("east", "west", "down", "north" if side < 0 else "south") else "wall_dark") for f in ALL})
 
 
 def wheels():
     """16-sided tyres, steel rims with an 8-stud hub; twin wheels at the rear."""
     for name, ax, z in (("FrontLeftWheel", FRONT_AXLE, ZO - 0.2), ("FrontRightWheel", FRONT_AXLE, ZN + 0.2),
-                        ("BackLeftWheel", REAR_AXLE, ZO - 0.24), ("BackRightWheel", REAR_AXLE, ZN + 0.24)):
+                        ("BackLeftWheel", REAR_AXLE, ZO - 0.33), ("BackRightWheel", REAR_AXLE, ZN + 0.33)):
         bone(name, "Wheels", (ax, WHEEL_R, z))
         twin = name.startswith("Back")
         zw = 0.56 if twin else 0.29
@@ -1199,8 +1199,14 @@ def interior():
     slope = math.atan2(UPPER_FLOOR - LOWER_FLOOR, STAIRS[1] - STAIRS[0])
     span = (STAIRS[1] - STAIRS[0]) / math.cos(slope)
     mx, my = (STAIRS[0] + STAIRS[1]) / 2, (LOWER_FLOOR + UPPER_FLOOR) / 2 + 0.92
-    solid("Stairs", (mx - span / 2, my - 0.02, STAIR_Z[0] + 0.04), (mx + span / 2, my + 0.02, STAIR_Z[0] + 0.08), "orange",
-          rotation=[0, 0, STAIR_RAIL_SENSE * math.degrees(slope)], pivot=(mx, my, STAIR_Z[0] + 0.06))
+    # handrail on the side wall beside the stairs, on brackets (it used to float over the open steps)
+    rz = ZO - 0.04 - 0.07
+    solid("Stairs", (mx - span / 2, my - 0.02, rz - 0.02), (mx + span / 2, my + 0.02, rz + 0.02), "orange",
+          rotation=[0, 0, STAIR_RAIL_SENSE * math.degrees(slope)], pivot=(mx, my, rz))
+    for t in (0.15, 0.5, 0.85):
+        bx = STAIRS[0] + t * (STAIRS[1] - STAIRS[0])
+        by = my + (bx - mx) * math.tan(slope)
+        solid("Stairs", (bx - 0.02, by - 0.02, rz), (bx + 0.02, by + 0.02, ZO - 0.04), "grey")
     # upper deck: a guard round the stairwell, open at the top (front) end on the gangway side
     gx = STAIRS[0] + STAIR_COVER
     solid("Stairs", (gx, UPPER_FLOOR, STAIR_Z[0] - 0.04), (STAIRS[1] - 0.75, UPPER_FLOOR + 0.9, STAIR_Z[0]), "wall")
