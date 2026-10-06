@@ -26,6 +26,7 @@ public final class ClientSetup {
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.E400_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "e400"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.ALX400_LEN_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "alx400", "alx400_len"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.E400_LEN_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "e400", "e400_len"));
+        event.registerEntityRenderer(com.ptmuk.bus.UkBuses.OMNICITY_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "omnicity"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.K4_TYPE.get(), com.ptmuk.client.bus.KiaK4Renderer::new);
     }
 }

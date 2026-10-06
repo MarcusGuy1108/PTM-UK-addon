@@ -35,6 +35,7 @@ public final class ModItems {
     public static final RegistryObject<Item> ENVIRO400;
     public static final RegistryObject<Item> ALX400_LEN;
     public static final RegistryObject<Item> ENVIRO400_LEN;
+    public static final RegistryObject<Item> OMNICITY;
     public static final RegistryObject<Item> KIA_K4;
     public static final RegistryObject<Item> CUBE_CARD;
     public static final RegistryObject<Item> BUS_PASS;
@@ -66,6 +67,8 @@ public final class ModItems {
         BUS_ITEMS.add(ALX400_LEN);
         ENVIRO400_LEN = ITEMS.register("enviro400_len", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.E400_LEN_CODE));
         BUS_ITEMS.add(ENVIRO400_LEN);
+        OMNICITY = ITEMS.register("omnicity", () -> com.ptmuk.bus.UkBuses.transportItem(com.ptmuk.bus.UkBuses.OMNICITY_CODE));
+        BUS_ITEMS.add(OMNICITY);
         KIA_K4 = ITEMS.register("kia_k4_gt_line_s", () -> com.ptmuk.bus.UkBuses.carItem(com.ptmuk.bus.UkBuses.K4_CODE, "red"));
         BUS_ITEMS.add(KIA_K4);
         CUBE_CARD = ITEMS.register("cube_card", com.ptmuk.fare.CubeCardItem::new);

@@ -212,6 +212,8 @@
  "entity.ptmuk.ptm_124g_alx400_len": "Alexander ALX400 (Len Livery)",
  "item.ptmuk.enviro400_len": "Alexander Dennis Enviro400 (Len Livery)",
  "entity.ptmuk.ptm_124h_e400_len": "Alexander Dennis Enviro400 (Len Livery)",
+ "item.ptmuk.omnicity": "Scania OmniCity (London, Double Decker)",
+ "entity.ptmuk.ptm_124i_omnicity": "Scania OmniCity",
  "item.ptmuk.kia_k4_gt_line_s": "Kia K4 GT-Line S (Red)",
  "entity.ptmuk.ptm_035k_k4": "Kia K4 GT-Line S",
  "itemGroup.ptmuk.buses": "UK Buses & Cars",

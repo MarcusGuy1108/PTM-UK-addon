@@ -149,11 +149,12 @@ Breaking any part removes the whole tower. In survival you get the builder back.
 In the **UK Buses & Cars** tab. These are PTM2 vehicles, so they drive, take routes and carry passengers like PTM2's own:
 
 - **Alexander ALX400** and **Alexander Dennis Enviro400** (London spec): dual door, red, with a Stagecoach-style interior.
+- **Scania OmniCity** (London spec): dual door, red, 10.8 m long, with the OmniCity's flat front, round lamp clusters and upper deck engine louvre.
 - **UK Double Decker**: the original stand-alone design.
 - **Len Livery** versions of the ALX400 and Enviro400: red at the front fading to white at the back, with yellow and black stripes and music notes. To paint your own artwork on the white part, override `assets/ptmuk/textures/entity/bus/alx400_len.png` or `e400_len.png` in a resource pack. Also override the matching `_left.png` file, which is used with left-hand traffic on.
 - **Kia K4 GT-Line S** (red), as a car.
 
-With PTM2's left-hand traffic setting on, the buses have their doors on the left, as in the UK. All three have:
+With PTM2's left-hand traffic setting on, the buses have their doors on the left, as in the UK. All of them have:
 
 - Working upper decks and stairs.
 - Destination blinds (front, side and rear) and inside next-stop screens.

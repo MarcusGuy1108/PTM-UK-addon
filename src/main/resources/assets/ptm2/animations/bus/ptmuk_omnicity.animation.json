@@ -1,0 +1,529 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "omnicity.door1_open": {
+   "bones": {
+    "Right": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        80,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "Left": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        -80,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.0,
+   "loop": "hold_on_last_frame"
+  },
+  "omnicity.door1_close": {
+   "bones": {
+    "Right": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        80,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "Left": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        -80,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.0,
+   "loop": "hold_on_last_frame"
+  },
+  "omnicity.door2_open": {
+   "bones": {
+    "Right2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        80,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "Left2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        -80,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.0,
+   "loop": "hold_on_last_frame"
+  },
+  "omnicity.door2_close": {
+   "bones": {
+    "Right2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        80,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "Left2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        -80,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     },
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.0,
+   "loop": "hold_on_last_frame"
+  },
+  "omnicity.front_lights": {
+   "bones": {
+    "FrontLights": {
+     "position": [
+      0.472,
+      0,
+      0
+     ]
+    }
+   },
+   "loop": true
+  },
+  "omnicity.stop_lights": {
+   "bones": {
+    "StopLights": {
+     "position": [
+      -0.472,
+      0,
+      0
+     ]
+    }
+   },
+   "loop": true
+  },
+  "omnicity.reverse_lights": {
+   "bones": {
+    "BackLights": {
+     "position": [
+      -0.472,
+      0,
+      0
+     ]
+    }
+   },
+   "loop": true
+  },
+  "omnicity.bus_stopping": {
+   "bones": {
+    "BusStopping": {
+     "position": [
+      -0.4,
+      0,
+      0
+     ]
+    }
+   },
+   "loop": true
+  },
+  "omnicity.null": {
+   "bones": {},
+   "loop": true
+  },
+  "omnicity.left_signal": {
+   "bones": {
+    "FrontLeftTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0.472,
+        0,
+        0
+       ]
+      },
+      "0.5": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "BackLeftTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        -0.472,
+        0,
+        0
+       ]
+      },
+      "0.5": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "LeftTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0.472
+       ]
+      },
+      "0.5": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.0,
+   "loop": true
+  },
+  "omnicity.right_signal": {
+   "bones": {
+    "FrontRightTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0.472,
+        0,
+        0
+       ]
+      },
+      "0.5": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "BackRightTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        -0.472,
+        0,
+        0
+       ]
+      },
+      "0.5": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "RightTurnSignal": {
+     "position": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        -0.472
+       ]
+      },
+      "0.5": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 1.0,
+   "loop": true
+  },
+  "omnicity.wipers": {
+   "bones": {
+    "1": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        -80,
+        0,
+        0
+       ]
+      },
+      "2.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    },
+    "2": {
+     "rotation": {
+      "0.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      },
+      "1.0": {
+       "vector": [
+        -80,
+        0,
+        0
+       ]
+      },
+      "2.0": {
+       "vector": [
+        0,
+        0,
+        0
+       ]
+      }
+     }
+    }
+   },
+   "animation_length": 2.0,
+   "loop": true
+  }
+ }
+}

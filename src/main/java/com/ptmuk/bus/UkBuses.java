@@ -37,6 +37,7 @@ public final class UkBuses {
     /** The same buses in the red-to-white "Len" livery. */
     public static final String ALX400_LEN_CODE = "124g";
     public static final String E400_LEN_CODE = "124h";
+    public static final String OMNICITY_CODE = "124i";
     /** Cars: 2nd character 3 = modern generation. */
     public static final String K4_CODE = "035k";
 
@@ -50,6 +51,8 @@ public final class UkBuses {
             ALX400.Len::new, ALX400Layout.SEAT_COUNT);
     public static final RegistryObject<EntityType<Enviro400.Len>> E400_LEN_TYPE = doubleDecker(E400_LEN_CODE, "e400_len",
             Enviro400.Len::new, E400Layout.SEAT_COUNT);
+    public static final RegistryObject<EntityType<Omnicity>> OMNICITY_TYPE = doubleDecker(OMNICITY_CODE, "omnicity", Omnicity::new,
+            OmnicityLayout.SEAT_COUNT, 10.8f);
     public static final RegistryObject<EntityType<KiaK4>> K4_TYPE = car(K4_CODE, "k4", KiaK4::new,
             // 2026 Kia K4 hatchback, built about 1.18x real size like PTM2's own cars; 1.6 T-GDi, auto
             new VehicleSpecification(2.2f, 1.7f, 5.24f, 3500.0f, 5, VehicleTypes.CAR, 1, false, false, EngineTypes.PETROL,
@@ -61,10 +64,18 @@ public final class UkBuses {
     /** A dual-door double decker (10.2 m, built at 1.18x like PTM2's buses), diesel with an automatic gearbox. */
     private static <T extends DoubleDeckerBus> RegistryObject<EntityType<T>> doubleDecker(String code, String name,
                                                                                          EntityType.EntityFactory<T> factory, int seats) {
+        return doubleDecker(code, name, factory, seats, 10.2f);
+    }
+
+    /** As above, {@code metres} long in real life. */
+    private static <T extends DoubleDeckerBus> RegistryObject<EntityType<T>> doubleDecker(String code, String name,
+                                                                                         EntityType.EntityFactory<T> factory, int seats,
+                                                                                         float metres) {
         String id = "ptm_" + code + "_" + name;
         RegistryObject<EntityType<T>> type = ENTITIES.register(id, () -> EntityType.Builder.of(factory, MobCategory.AMBIENT)
                 .setUpdateInterval(3).sized(2.5f, 0.7f).setTrackingRange(192).build(PtmUk.id(id).toString()));
-        SPECS.put(code, new VehicleSpecification(3.0f, 5.2f, 12.0f, 0.0f, seats, VehicleTypes.BUS, 1, false, false,
+        float length = Math.round(metres * 1.18f * 10f) / 10f;     // 10.2 m -> 12.0, as before
+        SPECS.put(code, new VehicleSpecification(3.0f, 5.2f, length, 0.0f, seats, VehicleTypes.BUS, 1, false, false,
                 EngineTypes.DIESEL, true, 4, 80.0f, 80.0f, 6.0f, 2.2f, 5.0f));
         TYPES.put(code, type);
         return type;
