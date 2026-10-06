@@ -879,10 +879,13 @@ def interior():
             lz = z + sign * (0.035 + depth + 0.05)
             cube("Interior", (xa, ly - 0.03, lz - 0.05), (xb, ly, lz + 0.05), {"down": "lamp_on", "north": "wall", "south": "wall"})
     # inside displays: next stop screens facing the rear, lower and upper deck
-    for name, x, y in (("Display5", CAB[0] - 0.02, 2.05), ("Display6", X1 - 0.12, UPPER_CEIL - 0.04)):
+    for name, x, y in (("Display5", CAB[0] - 0.6, 2.05), ("Display6", X1 - 0.12, UPPER_CEIL - 0.04)):
         w, h = 0.62, 0.3
-        bone(name, "Interior", (x - 0.012, y, w / 2))
-        solid(name, (x, y - h - 0.02, -w / 2 - 0.02), (x + 0.04, y + 0.02, w / 2 + 0.02), "black", parent="Interior")
+        # the lower deck screen hangs over the gangway a little way back from the cab, so it is
+        # not over the driver's seat (where it showed through the cab windows) or the stairs
+        zc = -0.1 if name == "Display5" else 0.0
+        bone(name, "Interior", (x - 0.012, y, zc + w / 2))
+        solid(name, (x, y - h - 0.02, zc - w / 2 - 0.02), (x + 0.04, y + 0.02, zc + w / 2 + 0.02), "black", parent="Interior")
     # BUS STOPPING signs (unlit face; the lit one slides forward when the bell has been rung)
     for x, y, z in ((CAB[0] - 0.015, 1.72, -0.55), (X1 - 0.13, UPPER_CEIL - 0.42, 0.0)):
         cube("Interior", (x, y, z - 0.3), (x + 0.03, y + 0.07, z + 0.3), {"west": "stopping_off", "east": "black", "up": "black",
