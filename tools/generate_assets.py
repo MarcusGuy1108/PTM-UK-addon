@@ -517,13 +517,14 @@ def clamps(geometry, heights, back=11.0, half_width=3.0):
 
 
 def board_dims(kind):
+    """Backing board round a head: a narrow margin as on UK signals (the head nearly fills it)."""
     x1, y1, x2, y2 = head_bbox(kind)
-    return x1 - 2.1, -1.0, x2 + 2.1, 17.0
+    return x1 - 1.2, y1 - 0.9, x2 + 1.2, y2 + 0.9
 
 
 def board_elements(bx1, by1, bx2, by2):
     return [box((bx1, by1, 10.95), (bx2, by2, 11.0), "#board", faces=("north",), full_front_uv=True),
-            box((bx1 + 0.6, by1 + 0.6, 11.0), (bx2 - 0.6, by2 - 0.6, 11.3), "#board_back",
+            box((bx1 + 0.6, by1 + 0.6, 11.0), (bx2 - 0.6, by2 - 0.6, 11.15), "#board_back",
                 faces=("east", "west", "up", "down", "south"))]
 
 

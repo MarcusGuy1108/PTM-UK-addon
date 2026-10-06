@@ -369,7 +369,7 @@ def board(w, h, size=256, fill=(44, 46, 49)):
         cy = np.clip(my, inset + radius, h - inset - radius)
         return np.hypot(mx - cx, my - cy) <= radius
 
-    outer, inner = rounded(0, 1.7), rounded(0.85, 0.9)
+    outer, inner = rounded(0, 1.1), rounded(0.5, 0.65)      # narrow white retroreflective strip
     rgb = np.zeros((size, size, 3)) + np.array(fill, float) + noise((size, size, 1), 1.6)
     rgb += (8 * (0.5 - my / h))[..., None]
     # retroreflective border with a faint micro-prism pattern
@@ -377,11 +377,11 @@ def board(w, h, size=256, fill=(44, 46, 49)):
     border = outer & ~inner
     rgb[border] = (np.array([232, 233, 229.0]) + (6 * prism[border])[:, None] + noise((border.sum(), 1), 2))
     # thin shadow line where the border meets the board
-    edge = inner & ~rounded(1.0, 0.75)
+    edge = inner & ~rounded(0.62, 0.55)
     rgb[edge] -= 10
     # fixing clips top and bottom
-    for cy in (0.42, h - 0.42):
-        clip = (np.abs(mx - w / 2) < 0.6) & (np.abs(my - cy) < 0.22)
+    for cy in (0.25, h - 0.25):
+        clip = (np.abs(mx - w / 2) < 0.5) & (np.abs(my - cy) < 0.15)
         rgb[clip] = [150, 152, 155]
     return to_image(rgb, outer * 255.0)
 
