@@ -1,1 +1,0 @@
-{"textures":{"particle":"ptmuk:block/signal/led_amber_off","glass":"ptmuk:block/signal/led_amber_off","lens":"ptmuk:block/signal/led_amber_off"},"elements":[{"from":[11.24,6.24,6.8],"to":[14.76,9.76,6.85],"faces":{"north":{"texture":"#glass","uv":[0,0,16,16]}}}],"render_type":"minecraft:cutout_mipped"}

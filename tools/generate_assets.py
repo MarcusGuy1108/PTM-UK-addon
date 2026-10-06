@@ -38,7 +38,7 @@ ASSETS = ROOT / "src/main/resources/assets" / MOD_ID
 DATA = ROOT / "src/main/resources/data"
 
 # Must match SignalType / SignalStyle / AccessoryType / ModBlocks.stylesFor in Java.
-STYLES = ["led", "led_tunnel", "classic", "led_slim"]
+STYLES = ["led", "led_tunnel", "classic"]
 ALL_STYLES = STYLES + ["classic_large_green"]
 SIGNAL_TYPES = {
     # type id: (styles, layout, boardable)
@@ -74,7 +74,7 @@ ACCESSORIES = {
 }
 ACCESSORIES.update({name: "roadsign" for name in furniture.ROAD_SIGNS})
 
-STYLE_NAMES = {"led": "LED", "led_tunnel": "LED, Tunnel Hoods", "classic": "Classic Bulb", "led_slim": "LED, Short Cowls",
+STYLE_NAMES = {"led": "LED", "led_tunnel": "LED, Tunnel Hoods", "classic": "Classic Bulb",
                "classic_large_green": "Classic Bulb, Large Green"}
 
 
@@ -427,15 +427,31 @@ def hood(style, kind, cx, cy, dia, rnd):
         # older "pods": long at the top, cut back steeply towards the bottom
         return hood_ring(cx, cy, r + 0.05, steps(-67.5, 247.5),
                          lambda p: dia * 0.95 * (0.35 + 0.65 * (math.sin(math.radians(p)) + 1) / 2), t=0.34)
-    if style == "led_slim":
-        # short cowls: shallow at the top and cut right back at the sides, so the head stands
-        # out less from the pole; the lens is smaller (SLIM_LENS) so a wide black ring shows
-        return hood_ring(cx, cy, r, steps(-22.5, 202.5),
-                         lambda p: 1.5 * (0.25 + 0.75 * max(0.0, math.sin(math.radians(p)))), t=0.26)
     if style == "led_tunnel":
         return hood_ring(cx, cy, r, steps(-67.5, 247.5), lambda p: 4.8 * (0.84 + 0.16 * math.sin(math.radians(p))))
     # classic: deep full tube with a slot at the bottom for drainage
     return hood_ring(cx, cy, r + 0.05, steps(-67.5, 247.5), lambda p: 4.0 * (0.8 + 0.2 * math.sin(math.radians(p))), t=0.34)
+
+
+def face_set_back(style):
+    """How far (px) the front of the head sits back from the standard face: LED heads have a
+    slim black housing, so their face (with its full-length cowls and lenses) is set back
+    towards the board and the head stands out less from the pole."""
+    return 1.6 if style == "led" else 0.0
+
+
+def shift_z(elements, dz):
+    if not dz:
+        return elements
+    out = []
+    for el in elements:
+        el = json.loads(json.dumps(el))
+        el["from"][2] = round(el["from"][2] + dz, 3)
+        el["to"][2] = round(el["to"][2] + dz, 3)
+        if "rotation" in el:
+            el["rotation"]["origin"][2] = round(el["rotation"]["origin"][2] + dz, 3)
+        out.append(el)
+    return out
 
 
 def body_elements(style, kind):
@@ -459,9 +475,10 @@ def body_elements(style, kind):
                 els.append(box((x2 + 0.08, hy, 6.9), (x2 + 0.42, hy + 0.6, 7.7), "#metal"))
             els.append(box((x1 - 0.3, (y1 + y2) / 2 - 0.3, 6.95), (x1 - 0.08, (y1 + y2) / 2 + 0.3, 7.5), "#metal"))
         else:
-            els.append(box((x1 + 0.12, y1 + 0.05, 7.0), (x2 - 0.12, y2 - 0.05, 10.5), h, faces=("east", "west", "up", "down", "south")))
+            d = face_set_back(style)
+            els.append(box((x1 + 0.12, y1 + 0.05, 7.0 + d), (x2 - 0.12, y2 - 0.05, 10.5), h, faces=("east", "west", "up", "down", "south")))
             els.append(box((x1 + 0.45, y1 + 0.35, 10.5), (x2 - 0.45, y2 - 0.35, 11.0), h))
-            els.append(box((x1, y1, FACE_Z), (x2, y2, 7.0), h, front=f"#{var}", full_front_uv=True))
+            els.append(box((x1, y1, FACE_Z + d), (x2, y2, 7.0 + d), h, front=f"#{var}", full_front_uv=True))
     x1, y1, x2, y2 = head_bbox(kind)
     if classic:
         els.append(box((x1 + 0.3, y2, 7.2), (x2 - 0.3, y2 + 0.3, 10.4), h))          # domed top
@@ -470,7 +487,7 @@ def body_elements(style, kind):
     els.append(box(((x1 + x2) / 2 - 0.7, y1 + 1.2, 11.0), ((x1 + x2) / 2 + 0.7, y2 - 1.2, 12.2), "#metal",
                    faces=("east", "west", "up", "down", "south")))
     for _, cx, cy, dia, rnd in lenses:
-        els += hood(style, kind, cx, cy, dia, rnd)
+        els += shift_z(hood(style, kind, cx, cy, dia, rnd), face_set_back(style))
     return els, faces
 
 
@@ -601,16 +618,6 @@ def geometry_kind(style, kind):
     return kind
 
 
-# styles that come without a backing board (sneak + right-click still adds one); must match
-# UkTrafficSignal's default
-NO_BOARD_STYLES = {"led_slim"}
-SLIM_LENS = 0.8    # led_slim lens size against the standard lens, for a wide black surround
-
-
-def lens_scale(style):
-    return SLIM_LENS if style == "led_slim" else 1.0
-
-
 def write_signal(block, style, kind, boardable, tex):
     textures = common_textures(style, tex)
     gkind = geometry_kind(style, kind)
@@ -645,8 +652,9 @@ def write_signal(block, style, kind, boardable, tex):
             parts[f"{aspect}_{look}"] = model({"particle": tex[key], "glass": tex[key], "lens": tex[key]},
                                               # classic lit lenses are drawn over the unlit ones by
                                               # ClassicLampRenderer, so sit them just in front
-                                              place([lens(cx, cy, dia * lens_scale(style), "glass", look != "off",
-                                                          forward=0.03 if is_bulb(style) and look != "off" else 0.0)],
+                                              place([lens(cx, cy, dia, "glass", look != "off",
+                                                          forward=(0.03 if is_bulb(style) and look != "off" else 0.0)
+                                                          - face_set_back(style))],
                                                     attachment, diagonal),
                                               cutout=rnd)
         write_parts(block, geometry, diagonal, parts)
@@ -667,7 +675,7 @@ def write_signal(block, style, kind, boardable, tex):
         show = (6, False)  # red with filter arrow lit
     lit = lens_looks(kind, *show)
     els, item_tex = list(body), dict(textures)
-    if boardable and style not in NO_BOARD_STYLES:
+    if boardable:
         els += board_els
         item_tex.update({"board": board_tex, "board_back": tex["grey_metal"]})
     for aspect, cx, cy, dia, _ in aspects:
@@ -675,7 +683,7 @@ def write_signal(block, style, kind, boardable, tex):
         look = "on" if look == "flash" else look
         k = lens_texture(style, aspect, look, round_ped)
         item_tex[k] = tex[k]
-        els.append(lens(cx, cy, dia * lens_scale(style), k, look != "off"))
+        els.append(lens(cx, cy, dia, k, look != "off", forward=-face_set_back(style)))
     write_item(block, model(item_tex, els, cutout=True), small=kind in ("puffin", "low_level_cycle"))
 
 

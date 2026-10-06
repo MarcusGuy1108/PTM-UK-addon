@@ -4,9 +4,6 @@ package com.ptmuk.block;
 public enum SignalStyle {
     /** Modern LED heads with short angled cowls (Siemens Helios style). */
     LED("led"),
-    /** Modern LED heads with short cowls, smaller lenses in a wide black surround, and no
-     *  backing board by default. */
-    LED_SLIM("led_slim"),
     /** Modern LED heads with long tunnel hoods. */
     LED_TUNNEL("led_tunnel"),
     /** Older incandescent bulb heads with deep hoods and fresnel lenses. */
