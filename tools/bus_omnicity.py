@@ -75,6 +75,8 @@ POD_PANEL = 0.29                       # |z| of the gangway face of the tall pan
 POD_PANEL_TOP = POD[2] + 1.25          # panel height above the lower floor: level with the seat tops
 REAR_STEPS = ((-4.0, POD[0], 0.21), (X0 + 0.12, -4.0, 0.42))   # gangway steps up to the back row
 BACK_ROW = -4.6
+UP_REAR_STEP = (X0 + 0.12, X0 + 0.85, 0.15)   # the upper deck back row sits up a step
+STAIR_HOOD = 3.93                      # underside of the light blue box over the stairwell, upstairs
 # window groups: (x from, x to, panes); the offside has a blank panel by the stairs
 LOW_WINDOWS_NEAR = ((-0.55, 3.57, 3), (-4.1, -1.97, 2))
 LOW_WINDOWS_OFF = ((-4.1, 1.42, 4),)
@@ -316,7 +318,7 @@ def side_panel(nearside, inside):
         d.rectangle((0, Y(H), w, Y(UP_WIN[1] + 0.02)), fill=CEILING + (255,))
     if not inside:
         livery.side_design(img, X, Y, R, X0, X1, (LOW_WIN[1] + 0.06, UP_WIN[0] - 0.06))
-    rubber = (GLASS_FRAME if not inside else (88, 92, 98)) + (255,)
+    rubber = (GLASS_FRAME if not inside else (34, 56, 150)) + (255,)       # dark blue frames inside
     for xa, xb, ya, yb, n, kind in window_rows(nearside):
         # bonded glazing: one black band, the panes cut out with thin black pillars between
         g = 0.05
@@ -328,8 +330,11 @@ def side_panel(nearside, inside):
             cuts = [(xa + i * step + (0.035 if i else 0), xa + (i + 1) * step - (0.035 if i < n - 1 else 0)) for i in range(n)]
         for ca, cb in cuts:
             d.rounded_rectangle((X(ca), Y(yb), X(cb), Y(ya)), radius=R(0.05), fill=clear)
-            if not inside and ya > 2.5:   # small top hopper on the upper deck
+            if ya > 2.5:                  # small top hopper on the upper deck
                 d.rectangle((X(ca), Y(yb - 0.16), X(cb), Y(yb - 0.175)), fill=rubber)
+                if inside:                # its black frame, tipped in at the top
+                    d.rectangle((X(ca), Y(yb), X(ca) + R(0.02), Y(yb - 0.16)), fill=(20, 20, 22, 255))
+                    d.rectangle((X(cb) - R(0.02), Y(yb), X(cb), Y(yb - 0.16)), fill=(20, 20, 22, 255))
     if nearside:
         for a, b in (DOOR1, DOOR2):
             d.rounded_rectangle((X(a) - R(0.04), Y(DOOR_TOP + 0.05), X(b) + R(0.04), Y(SKIRT)), radius=R(0.05), fill=rubber)
@@ -1042,7 +1047,7 @@ def wheels():
 
 
 def seat(name, x, z, floor, facing=1, width=0.44):
-    """High-back bus seat: moquette cushion and back, blue plastic shell behind, orange grab
+    """High-back bus seat: moquette cushion and back, blue plastic shell behind, grey grab
     loop on top, pedestal leg. facing 1 = towards the front."""
     f = facing
     w2 = width / 2 - 0.01
@@ -1060,10 +1065,10 @@ def seat(name, x, z, floor, facing=1, width=0.44):
     # shell lip round the back edge
     cube(name, (back_x - f * 0.05, cush[1] + 0.05, z - w2 - 0.005), (back_x - f * 0.035, floor + 1.1, z + w2 + 0.005),
          {f2: "shell" for f2 in ALL})
-    # orange grab loop: two uprights and a top rail
+    # grey grab loop: two uprights and a top rail
     for zz in (z - w2 + 0.07, z + w2 - 0.07):
-        solid(name, (back_x - 0.016, floor + 1.13, zz - 0.016), (back_x + 0.016, floor + 1.2, zz + 0.016), "orange")
-    solid(name, (back_x - 0.018, floor + 1.2, z - w2 + 0.054), (back_x + 0.018, floor + 1.235, z + w2 - 0.054), "orange")
+        solid(name, (back_x - 0.016, floor + 1.13, zz - 0.016), (back_x + 0.016, floor + 1.2, zz + 0.016), "grey")
+    solid(name, (back_x - 0.018, floor + 1.2, z - w2 + 0.054), (back_x + 0.018, floor + 1.235, z + w2 - 0.054), "grey")
     # pedestal leg and foot
     solid(name, (x - 0.03, floor, z - 0.03), (x + 0.03, cush[0], z + 0.03), "grey")
     solid(name, (x - 0.12, floor, z - 0.03), (x + 0.12, floor + 0.03, z + 0.03), "grey")
@@ -1215,12 +1220,30 @@ def interior():
     mx, my = (STAIRS[0] + STAIRS[1]) / 2, (LOWER_FLOOR + UPPER_FLOOR) / 2 + 0.92
     solid("Stairs", (mx - span / 2, my - 0.02, STAIR_Z[0] + 0.04), (mx + span / 2, my + 0.02, STAIR_Z[0] + 0.08), "orange",
           rotation=[0, 0, STAIR_RAIL_SENSE * math.degrees(slope)], pivot=(mx, my, STAIR_Z[0] + 0.06))
-    # upper deck: a guard round the stairwell, open at the top (front) end on the gangway side
+    # upper deck: a guard round the stairwell, open at the top (front) end on the gangway side:
+    # a light blue panel with an orange rail standing on posts above it, as on the photos
     gx = STAIRS[0] + STAIR_COVER
-    solid("Stairs", (gx, UPPER_FLOOR, STAIR_Z[0] - 0.04), (STAIRS[1] - 0.75, UPPER_FLOOR + 0.9, STAIR_Z[0]), "wall")
-    solid("Stairs", (gx, UPPER_FLOOR + 0.9, STAIR_Z[0] - 0.05), (STAIRS[1] - 0.75, UPPER_FLOOR + 0.95, STAIR_Z[0] + 0.01), "orange")
-    solid("Stairs", (gx - 0.04, UPPER_FLOOR, STAIR_Z[0] - 0.04), (gx, UPPER_FLOOR + 0.9, ZO - 0.04), "wall")
-    solid("Stairs", (gx - 0.05, UPPER_FLOOR + 0.9, STAIR_Z[0] - 0.05), (gx + 0.01, UPPER_FLOOR + 0.95, ZO - 0.04), "orange")
+    gend = STAIRS[1] - 0.75
+    ph, rh = 0.78, 1.04                    # panel top, rail top
+    solid("Stairs", (gx, UPPER_FLOOR, STAIR_Z[0] - 0.04), (gend, UPPER_FLOOR + ph, STAIR_Z[0]), "wall")
+    solid("Stairs", (gx - 0.04, UPPER_FLOOR, STAIR_Z[0] - 0.04), (gx, UPPER_FLOOR + ph, ZO - 0.04), "wall")
+    solid("Stairs", (gx, UPPER_FLOOR + rh - 0.04, STAIR_Z[0] - 0.04), (gend, UPPER_FLOOR + rh, STAIR_Z[0]), "orange")
+    solid("Stairs", (gx - 0.04, UPPER_FLOOR + rh - 0.04, STAIR_Z[0] - 0.04), (gx, UPPER_FLOOR + rh, ZO - 0.04), "orange")
+    for x in (gx + 0.02, (gx + gend) / 2, gend - 0.02):
+        solid("Stairs", (x - 0.016, UPPER_FLOOR + ph, STAIR_Z[0] - 0.036), (x + 0.016, UPPER_FLOOR + rh, STAIR_Z[0] - 0.004), "orange")
+    for z in ((STAIR_Z[0] + ZO) / 2, ZO - 0.08):
+        solid("Stairs", (gx - 0.036, UPPER_FLOOR + ph, z - 0.016), (gx - 0.004, UPPER_FLOOR + rh, z + 0.016), "orange")
+    pole("Stairs", gend + 0.02, STAIR_Z[0] - 0.02, UPPER_FLOOR, UPPER_CEIL)
+    solid("Stairs", (gend - 0.02, UPPER_CEIL - 0.06, STAIR_Z[0] - 0.06), (gend + 0.06, UPPER_CEIL, STAIR_Z[0] + 0.02), "dash")
+    # the light blue box hung from the ceiling over the stairwell, two downlights underneath and
+    # a dark grille on its gangway face
+    hx0, hx1 = gx, STAIRS[1] + 0.2
+    solid("Stairs", (hx0, STAIR_HOOD, STAIR_Z[0] - 0.08), (hx1, UPPER_CEIL, ZO - T), "wall")
+    for f in (0.3, 0.7):
+        lx = hx0 + (hx1 - hx0) * f
+        cube("Stairs", (lx - 0.06, STAIR_HOOD - 0.006, STAIR_Z[0] + 0.25), (lx + 0.06, STAIR_HOOD, STAIR_Z[0] + 0.37),
+             {"down": "lamp_on", "north": "grey", "south": "grey", "east": "grey", "west": "grey"})
+    solid("Stairs", (hx0 + 0.3, STAIR_HOOD + 0.08, STAIR_Z[0] - 0.086), (hx1 - 0.3, STAIR_HOOD + 0.17, STAIR_Z[0] - 0.08), "dash")
     # upper deck: forward-facing pairs, front row at the big front windows, rear bench of five
     xs = [4.5 + FS - 0.8 * k for k in range(12)]
     for x in xs:
@@ -1228,8 +1251,12 @@ def interior():
             if z > 0 and STAIRS[0] - 0.2 < x < STAIRS[1] + 0.25:
                 continue           # stairwell
             add_seat(x, z, UPPER_FLOOR)
+    xa, xb, sh = UP_REAR_STEP
+    cube("Interior", (xa, UPPER_FLOOR, ZN + 0.12), (xb, UPPER_FLOOR + sh, ZO - 0.12),
+         {"up": "carpet", "east": "wall_dark", "north": "wall_dark", "south": "wall_dark", "west": "wall_dark"})
+    solid("Interior", (xb - 0.03, UPPER_FLOOR + sh - 0.02, ZN + 0.12), (xb + 0.004, UPPER_FLOOR + sh + 0.003, ZO - 0.12), "grey")
     for z in (-0.84, -0.42, 0.0, 0.42, 0.84):
-        add_seat(X0 + 0.46, z, UPPER_FLOOR)
+        add_seat(X0 + 0.46, z, UPPER_FLOOR + sh)
     # upper deck curved poles from seat backs to the ceiling and the front rail
     for x in xs[1::2]:
         for z in (-0.3, 0.3):
@@ -1241,10 +1268,23 @@ def interior():
             cube("Interior", (x - 0.24, top - 0.02, z - 0.02), (x - 0.2, top + 0.38, z + 0.02), {f2: "orange" for f2 in ALL},
                  rotation=[-sz * RX * 35, 0, 0], pivot=(x - 0.22, top, z))
             bell("Interior", x - 0.22, z, UPPER_FLOOR + 1.45)
+            # dark grey clamps: on the seat back, at the bend and where it meets the ceiling
+            for cy in (UPPER_FLOOR + 1.2, top - 0.03):
+                solid("Interior", (x - 0.25, cy, z - 0.03), (x - 0.19, cy + 0.06, z + 0.03), "dash")
+            ez = z + sz * 0.38 * math.sin(math.radians(35))     # the top leans out towards the windows
+            solid("Interior", (x - 0.26, UPPER_CEIL - 0.05, ez - 0.05), (x - 0.18, UPPER_CEIL, ez + 0.05), "dash")
     # front handrail, seen across the upper front window as on the photos
     solid("Interior", (X1 - 0.33, UPPER_FLOOR + 1.08, ZN + 0.25), (X1 - 0.28, UPPER_FLOOR + 1.13, ZO - 0.25), "orange")
-    for z in (ZN + 0.27, ZO - 0.27):
-        solid("Interior", (X1 - 0.33, UPPER_FLOOR, z - 0.025), (X1 - 0.28, UPPER_FLOOR + 1.13, z + 0.025), "orange")
+    for z in (ZN + 0.27, 0.0, ZO - 0.27):          # posts at the ends and in the middle, up to the ceiling
+        solid("Interior", (X1 - 0.33, UPPER_FLOOR, z - 0.025), (X1 - 0.28, UPPER_CEIL, z + 0.025), "orange")
+        solid("Interior", (X1 - 0.34, UPPER_FLOOR + 1.06, z - 0.035), (X1 - 0.27, UPPER_FLOOR + 1.15, z + 0.035), "dash")
+    # header across the top of the front window, a small light in the middle
+    solid("Interior", (X1 - 0.24, 4.03, ZN + 0.2), (X1 - 0.1, UPPER_CEIL, ZO - 0.2), "wall")
+    cube("Interior", (X1 - 0.246, 4.07, -0.12), (X1 - 0.24, 4.12, 0.12), {"west": "lamp_on"})
+    # CCTV domes on the upper deck ceiling, front and back
+    for x, z in ((X1 - 1.2, -0.55), (X0 + 1.4, 0.55)):
+        solid("Interior", (x - 0.06, UPPER_CEIL - 0.03, z - 0.06), (x + 0.06, UPPER_CEIL, z + 0.06), "white")
+        solid("Interior", (x - 0.04, UPPER_CEIL - 0.07, z - 0.04), (x + 0.04, UPPER_CEIL - 0.03, z + 0.04), "black")
     # ceiling coves both sides, both decks: angled panels with advert frames and a light strip
     for y_top, y_low, xa, xb in ((LOWER_CEIL, LOW_WIN[1] + 0.03, X0 + 0.4, CAB[0]), (UPPER_CEIL, UP_WIN[1] + 0.03, X0 + 0.4, X1 - 0.4)):
         gap = y_top - y_low
@@ -1533,6 +1573,7 @@ def floors(upper):
         xa = STAIRS[0] + i * run
         out.append((xa, xa + run, STAIR_Z[0], STAIR_Z[1], LOWER_FLOOR + (i + 1) * rise))
     if upper:
+        out.append((X0, UP_REAR_STEP[1], -W, W, UPPER_FLOOR + UP_REAR_STEP[2]))
         out.append((X0, X1, -W, W, UPPER_FLOOR))
     else:
         # the gangway steps up to the back row, and the raised boxes either side of it

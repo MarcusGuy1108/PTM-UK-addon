@@ -117,11 +117,11 @@ public final class OmnicityLayout implements BusLayout {
                 new SeatLocation(0.555, 3.481, -4.755, 0.0f, false, 0.000, 2.867, -4.661),
                 new SeatLocation(-0.555, 3.481, -4.755, 0.0f, false, 0.000, 2.867, -4.661),
                 new SeatLocation(-0.979, 3.481, -4.755, 0.0f, false, 0.000, 2.867, -4.661),
-                new SeatLocation(0.909, 3.481, -5.924, 0.0f, false, 0.000, 2.867, -5.829),
-                new SeatLocation(0.496, 3.481, -5.924, 0.0f, false, 0.000, 2.867, -5.829),
-                new SeatLocation(-0.000, 3.481, -5.924, 0.0f, false, 0.000, 2.867, -5.829),
-                new SeatLocation(-0.496, 3.481, -5.924, 0.0f, false, 0.000, 2.867, -5.829),
-                new SeatLocation(-0.909, 3.481, -5.924, 0.0f, false, 0.000, 2.867, -5.829)));
+                new SeatLocation(0.909, 3.658, -5.924, 0.0f, false, 0.000, 3.044, -5.829),
+                new SeatLocation(0.496, 3.658, -5.924, 0.0f, false, 0.000, 3.044, -5.829),
+                new SeatLocation(-0.000, 3.658, -5.924, 0.0f, false, 0.000, 3.044, -5.829),
+                new SeatLocation(-0.496, 3.658, -5.924, 0.0f, false, 0.000, 3.044, -5.829),
+                new SeatLocation(-0.909, 3.658, -5.924, 0.0f, false, 0.000, 3.044, -5.829)));
     }
 
     public static List<WheelLocation> wheels() {
@@ -141,6 +141,7 @@ public final class OmnicityLayout implements BusLayout {
                     new FloorObject(3.481, 3.756, 0.295, 1.440, 2.325f),
                     new FloorObject(3.756, 4.032, 0.295, 1.440, 2.596f),
                     new FloorObject(4.032, 4.307, 0.295, 1.440, 2.867f),
+                    new FloorObject(-6.372, -5.369, -3.009, 3.009, 3.044f),
                     new FloorObject(-6.372, 6.372, -3.009, 3.009, 2.867f)));
         }
         return new ArrayList<>(List.of(
