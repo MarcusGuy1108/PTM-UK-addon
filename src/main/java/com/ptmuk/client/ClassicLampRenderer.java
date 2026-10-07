@@ -23,7 +23,7 @@ import net.minecraftforge.registries.ForgeRegistries;
  * Draws the lit lenses of classic (incandescent) heads with a brightness that follows the
  * signal like a filament: it takes a moment to warm up and glows on briefly after switching
  * off, so changes cross-fade instead of snapping like LEDs. The block model shows these
- * lenses unlit; this renderer adds the light on top.
+ * lenses unlit; this renderer fades the lit lens in over them.
  */
 public class ClassicLampRenderer implements BlockEntityRenderer<ClassicLampBlockEntity> {
     /** Filament time constants in seconds. */
@@ -58,8 +58,10 @@ public class ClassicLampRenderer implements BlockEntityRenderer<ClassicLampBlock
 
         String geometry = SignalModels.geometry(state, SignalModels.poleBelow(lamp.getLevel(), lamp.getBlockPos(), state) != null);
         int y = SignalModels.yRotation(state);
-        // additive and unshaded: the lamp's light is added over the unlit coloured glass
-        VertexConsumer consumer = buffers.getBuffer(RenderType.eyes(InventoryMenu.BLOCK_ATLAS));
+        // full bright and blended by alpha: the lit lens fades in over the unlit glass. Not
+        // additive (RenderType.eyes): that ignores alpha, and mods like Embeddium recolour the
+        // transparent corners of atlas textures to fix mipmaps, so the light showed as a square
+        VertexConsumer consumer = buffers.getBuffer(RenderType.entityTranslucentEmissive(InventoryMenu.BLOCK_ATLAS));
         for (int i = 0; i < lamp.brightness.length; i++) {
             String aspect = parts.aspects().get(i);
             String look = looks.get(aspect);
@@ -79,7 +81,7 @@ public class ClassicLampRenderer implements BlockEntityRenderer<ClassicLampBlock
             // filament colour: a dimmer bulb glows warmer and redder
             float warm = 0.55f + 0.45f * b;
             for (BakedQuad quad : lit.getQuads(state, null, random, ModelData.EMPTY, null)) {
-                consumer.putBulkData(pose.last(), quad, b, b * warm, b * warm * warm, 1f, LightTexture.FULL_BRIGHT,
+                consumer.putBulkData(pose.last(), quad, 1f, warm, warm * warm, b, LightTexture.FULL_BRIGHT,
                         OverlayTexture.NO_OVERLAY, false);
             }
         }

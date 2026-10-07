@@ -1320,7 +1320,8 @@ def door_anim(right, left, open_):
 
 def plug_anim(front, rear, open_, out=0.1, slide=0.5):
     """Plug door, as on most modern buses: each leaf pushes out from the body, then slides along
-    the outside, the front leaf forwards and the rear one back."""
+    the outside, the front leaf forwards and the rear one back. A negative out moves the leaves
+    into the bus instead and slides them along the inside (the front entrance)."""
     def track(sx):
         pts = [[0, 0, 0], [0, 0, -out * PX], [sx * slide * PX, 0, -out * PX]]
         times = ("0.0", "0.3", "1.0")
@@ -1332,8 +1333,8 @@ def plug_anim(front, rear, open_, out=0.1, slide=0.5):
 def write_animations():
     out = 0.025 * PX
     anims = {
-        "e400.door1_open": door_anim("Right", "Left", True),
-        "e400.door1_close": door_anim("Right", "Left", False),
+        "e400.door1_open": plug_anim("Right", "Left", True, out=-0.12, slide=0.35),   # glide inwards
+        "e400.door1_close": plug_anim("Right", "Left", False, out=-0.12, slide=0.35),   # glide inwards
         "e400.door2_open": plug_anim("Right2", "Left2", True),
         "e400.door2_close": plug_anim("Right2", "Left2", False),
         "e400.front_lights": anim(loop=True, bones={"FrontLights": {"position": [out, 0, 0]}}),
