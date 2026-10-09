@@ -377,27 +377,72 @@ def head_bbox(kind):
     return (min(r[0] for r in rects), min(r[1] for r in rects), max(r[2] for r in rects), max(r[3] for r in rects))
 
 
+HOOD_STEP = 0.15      # largest step (px) allowed along a hood's slanted front edge
+HOOD_MAX_STRIPS = 5
+
+
 def hood_ring(cx, cy, r, phis, depth, t=0.3):
-    """Rounded hood from plates, one every 22.5 degrees around the lens centre. Each plate
-    is built at the nearest of top / right / left / bottom and rotated into place about the
-    lens axis, so the hood is a smooth tube rather than a box."""
-    w = 2 * (r + t) * math.tan(math.radians(11.25)) + 0.16
-    els = []
+    """Rounded hood from plates, one every 22.5 degrees around the lens centre (the finest
+    rotation block models allow). Each plate is built at the nearest of top / right / left /
+    bottom and rotated into place about the lens axis, so the hood is a tube rather than a box.
+
+    The plates meet exactly at their outer corners (overlapping ones stuck out as teeth), and
+    each is cut into strips across its width, every strip as deep as the hood at its own angle,
+    so a slanted front edge steps finely instead of in sixteen big steps. A strip shows its end
+    only where its neighbour is shorter (or at the open ends of the ring)."""
+    half = 11.25
+    w = 2 * (r + t) * math.tan(math.radians(half)) + 0.02
+    full = len(phis) * 22.5 >= 360 - 1e-6
+    strips = []                      # [angle, depth, plate angle, span]
     for phi in phis:
+        delta = abs(depth(phi + half) - depth(phi - half))
+        n = max(1, min(HOOD_MAX_STRIPS, math.ceil(delta / HOOD_STEP - 1e-9)))
+        span = 22.5 / n
+        for k in range(n):
+            ang = phi - half + (k + 0.5) * span
+            strips.append([ang, depth(ang), phi, span])
+    strips.sort(key=lambda st: st[0])
+
+    def neighbour_depth(i, j):
+        if not 0 <= j < len(strips):
+            if not full:
+                return 0.0
+            j %= len(strips)
+        gap = (strips[j][0] - strips[i][0]) % 360
+        gap = min(gap, 360 - gap)
+        return strips[j][1] if gap <= (strips[i][3] + strips[j][3]) / 2 + 1e-3 else 0.0
+
+    els = []
+    for i, (ang, d, phi, span) in enumerate(strips):
         p = ((phi + 45) % 360) - 45
-        d = depth(phi)
+        frac = (ang - phi) / half             # -1 .. 1 across the plate, in angle
+        lo, hi = frac - span / 22.5, frac + span / 22.5
         z1, z2 = FACE_Z - d, FACE_Z
+        # per base: inner / outer faces, the local tangential axis and its sense (+1 when that
+        # axis runs the way the angle grows), and the end faces towards larger / smaller angles
         if 45 <= p <= 135:
-            frm, to, ang, inner = (cx - w / 2, cy + r, z1), (cx + w / 2, cy + r + t, z2), p - 90, "down"
+            sense, rot, inner, ends = -1, p - 90, "down", ("west", "east")
         elif p < 45:
-            frm, to, ang, inner = (cx + r, cy - w / 2, z1), (cx + r + t, cy + w / 2, z2), p, "west"
+            sense, rot, inner, ends = 1, p, "west", ("up", "down")
         elif p <= 225:
-            frm, to, ang, inner = (cx - r - t, cy - w / 2, z1), (cx - r, cy + w / 2, z2), p - 180, "east"
+            sense, rot, inner, ends = -1, p - 180, "east", ("down", "up")
         else:
-            frm, to, ang, inner = (cx - w / 2, cy - r - t, z1), (cx + w / 2, cy - r, z2), p - 270, "up"
+            sense, rot, inner, ends = 1, p - 270, "up", ("east", "west")
+        ta, tb = sorted((sense * lo * w / 2, sense * hi * w / 2))
+        if inner in ("down", "up"):           # plate lies along x, above or below the lens
+            y0 = cy + r if inner == "down" else cy - r - t
+            frm, to = (cx + ta, y0, z1), (cx + tb, y0 + t, z2)
+        else:                                 # plate lies along y, right or left of the lens
+            x0 = cx + r if inner == "west" else cx - r - t
+            frm, to = (x0, cy + ta, z1), (x0 + t, cy + tb, z2)
         outer = {"down": "up", "up": "down", "west": "east", "east": "west"}[inner]
-        els.append(box(frm, to, "#housing", faces=("north", inner, outer), overrides={inner: "#inside"},
-                       rotation=("z", ang, (cx, cy, FACE_Z)) if ang else None))
+        faces = ["north", inner, outer]
+        if neighbour_depth(i, i + 1) < d - 1e-4:
+            faces.append(ends[0])
+        if neighbour_depth(i, i - 1) < d - 1e-4:
+            faces.append(ends[1])
+        els.append(box(frm, to, "#housing", faces=tuple(faces), overrides={inner: "#inside"},
+                       rotation=("z", rot, (cx, cy, FACE_Z)) if rot else None))
     return els
 
 
