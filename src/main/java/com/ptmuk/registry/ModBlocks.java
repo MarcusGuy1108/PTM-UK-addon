@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -55,7 +56,11 @@ public final class ModBlocks {
     public static final RegistryObject<Block> VMS;
     public static final RegistryObject<Block> BUS_STOP = BLOCKS.register("london_bus_stop", com.ptmuk.sign.BusStopBlock::new);
     public static final RegistryObject<Block> COUNTDOWN_SIGN = BLOCKS.register("bus_countdown_sign", com.ptmuk.sign.CountdownSignBlock::new);
-    /** UK building materials: full blocks, then their slabs. */
+    public static final RegistryObject<Block> SHOP_SIGN = BLOCKS.register("shop_sign", com.ptmuk.building.ShopSignBlock::new);
+    /** Framed windows for UK buildings; must match WINDOWS in tools/building.py. */
+    public static final String[] WINDOWS = {"upvc_window", "sash_window", "georgian_window", "leaded_window", "shop_window",
+            "office_glazing", "grey_framed_window"};
+    /** UK building materials: each full block, then its slab and stairs, then the windows. */
     public static final Map<String, RegistryObject<Block>> BUILDING = new LinkedHashMap<>();
     /** Transmission towers, one block per tower type (each cell of the tower is a state). */
     public static final Map<String, RegistryObject<Block>> PYLONS = new LinkedHashMap<>();
@@ -97,10 +102,14 @@ public final class ModBlocks {
         VMS = BLOCKS.register("matrix_sign", VmsBlock::new);
         MOTORWAY.put("matrix_sign", VMS);
         for (BuildingMaterial m : BuildingMaterial.values()) {
-            BUILDING.put(m.id(), BLOCKS.register(m.id(), () -> new Block(m.properties())));
-        }
-        for (BuildingMaterial m : BuildingMaterial.values()) {
+            RegistryObject<Block> full = BLOCKS.register(m.id(), () -> new Block(m.properties()));
+            BUILDING.put(m.id(), full);
             BUILDING.put(m.id() + "_slab", BLOCKS.register(m.id() + "_slab", () -> new SlabBlock(m.properties())));
+            BUILDING.put(m.id() + "_stairs", BLOCKS.register(m.id() + "_stairs",
+                    () -> new StairBlock(() -> full.get().defaultBlockState(), m.properties())));
+        }
+        for (String window : WINDOWS) {
+            BUILDING.put(window, BLOCKS.register(window, com.ptmuk.building.WindowPaneBlock::new));
         }
         for (String name : PylonCells.COUNTS.keySet()) {
             PYLONS.put(name, BLOCKS.register(name, () -> new PylonBlock(name)));

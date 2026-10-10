@@ -1,0 +1,26 @@
+{
+ "replace": false,
+ "values": [
+  "ptmuk:paving_slabs_stairs",
+  "ptmuk:block_paving_red_stairs",
+  "ptmuk:block_paving_grey_stairs",
+  "ptmuk:tactile_paving_buff_stairs",
+  "ptmuk:tactile_paving_red_stairs",
+  "ptmuk:tactile_paving_corduroy_stairs",
+  "ptmuk:granite_setts_stairs",
+  "ptmuk:concrete_kerb_stairs",
+  "ptmuk:tarmac_stairs",
+  "ptmuk:tarmac_red_stairs",
+  "ptmuk:red_brick_stairs",
+  "ptmuk:london_stock_brick_stairs",
+  "ptmuk:blue_engineering_brick_stairs",
+  "ptmuk:pebbledash_stairs",
+  "ptmuk:white_render_stairs",
+  "ptmuk:portland_stone_stairs",
+  "ptmuk:green_faience_stairs",
+  "ptmuk:burgundy_faience_stairs",
+  "ptmuk:roof_slate_stairs",
+  "ptmuk:roof_clay_tiles_stairs",
+  "ptmuk:roof_concrete_tiles_stairs"
+ ]
+}

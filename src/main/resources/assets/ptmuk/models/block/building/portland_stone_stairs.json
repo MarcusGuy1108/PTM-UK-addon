@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/stairs",
+ "textures": {
+  "bottom": "ptmuk:block/building/portland_stone",
+  "top": "ptmuk:block/building/portland_stone",
+  "side": "ptmuk:block/building/portland_stone"
+ }
+}

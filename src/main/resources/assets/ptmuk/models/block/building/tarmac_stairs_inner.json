@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/inner_stairs",
+ "textures": {
+  "bottom": "ptmuk:block/building/tarmac",
+  "top": "ptmuk:block/building/tarmac",
+  "side": "ptmuk:block/building/tarmac"
+ }
+}

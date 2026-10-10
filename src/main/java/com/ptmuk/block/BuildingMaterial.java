@@ -4,7 +4,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 
-/** Plain UK building and paving materials. Textures come from tools/building.py. */
+/** Plain UK building, roofing and paving materials (block, slab and stairs each). Textures come from tools/building.py. */
 public enum BuildingMaterial {
     PAVING_SLABS("paving_slabs", MapColor.STONE, SoundType.STONE),
     BLOCK_PAVING_RED("block_paving_red", MapColor.TERRACOTTA_RED, SoundType.STONE),
@@ -21,7 +21,12 @@ public enum BuildingMaterial {
     BLUE_ENGINEERING_BRICK("blue_engineering_brick", MapColor.COLOR_BLUE, SoundType.STONE),
     PEBBLEDASH("pebbledash", MapColor.TERRACOTTA_WHITE, SoundType.STONE),
     WHITE_RENDER("white_render", MapColor.SNOW, SoundType.STONE),
-    PORTLAND_STONE("portland_stone", MapColor.SAND, SoundType.STONE);
+    PORTLAND_STONE("portland_stone", MapColor.SAND, SoundType.STONE),
+    GREEN_FAIENCE("green_faience", MapColor.COLOR_GREEN, SoundType.STONE),
+    BURGUNDY_FAIENCE("burgundy_faience", MapColor.CRIMSON_NYLIUM, SoundType.STONE),
+    ROOF_SLATE("roof_slate", MapColor.COLOR_GRAY, SoundType.STONE),
+    ROOF_CLAY_TILES("roof_clay_tiles", MapColor.TERRACOTTA_RED, SoundType.STONE),
+    ROOF_CONCRETE_TILES("roof_concrete_tiles", MapColor.TERRACOTTA_BROWN, SoundType.STONE);
 
     private final String id;
     private final MapColor colour;

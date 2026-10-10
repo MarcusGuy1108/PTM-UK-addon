@@ -32,4 +32,15 @@ public final class ClientHooks {
             mc.setScreen(new com.ptmuk.client.sign.BusStopEditScreen(stop));
         }
     }
+
+    public static void openShopSignEditor(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.level.getBlockEntity(pos) instanceof com.ptmuk.building.ShopSignBlockEntity sign) {
+            mc.setScreen(new com.ptmuk.client.building.ShopSignEditScreen(sign));
+        }
+    }
+
+    public static void usePrefabTool(net.minecraft.world.InteractionHand hand, boolean sneaking) {
+        com.ptmuk.client.building.PrefabToolClient.use(hand, sneaking);
+    }
 }

@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/stairs",
+ "textures": {
+  "bottom": "ptmuk:block/building/tactile_paving_red",
+  "top": "ptmuk:block/building/tactile_paving_red",
+  "side": "ptmuk:block/building/tactile_paving_red"
+ }
+}

@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/template_glass_pane_noside_alt",
+ "textures": {
+  "pane": "ptmuk:block/building/leaded_window",
+  "particle": "ptmuk:block/building/leaded_window"
+ },
+ "render_type": "minecraft:translucent"
+}

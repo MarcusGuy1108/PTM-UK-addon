@@ -25,5 +25,10 @@ public final class PtmUkNetwork {
                 .decoder(SyncPowerLinesMessage::decode)
                 .consumerMainThread(SyncPowerLinesMessage::handle)
                 .add();
+        CHANNEL.messageBuilder(PrefabToolMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(PrefabToolMessage::encode)
+                .decoder(PrefabToolMessage::decode)
+                .consumerMainThread(PrefabToolMessage::handle)
+                .add();
     }
 }

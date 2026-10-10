@@ -16,6 +16,11 @@
   "ptmuk:blue_engineering_brick_slab",
   "ptmuk:pebbledash_slab",
   "ptmuk:white_render_slab",
-  "ptmuk:portland_stone_slab"
+  "ptmuk:portland_stone_slab",
+  "ptmuk:green_faience_slab",
+  "ptmuk:burgundy_faience_slab",
+  "ptmuk:roof_slate_slab",
+  "ptmuk:roof_clay_tiles_slab",
+  "ptmuk:roof_concrete_tiles_slab"
  ]
 }

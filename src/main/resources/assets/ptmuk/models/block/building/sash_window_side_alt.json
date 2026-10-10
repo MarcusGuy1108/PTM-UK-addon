@@ -1,0 +1,9 @@
+{
+ "parent": "minecraft:block/template_glass_pane_side_alt",
+ "textures": {
+  "pane": "ptmuk:block/building/sash_window",
+  "particle": "ptmuk:block/building/sash_window",
+  "edge": "ptmuk:block/building/sash_window_edge"
+ },
+ "render_type": "minecraft:translucent"
+}

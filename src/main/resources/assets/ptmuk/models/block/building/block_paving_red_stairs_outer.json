@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/outer_stairs",
+ "textures": {
+  "bottom": "ptmuk:block/building/block_paving_red",
+  "top": "ptmuk:block/building/block_paving_red",
+  "side": "ptmuk:block/building/block_paving_red"
+ }
+}

@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/template_glass_pane_noside",
+ "textures": {
+  "pane": "ptmuk:block/building/grey_framed_window",
+  "particle": "ptmuk:block/building/grey_framed_window"
+ },
+ "render_type": "minecraft:translucent"
+}

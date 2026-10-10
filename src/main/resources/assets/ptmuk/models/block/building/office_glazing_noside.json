@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/template_glass_pane_noside",
+ "textures": {
+  "pane": "ptmuk:block/building/office_glazing",
+  "particle": "ptmuk:block/building/office_glazing"
+ },
+ "render_type": "minecraft:translucent"
+}

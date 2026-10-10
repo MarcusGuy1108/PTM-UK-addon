@@ -1,0 +1,9 @@
+{
+ "parent": "minecraft:block/template_glass_pane_side_alt",
+ "textures": {
+  "pane": "ptmuk:block/building/office_glazing",
+  "particle": "ptmuk:block/building/office_glazing",
+  "edge": "ptmuk:block/building/office_glazing_edge"
+ },
+ "render_type": "minecraft:translucent"
+}

@@ -1,0 +1,33 @@
+{
+ "type": "minecraft:block",
+ "pools": [
+  {
+   "rolls": 1,
+   "entries": [
+    {
+     "type": "minecraft:item",
+     "name": "ptmuk:roof_clay_tiles_slab",
+     "functions": [
+      {
+       "function": "minecraft:set_count",
+       "count": 2,
+       "add": false,
+       "conditions": [
+        {
+         "condition": "minecraft:block_state_property",
+         "block": "ptmuk:roof_clay_tiles_slab",
+         "properties": {
+          "type": "double"
+         }
+        }
+       ]
+      },
+      {
+       "function": "minecraft:explosion_decay"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

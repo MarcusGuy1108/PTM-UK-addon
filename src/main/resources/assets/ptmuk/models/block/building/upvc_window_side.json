@@ -1,0 +1,9 @@
+{
+ "parent": "minecraft:block/template_glass_pane_side",
+ "textures": {
+  "pane": "ptmuk:block/building/upvc_window",
+  "particle": "ptmuk:block/building/upvc_window",
+  "edge": "ptmuk:block/building/upvc_window_edge"
+ },
+ "render_type": "minecraft:translucent"
+}

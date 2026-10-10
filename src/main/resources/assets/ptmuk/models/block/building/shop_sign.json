@@ -1,0 +1,77 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "ptmuk:block/building/shop_sign_board",
+  "board": "ptmuk:block/building/shop_sign_board"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    16,
+    3
+   ],
+   "faces": {
+    "north": {
+     "texture": "#board",
+     "uv": [
+      0,
+      0,
+      16,
+      16
+     ]
+    },
+    "south": {
+     "texture": "#board",
+     "uv": [
+      0,
+      0,
+      16,
+      16
+     ]
+    },
+    "east": {
+     "texture": "#board",
+     "uv": [
+      0,
+      0,
+      3,
+      16
+     ]
+    },
+    "west": {
+     "texture": "#board",
+     "uv": [
+      13,
+      0,
+      16,
+      16
+     ]
+    },
+    "up": {
+     "texture": "#board",
+     "uv": [
+      0,
+      0,
+      16,
+      3
+     ]
+    },
+    "down": {
+     "texture": "#board",
+     "uv": [
+      0,
+      13,
+      16,
+      16
+     ]
+    }
+   }
+  }
+ ]
+}

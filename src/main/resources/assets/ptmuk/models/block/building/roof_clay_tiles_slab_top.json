@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/slab_top",
+ "textures": {
+  "bottom": "ptmuk:block/building/roof_clay_tiles",
+  "top": "ptmuk:block/building/roof_clay_tiles",
+  "side": "ptmuk:block/building/roof_clay_tiles"
+ }
+}

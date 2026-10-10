@@ -26,6 +26,7 @@ public final class ModItems {
     public static final List<RegistryObject<Item>> MOTORWAY_ITEMS = new ArrayList<>();
     public static final List<RegistryObject<Item>> POWER_ITEMS = new ArrayList<>();
     public static final List<RegistryObject<Item>> BUILDING_ITEMS = new ArrayList<>();
+    public static final RegistryObject<Item> PREFAB_TOOL;
     /** Tower name -> the item that builds it. */
     public static final Map<String, RegistryObject<Item>> PYLON_BUILDERS = new LinkedHashMap<>();
     public static final RegistryObject<Item> CABLE_TOOL;
@@ -86,7 +87,10 @@ public final class ModItems {
             }
         }
         register(ModBlocks.FENCES, STREET_ITEMS);
+        PREFAB_TOOL = ITEMS.register("prefab_tool", com.ptmuk.building.PrefabToolItem::new);
+        BUILDING_ITEMS.add(PREFAB_TOOL);
         register(ModBlocks.BUILDING, BUILDING_ITEMS);
+        BUILDING_ITEMS.add(item("shop_sign", ModBlocks.SHOP_SIGN));
     }
 
     private static void register(Map<String, RegistryObject<Block>> blocks, List<RegistryObject<Item>> tab) {

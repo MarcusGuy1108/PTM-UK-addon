@@ -30,6 +30,7 @@ import bus_alx400  # noqa: E402
 import bus_ukdd  # noqa: E402
 import bus_e400  # noqa: E402
 import bus_omnicity  # noqa: E402
+import prefab_designs  # noqa: E402
 import car_k4  # noqa: E402
 import bus_extras  # noqa: E402
 
@@ -973,6 +974,9 @@ def write_data():
                {"replace": False, "values": [f"{MOD_ID}:{n}_slab" for n in building.MATERIALS]})
     write_json(DATA / "minecraft/tags/items/slabs.json",
                {"replace": False, "values": [f"{MOD_ID}:{n}_slab" for n in building.MATERIALS]})
+    for kind in ("blocks", "items"):
+        write_json(DATA / f"minecraft/tags/{kind}/stairs.json",
+                   {"replace": False, "values": [f"{MOD_ID}:{n}_stairs" for n in building.MATERIALS]})
     for full in everything:
         name = full.split(":")[1]
         if name.endswith("_slab") and name[:-5] in building.MATERIALS:
@@ -1007,6 +1011,7 @@ def main():
     bus_ukdd.main()
     bus_e400.main()
     bus_omnicity.main()
+    prefab_designs.generate()
     car_k4.main()
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)
     write_lang()
