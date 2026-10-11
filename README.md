@@ -75,18 +75,19 @@ In the **UK Street Furniture** tab:
 
 The **Prefab Tool** (in the **UK Buildings** tab, creative mode only) places ready-made British buildings to fill gaps in a town:
 
-- **Sneak + right-click** to open the catalogue: pick a building from Houses, Shops, Offices, Flats or Other, with a picture and its size.
+- **Sneak + right-click** to open the catalogue: pick a building from Houses, Estates, Flats, Shops, Offices or Other, with a picture and its size.
 - **Right-click** to place it where you're looking. Its front faces you, and the middle of its front edge goes on the block you're aiming at. An outline shows where it will go, with the front edge in green.
 - **R** (or **Turn 90°** in the catalogue) turns it. **Mirrored** flips it left to right.
 - **Undo last placed** puts back what was there before (the last 8 placements).
-- The ground layer replaces the surface it stands on, and on a slope the gap underneath is filled in so it doesn't float.
+- The ground layer replaces the surface it stands on, and on a slope the gap underneath is filled in so it doesn't float. The whole area has to be loaded, so stand near the middle of where a big estate will go.
 
 The buildings use vanilla blocks wherever they can, plus the mod's roofing, brick, windows and shop signs. Most have simple furnished interiors, lights that show through the windows at night, gardens and bins.
 
-- **Houses:** Victorian terraced house (stock brick or red brick) and a terrace of four, Edwardian and 1930s semi-detached pairs, a terrace of four post-war council houses, a new-build detached house with garage, a 1960s bungalow, a Georgian townhouse.
+- **Houses:** Victorian terraced house (stock brick or red brick) and a terrace of four, Edwardian and 1930s semi-detached pairs, a terrace of four post-war council houses, a new-build detached house with garage, a 1960s bungalow, a Georgian townhouse. Bigger houses: a double-fronted Victorian villa, an Edwardian Arts & Crafts house, an executive detached house with double garage, a 1930s mock-Tudor detached house, a Georgian country house with portico, wings and formal gardens, and a thatched cottage.
+- **Estates:** whole streets with roads, pavements, kerbs and street lights, opening onto your road at the front: a 1930s semi-detached cul-de-sac (ten homes), a Victorian terraced street (fourteen homes), a post-war council estate round a green with a playground, flats and lock-up garages, a new-build cul-de-sac (eight detached homes), and a tower block estate with maisonettes, car park and playground.
 - **Shops:** a corner shop with a flat above, a Victorian high street parade of three shops, a corner pub, a cafe and takeaway pair, a Portland stone bank, a modern convenience store.
 - **Offices:** a modern glass office block, a 1960s concrete office block, a 1990s brick office.
-- **Flats:** a 16-storey council tower block, a 1930s mansion block, a modern apartment block, 1960s deck-access flats.
+- **Flats:** 16- and 24-storey council tower blocks, a 12-storey 1960s slab block, a 24-storey modern residential tower, a 7-storey courtyard apartment block, a 1930s mansion block, a modern apartment block, 1960s deck-access flats and a maisonette block.
 - **Other:** a Victorian parish church, a petrol station.
 
 All the shop, pub and office names are made up. Change them in game: right-click a shop sign.
@@ -98,7 +99,7 @@ In the **UK Buildings** tab, each material as a full block, a slab and stairs:
 - **Paving:** concrete paving slabs, red and grey block paving, buff and red blister tactile paving, corduroy tactile paving, granite setts, concrete kerb.
 - **Tarmac:** standard and red (bus and cycle lanes).
 - **Walls:** red brick, London stock brick, blue engineering brick, pebbledash, white render, Portland stone, green and burgundy glazed faience tiles (pub and shop fronts).
-- **Roofs:** Welsh slate, clay tiles, concrete tiles.
+- **Roofs:** Welsh slate, clay tiles, concrete tiles, thatch.
 - **Windows** that join up like glass panes: white UPVC, sash, Georgian, leaded lights, shop window, office glazing, grey-framed.
 - **Shop Sign:** a fascia board for over a shop front. Boards placed side by side make one sign, with the name centred across them. Right-click to set the name, a second line, the board and letter colours and whether it's lit at night.
 

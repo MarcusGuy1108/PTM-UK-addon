@@ -53,10 +53,18 @@ public final class PrefabPlacer {
             return false;
         }
         BoundingBox box = p.box();
-        if (!level.isLoaded(new BlockPos(box.minX(), box.minY(), box.minZ())) || !level.isLoaded(new BlockPos(box.maxX(), box.minY(), box.maxZ()))
-                || box.minY() < level.getMinBuildHeight() || box.maxY() >= level.getMaxBuildHeight()) {
-            player.displayClientMessage(Component.literal("That spot is outside the loaded world"), true);
+        if (box.minY() < level.getMinBuildHeight() || box.maxY() >= level.getMaxBuildHeight()) {
+            player.displayClientMessage(Component.literal("That doesn't fit between the bottom and top of the world here"), true);
             return false;
+        }
+        // big estates span many chunks: every one of them has to be loaded
+        for (int cx = box.minX() >> 4; cx <= box.maxX() >> 4; cx++) {
+            for (int cz = box.minZ() >> 4; cz <= box.maxZ() >> 4; cz++) {
+                if (!level.hasChunk(cx, cz)) {
+                    player.displayClientMessage(Component.literal("Part of that area isn't loaded - move closer to it"), true);
+                    return false;
+                }
+            }
         }
         List<Saved> saved = new ArrayList<>();
         BlockPos.betweenClosedStream(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())

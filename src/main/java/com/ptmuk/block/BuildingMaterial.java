@@ -26,7 +26,8 @@ public enum BuildingMaterial {
     BURGUNDY_FAIENCE("burgundy_faience", MapColor.CRIMSON_NYLIUM, SoundType.STONE),
     ROOF_SLATE("roof_slate", MapColor.COLOR_GRAY, SoundType.STONE),
     ROOF_CLAY_TILES("roof_clay_tiles", MapColor.TERRACOTTA_RED, SoundType.STONE),
-    ROOF_CONCRETE_TILES("roof_concrete_tiles", MapColor.TERRACOTTA_BROWN, SoundType.STONE);
+    ROOF_CONCRETE_TILES("roof_concrete_tiles", MapColor.TERRACOTTA_BROWN, SoundType.STONE),
+    ROOF_THATCH("roof_thatch", MapColor.COLOR_YELLOW, SoundType.GRASS);
 
     private final String id;
     private final MapColor colour;

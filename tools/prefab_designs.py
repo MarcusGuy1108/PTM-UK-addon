@@ -13,7 +13,7 @@ ASSETS = ROOT / "src/main/resources/assets/ptmuk"
 DATA = ROOT / "src/main/resources/data/ptmuk"
 JAVA = ROOT / "src/main/java/com/ptmuk/building/PrefabCatalog.java"
 
-CATEGORIES = ["Houses", "Shops", "Offices", "Flats", "Other"]
+CATEGORIES = ["Houses", "Estates", "Flats", "Shops", "Offices", "Other"]
 
 
 # ================================================================== Victorian terraced houses
@@ -284,7 +284,7 @@ def semi_house(b, o, mirror, style, door, y_top=8):
             b.set(U(lu), y, v, light(12))
 
 
-def semi_pair(ident, name, style):
+def semi_pair(ident, name, style, doors=None):
     side = 3 if style == "thirties" else 2
     W = 17 + 2 * side
     b = Build(ident, name, "Houses", W, 18, 21,
@@ -292,8 +292,9 @@ def semi_pair(ident, name, style):
                if style == "thirties" else
                "A pair of Edwardian semis: red brick, two-storey bays under mock-Tudor gables, tiled porches, clay tile roof."))
     o = side
-    semi_house(b, o, False, style, "crimson" if style != "thirties" else "oak")
-    semi_house(b, o + 8, True, style, "warped" if style != "thirties" else "dark_oak")
+    doors = doors or (("crimson", "warped") if style != "thirties" else ("oak", "dark_oak"))
+    semi_house(b, o, False, style, doors[0])
+    semi_house(b, o + 8, True, style, doors[1])
     # side paths / drives to the back
     for u0 in (0, W - side):
         b.fill(u0, 0, 0, u0 + side - 1, 0, 20, "ptmuk:block_paving_grey" if style == "thirties" else "ptmuk:paving_slabs")
@@ -309,7 +310,7 @@ def semi_pair(ident, name, style):
             P.close_gable_front(b, 2, bu0 + 1, bu1 - 1, 8, "calcite")
             for u in range(bu0 + 1, bu1):
                 for y in range(8, 11):
-                    if b.get(u, y, 2).name == "minecraft:white_terracotta" and (u - bu0) % 2 == 0:
+                    if b.get(u, y, 2).name == "minecraft:calcite" and (u - bu0) % 2 == 0:
                         b.set(u, y, 2, B("stripped_dark_oak_log", axis="y"))
             b.fill(bu0 + 1, 7, 2, bu1 - 1, 7, 2, B("stripped_dark_oak_log", axis="x"))
     b.chimney(o + 8, 7, 9, 15, "ptmuk:red_brick", w=1, d=2, pots=2)
@@ -384,11 +385,11 @@ def council_terrace(ident="council_terrace", name="Post-war Council Houses (Terr
 
 # ================================================================== modern detached new-build
 
-def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"):
+def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House", brick="ptmuk:red_brick",
+                      render="ptmuk:white_render", roof="ptmuk:roof_concrete_tiles", door="dark_oak", bin_colour="grey"):
     W, D = 16, 21
     b = Build(ident, name, "Houses", W, 15, D,
               "A 2020s new-build: red brick with a rendered front gable, grey windows, a canopy porch, garage and block-paved drive.")
-    brick, roof = "ptmuk:red_brick", "ptmuk:roof_concrete_tiles"
     P.lawn(b, 0, 0, W - 1, D - 1)
     b.fill(10, 0, 0, 14, 0, 4, "ptmuk:block_paving_grey")
     b.fill(6, 0, 0, 6, 0, 4, "ptmuk:block_paving_grey")
@@ -399,11 +400,11 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     b.fill(2, 4, 5, 8, 4, 12, "oak_planks")
     b.fill(2, 4, 5, 4, 4, 5, "oak_planks")
     # rendered panel on the gable wing's first floor
-    b.fill(1, 4, 4, 5, 7, 4, "ptmuk:white_render")
+    b.fill(1, 4, 4, 5, 7, 4, render)
     b.window(2, 2, 4, 3, 2, "ptmuk:grey_framed_window")
     b.window(2, 5, 4, 3, 2, "ptmuk:grey_framed_window")
     # front door and canopy, landing window over
-    b.door(7, 1, 5, "dark_oak", facing="back", hinge="left")
+    b.door(7, 1, 5, door, facing="back", hinge="left")
     b.set(7, 3, 5, P.pane("ptmuk:grey_framed_window"))
     for u in (6, 7, 8):
         b.set(u, 4, 4, stairs(roof, "back"))
@@ -422,7 +423,7 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     P.close_gable(b, 1, 5, 13, 8, brick)
     P.close_gable(b, 9, 5, 13, 8, brick)
     b.gable_roof_side(0, 6, 3, 8, 8, roof)
-    P.close_gable_front(b, 4, 1, 5, 8, "ptmuk:white_render")
+    P.close_gable_front(b, 4, 1, 5, 8, render)
     # back: french doors and windows
     b.window(3, 1, 13, 2, 2, "ptmuk:grey_framed_window")
     b.window(3, 5, 13, 2, 2, "ptmuk:grey_framed_window")
@@ -445,7 +446,7 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     b.fill(5, 5, 6, 5, 6, 6, AIR)
     P.bed(b, 3, 5, 8, "light_gray", "back")
     P.bed(b, 3, 5, 12, "blue", "back")
-    b.set(9, 1, 3, B("ptmuk:wheelie_bin_grey", facing="south"))
+    b.set(9, 1, 3, B(f"ptmuk:wheelie_bin_{bin_colour}", facing="south"))
     for (u, y, v) in ((3, 3, 7), (3, 3, 11), (7, 3, 6), (3, 7, 7), (3, 7, 11), (7, 7, 10), (12, 3, 9)):
         if b.get(u, y, v).name == "minecraft:air":
             b.set(u, y, v, light(12))
@@ -1022,9 +1023,9 @@ def brick_office(ident="brick_office", name="1990s Brick Office"):
 
 # ================================================================== flats
 
-def tower_block(ident="tower_block", name="Council Tower Block (16 Storeys)"):
+def tower_block(ident="tower_block", name="Council Tower Block (16 Storeys)", storeys=16, house_name="ROWAN HOUSE"):
     W, D = 17, 16
-    floors = [3 * i for i in range(17)]
+    floors = [3 * i for i in range(storeys + 1)]
     top = floors[-1]
     b = Build(ident, name, "Flats", W, top + 5, D,
               "A 1960s council tower block, refurbished: concrete and white panels, balconies, a named entrance and lift room.")
@@ -1059,7 +1060,7 @@ def tower_block(ident="tower_block", name="Council Tower Block (16 Storeys)"):
     b.fill(6, 1, 2, 10, 2, 2, P.pane("ptmuk:shop_window"))
     b.door(8, 1, 2, "birch", facing="back", hinge="left")
     b.fill(5, 3, 1, 11, 3, 1, slab("smooth_stone", "top"))
-    name_plate(b, 6, 10, 4, 1, "ROWAN HOUSE", "Flats 1 - 64", 0xFFF2F0EA, 0xFF121214, False)
+    name_plate(b, 6, 10, 4, 1, house_name, f"Flats 1 - {storeys * 4}", 0xFFF2F0EA, 0xFF121214, False)
     b.set(1, 1, 1, B("ptmuk:communal_bin", facing="south"))
     b.set(15, 1, 1, B("ptmuk:communal_bin", facing="south"))
     # core and roof
@@ -1310,6 +1311,7 @@ def petrol_station(ident="petrol_station", name="Petrol Station"):
 # ================================================================== catalogue
 
 def all_prefabs():
+    import prefab_big          # bigger houses, flats and estates (built from the ones here)
     return [
         victorian_terrace("victorian_terrace", "Victorian Terraced House", 1),
         victorian_terrace("victorian_terrace_row", "Victorian Terrace (Row of 4)", 4),
@@ -1336,7 +1338,7 @@ def all_prefabs():
         deck_access_flats(),
         church(),
         petrol_station(),
-    ]
+    ] + prefab_big.all_big()
 
 
 def write_java(builds):

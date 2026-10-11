@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/inner_stairs",
+ "textures": {
+  "bottom": "ptmuk:block/building/roof_thatch",
+  "top": "ptmuk:block/building/roof_thatch",
+  "side": "ptmuk:block/building/roof_thatch"
+ }
+}

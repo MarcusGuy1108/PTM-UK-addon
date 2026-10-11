@@ -172,6 +172,22 @@ def roof_concrete_tiles():
     return img_from(rgb)
 
 
+def roof_thatch():
+    """Long straw thatch: golden-brown strands running down the roof, weathered darker in streaks."""
+    yy, xx = np.mgrid[0:S, 0:S].astype(float)
+    rgb = np.zeros((S, S, 3)) + np.array([150, 120, 66.0])
+    strands = rng.normal(0, 1, S)
+    rgb += (np.repeat(strands[None, :], S, axis=0) * 14)[..., None]
+    rgb += (np.sin(yy / 2.2 + xx * 0.7) * 6)[..., None]
+    for _ in range(18):                          # darker weathered streaks
+        x = int(rng.integers(0, S))
+        rgb[:, x:x + 2] *= 0.82
+    for r in range(4):                           # the cut ends of each course
+        rgb[r * 16:r * 16 + 2, :] *= 0.7
+    rgb += noise(5)
+    return img_from(rgb)
+
+
 def faience(base):
     """Glazed faience tiles on pub and shop fronts: glossy blocks in courses, thin dark joints."""
     rgb = np.zeros((S, S, 3)) + np.array(base, float) * 0.55
@@ -211,6 +227,7 @@ MATERIALS = {
     "roof_slate": ("Welsh Slate Roof", roof_slate),
     "roof_clay_tiles": ("Clay Roof Tiles", roof_clay_tiles),
     "roof_concrete_tiles": ("Concrete Roof Tiles", roof_concrete_tiles),
+    "roof_thatch": ("Thatch", roof_thatch),
 }
 
 

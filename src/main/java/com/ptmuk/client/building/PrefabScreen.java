@@ -55,15 +55,18 @@ public class PrefabScreen extends Screen {
     @Override
     protected void init() {
         tabs.clear();
+        int n = PrefabCatalog.CATEGORIES.size();
+        int gap = 4;
+        int tabW = (400 - gap * (n - 1)) / n;
         int x = left();
         for (String c : PrefabCatalog.CATEGORIES) {
             Button b = addRenderableWidget(Button.builder(Component.literal(c), btn -> {
                 category = c;
                 lastCategory = c;
                 scroll = 0;
-            }).bounds(x, 22, 76, 18).build());
+            }).bounds(x, 22, tabW, 18).build());
             tabs.add(b);
-            x += 80;
+            x += tabW + gap;
         }
         int bx = left() + 210, by = height - 52;
         addRenderableWidget(Button.builder(Component.literal("Turn 90°"), b -> PrefabToolClient.send(PrefabToolMessage.Action.ROTATE, "", hand))
@@ -131,8 +134,10 @@ public class PrefabScreen extends Screen {
             } else if (hover) {
                 g.fill(x0, y, x0 + 200, y + ROW, 0x50FFFFFF);
             }
-            g.drawString(font, font.plainSubstrByWidth(e.name(), 150), x0 + 4, y + 3, 0xFFFFFF);
             String size = e.width() + "x" + e.depth();
+            int room = 192 - font.width(size) - 6;
+            String label = font.width(e.name()) <= room ? e.name() : font.plainSubstrByWidth(e.name(), room - font.width("...")) + "...";
+            g.drawString(font, label, x0 + 4, y + 3, 0xFFFFFF);
             g.drawString(font, size, x0 + 196 - font.width(size), y + 3, 0xA0A0A0);
         }
         if (list.isEmpty()) {

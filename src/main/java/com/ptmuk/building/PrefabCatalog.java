@@ -7,7 +7,7 @@ public final class PrefabCatalog {
     public record Entry(String id, String name, String category, int width, int height, int depth, String description) {
     }
 
-    public static final List<String> CATEGORIES = List.of("Houses", "Shops", "Offices", "Flats", "Other");
+    public static final List<String> CATEGORIES = List.of("Houses", "Estates", "Flats", "Shops", "Offices", "Other");
 
     public static final List<Entry> ENTRIES = List.of(
             new Entry("victorian_terrace", "Victorian Terraced House", "Houses", 7, 15, 19, "1 Victorian terraced house: bay window, slate roof, rear outrigger and yard."),
@@ -33,7 +33,23 @@ public final class PrefabCatalog {
             new Entry("modern_apartments", "Modern Apartment Block", "Flats", 19, 18, 15, "A 2010s apartment block: stock brick and grey cladding, big grey-framed windows, glass balconies and solar panels."),
             new Entry("deck_access_flats", "1960s Deck-Access Flats", "Flats", 25, 15, 12, "Low-rise 1960s council flats: brown brick, concrete walkway decks with front doors, stair towers at each end."),
             new Entry("church", "Victorian Parish Church", "Other", 15, 32, 27, "A small Victorian Gothic church: stone tower and spire, steep slate roof, lancet windows, pews and a churchyard."),
-            new Entry("petrol_station", "Petrol Station", "Other", 22, 9, 21, "A forecourt with a lit canopy over four pump islands (EV chargers on one), a price board and a kiosk shop."));
+            new Entry("petrol_station", "Petrol Station", "Other", 22, 9, 21, "A forecourt with a lit canopy over four pump islands (EV chargers on one), a price board and a kiosk shop."),
+            new Entry("victorian_villa", "Victorian Detached Villa", "Houses", 21, 22, 30, "A double-fronted Victorian villa: red brick with stone dressings, two-storey bays, a columned porch, three floors and a hipped slate roof, with a rear wing, big gardens and a side drive."),
+            new Entry("arts_and_crafts_house", "Edwardian Arts & Crafts House", "Houses", 21, 18, 27, "A large Edwardian Arts & Crafts house: red brick below, roughcast above, a big timbered gable over a two-storey bay, a deep porch, leaded windows, tall chimneys and a steep clay tile roof."),
+            new Entry("executive_house", "Executive Detached House", "Houses", 24, 16, 28, "A large modern five-bedroom house: buff brick and white render, a tall glazed gable, grey windows, a double garage with EV charger, a block-paved drive and a big back garden."),
+            new Entry("thirties_detached", "1930s Detached House (Mock Tudor)", "Houses", 20, 17, 26, "A 1930s detached house: red brick, a mock-Tudor timbered gable over a two-storey bay, leaded lights, an arched porch, a side garage and a hipped clay tile roof."),
+            new Entry("georgian_country_house", "Georgian Country House", "Houses", 41, 26, 46, "A Georgian country house in Portland stone: three storeys, nine bays, a columned portico with a pediment, a balustraded parapet, two pavilion wings, a gravel carriage sweep with a fountain and formal gardens."),
+            new Entry("thatched_cottage", "Thatched Cottage", "Houses", 15, 13, 20, "A whitewashed country cottage under a thick thatch with eyebrow windows, a big brick chimney, a picket fence and a cottage garden full of flowers."),
+            new Entry("slab_block", "1960s Slab Block (12 Storeys)", "Flats", 45, 42, 18, "A long 12-storey 1960s council slab block: precast concrete, rows of balconies, blank end walls, two stair cores, a glazed entrance and lift motor rooms on the roof."),
+            new Entry("residential_tower", "Modern Residential Tower (24 Storeys)", "Flats", 23, 84, 24, "A 24-storey 2010s apartment tower: a double-height glass lobby, alternating glazing and pale cladding, glass balconies, a glazed penthouse floor and a lit crown."),
+            new Entry("courtyard_apartments", "Courtyard Apartment Block (7 Storeys)", "Flats", 37, 24, 35, "Seven storeys of 2010s flats round a private garden courtyard: stock brick with a dark plinth, Juliet balconies, a gated archway, and a set-back top floor with roof terraces."),
+            new Entry("maisonette_block", "1960s Maisonette Block (4 Storeys)", "Flats", 34, 15, 13, "A four-storey 1960s council block of maisonettes: brick and white panels, front doors at ground level and along an access deck on the second floor, stair towers at both ends."),
+            new Entry("tower_block_24", "Council Tower Block (24 Storeys)", "Flats", 17, 77, 16, "A 1960s council tower block, refurbished: concrete and white panels, balconies, a named entrance and lift room."),
+            new Entry("estate_thirties_semis", "1930s Semi-Detached Estate (Cul-de-sac)", "Estates", 53, 18, 77, "Ten 1930s semis (five pairs) round a cul-de-sac with pavements, street lights, a turning head and corner greens with trees. The road opens onto your street at the front."),
+            new Entry("estate_victorian_street", "Victorian Terraced Street", "Estates", 48, 15, 43, "A Victorian street of fourteen terraced houses facing each other: London stock brick on one side, red brick on the other, bay windows, railings, back yards and street lights. The street runs straight through."),
+            new Entry("estate_council", "Post-war Council Estate", "Estates", 85, 15, 75, "A 1950s council estate: sixteen houses in four terraces round a green with a playground, a loop road with street lights, a block of deck-access flats and rows of lock-up garages at the back."),
+            new Entry("estate_newbuild", "New-Build Estate (Cul-de-sac)", "Estates", 52, 15, 79, "Eight 2020s detached new-builds in mixed brick and render round a cul-de-sac with a block-paved turning head, pavements, street lights and young trees."),
+            new Entry("estate_tower_block", "Council Tower Block Estate", "Estates", 56, 53, 54, "A 1960s council estate: a 16-storey tower block between two maisonette blocks, with a car park, a playground, lock-up garages, paths, trees and street lights."));
 
     public static Entry get(String id) {
         for (Entry e : ENTRIES) {

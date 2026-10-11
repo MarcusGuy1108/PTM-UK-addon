@@ -51,6 +51,28 @@ def B(name, **props):
 
 AIR = B("air")
 
+_CW = {"north": "east", "east": "south", "south": "west", "west": "north"}
+
+
+def rotate_block(block, k):
+    """A block state turned k quarter turns clockwise (seen from above)."""
+    if k % 4 == 0 or not block.props:
+        return block
+    p = dict(block.props)
+    for _ in range(k % 4):
+        q = dict(p)
+        if p.get("facing") in _CW:
+            q["facing"] = _CW[p["facing"]]
+        if "axis" in p and p["axis"] in ("x", "z"):
+            q["axis"] = "z" if p["axis"] == "x" else "x"
+        if "rotation" in p and p["rotation"].isdigit():
+            q["rotation"] = str((int(p["rotation"]) + 4) % 16)
+        if all(d in p for d in _CW):              # panes, walls, fences: connections turn too
+            for d in _CW:
+                q[_CW[d]] = p[d]
+        p = q
+    return Block(block.name, p, block.nbt)
+
 
 def stairs(material, facing, half="bottom"):
     """Stairs whose tall back is towards `facing` (a local direction)."""
@@ -113,6 +135,27 @@ class Build:
                 for v in range(min(v0, v1), max(v0, v1) + 1):
                     if self.get(u, y, v).name == B(old).name:
                         self.set(u, y, v, new)
+
+    def paste(self, src, du, dv, turns=0, dy=0):
+        """Copy another build into this one with its footprint's corner at (du, dv), turned
+        `turns` quarter turns clockwise seen from above. Turned 0 its front faces this build's
+        front; 1 west (left), 2 back, 3 east (right). Block states are turned with it."""
+        k = turns % 4
+        W, D = src.W, src.D
+        for (u, y, v), b in src.cells.items():
+            if k == 0:
+                nu, nv = u, v
+            elif k == 1:
+                nu, nv = v, W - 1 - u
+            elif k == 2:
+                nu, nv = W - 1 - u, D - 1 - v
+            else:
+                nu, nv = D - 1 - v, u
+            self.set(du + nu, dy + y, dv + nv, rotate_block(b, k))
+
+    @staticmethod
+    def footprint(src, turns):
+        return (src.W, src.D) if turns % 2 == 0 else (src.D, src.W)
 
     # doors and windows
     def door(self, u, y, v, wood, facing="front", hinge="left"):
