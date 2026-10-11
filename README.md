@@ -94,6 +94,8 @@ They are built a little bigger than real life, like most Minecraft builds, so th
 
 All the shop, pub and office names are made up. Change them in game: right-click a shop sign.
 
+Every building is checked when the prefabs are generated: no gaps beside windows or doors, every staircase climbable (Minecraft needs three blocks of headroom over each step, not two, or you bump your head stepping up), and every room reachable on foot from the street. Garages open with their up-and-over doors (click them) or a door from the house.
+
 ### Building blocks
 
 In the **UK Buildings** tab, each material as a full block, a slab and stairs:

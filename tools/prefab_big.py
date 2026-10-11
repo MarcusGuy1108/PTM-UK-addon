@@ -96,8 +96,9 @@ def victorian_villa(ident="victorian_villa", name="Victorian Detached Villa"):
             b.fill(u, 7, 4, u, 8, 4, pane(win))
             b.set(u, 9, 4, STONE)
             b.set(u, 10, 4, stairs(roof, "back"))
-            opening(b, u, 1, 5, u, 4, 5)
-            opening(b, u, 6, 5, u, 9, 5)
+            if u == a + 1:                                 # open in the middle; the end windows turn into the wall
+                opening(b, u, 1, 5, u, 4, 5)
+                opening(b, u, 6, 5, u, 9, 5)
         b.set(a - 1, 10, 4, stairs(roof, "right"))
         b.set(z + 1, 10, 4, stairs(roof, "left"))
     # porch: two columns, a stone canopy, a step; panelled door with fanlight
@@ -128,8 +129,8 @@ def victorian_villa(ident="victorian_villa", name="Victorian Detached Villa"):
     b.fill(10, 5, 17, 15, 5, 22, "oak_planks")
     b.gable_roof_side(8, 17, 17, 24, 10, roof)
     P.close_gable_front(b, 23, 9, 16, 10, brick)
-    opening(b, 12, 1, 16, 12, 2, 16)
-    opening(b, 12, 6, 16, 12, 7, 16)
+    opening(b, 11, 1, 16, 11, 2, 16)                  # from the end of the hall, both floors
+    opening(b, 11, 6, 16, 11, 7, 16)
     b.door(12, 1, 23, "spruce", facing="front", hinge="left")
     b.window(14, 2, 23, 1, 2, win)
     b.window(11, 7, 23, 2, 2, win)
@@ -141,7 +142,7 @@ def victorian_villa(ident="victorian_villa", name="Victorian Detached Villa"):
         b.fill(12, y0, 6, 12, y1, 15, PLASTER)
         b.fill(4, y0, 11, 7, y1, 11, PLASTER)
         b.fill(13, y0, 11, 16, y1, 11, PLASTER)
-        for (u, v) in ((8, 8), (12, 8), (8, 13), (12, 13)):
+        for (u, v) in ((8, 8), (12, 8), (8, 13 if y0 == 1 else 14), (12, 13)):   # upstairs: clear of the next flight
             opening(b, u, y0, v, u, y0 + 1, v)
     for i in range(5):
         b.set(11, 1 + i, 9 + i, stairs("dark_oak", "back"))
@@ -181,7 +182,7 @@ def victorian_villa(ident="victorian_villa", name="Victorian Detached Villa"):
     P.bed(b, 14, 6, 6, "light_blue", "front")
     P.bed(b, 5, 6, 15, "red", "back")
     P.bed(b, 14, 6, 15, "green", "back")
-    for (u, v) in ((7, 6), (13, 9), (7, 13), (16, 13)):
+    for (u, v) in ((7, 6), (13, 9), (4, 12), (16, 13)):
         P.wardrobe(b, u, 6, v)
     P.bath(b, 13, 15, 6, 22)
     b.set(10, 6, 22, B("cauldron"))
@@ -315,6 +316,8 @@ def executive_house(ident="executive_house", name="Executive Detached House"):
     b.walls(2, 1, 7, 15, 7, 18, brick)
     b.walls(2, 1, 5, 7, 7, 7, render)
     b.fill(3, 4, 6, 14, 4, 17, "spruce_planks")
+    b.fill(3, 1, 7, 6, 3, 7, AIR)                       # the gable wing opens into the rooms behind it
+    b.fill(3, 5, 7, 6, 6, 7, AIR)
     b.window(3, 2, 5, 4, 2, win)
     b.window(3, 5, 5, 4, 3, win)
     b.door(10, 1, 7, "dark_oak", facing="back", hinge="left")
@@ -418,8 +421,9 @@ def tudorbethan_detached(ident="thirties_detached", name="1930s Detached House (
         b.set(u, 4, 4, brick)
         b.fill(u, 5, 4, u, 6, 4, pane(win))
         b.set(u, 7, 4, B(timber, axis="x"))
-        opening(b, u, 1, 5, u, 3, 5)
-        opening(b, u, 5, 5, u, 6, 5)
+        if 3 < u < 7:                                      # the end windows turn back into the wall
+            opening(b, u, 1, 5, u, 3, 5)
+            opening(b, u, 5, 5, u, 6, 5)
     # arched porch and door
     for u in (9, 11):
         b.fill(u, 1, 4, u, 2, 4, brick)
@@ -428,7 +432,7 @@ def tudorbethan_detached(ident="thirties_detached", name="1930s Detached House (
     b.set(10, 3, 4, slab(brick, "top"))
     opening(b, 10, 1, 5, 10, 3, 5)
     b.door(10, 1, 6, "oak", facing="back", hinge="left")
-    b.set(10, 3, 6, pane(win))
+    b.set(10, 3, 6, PLASTER)                               # door head; a fanlight here would open into the hall
     b.window(12, 2, 5, 2, 2, win)
     b.window(10, 5, 5, 1, 2, win)
     b.window(12, 5, 5, 2, 2, win)
@@ -444,8 +448,10 @@ def tudorbethan_detached(ident="thirties_detached", name="1930s Detached House (
     b.walls(15, 1, 7, 18, 3, 14, brick)
     for u in (16, 17):
         for y in (1, 2):
-            b.set(u, y, 7, B("spruce_trapdoor", facing="south", half="bottom", open=True, powered=False, waterlogged=False))
+            b.set(u, y, 7, B("spruce_trapdoor", facing="south", half="top", open=True, powered=False, waterlogged=False))   # click to swing it up
     b.fill(15, 4, 7, 18, 4, 14, slab("smooth_stone"))
+    b.door(14, 1, 12, "spruce", facing="right", hinge="left")      # from the house into the garage
+    b.fill(15, 1, 12, 15, 2, 12, AIR)
     # roofs: hipped main roof, timbered gable over the bay
     b.hipped_roof(1, 15, 4, 16, 8, roof)
     b.gable_roof_side(2, 8, 3, 9, 8, roof)
@@ -553,7 +559,8 @@ def country_house(ident="georgian_country_house", name="Georgian Country House")
         b.fill(u, 1, 10, u, 9, 10, B("quartz_pillar", axis="y"))
     b.fill(15, 10, 9, 25, 10, 13, trim)
     b.gable_roof_side(15, 25, 9, 13, 11, trim)
-    P.close_gable_front(b, 9, 16, 24, 11, trim)
+    for v in range(9, 14):                             # a solid pediment, not a hollow one
+        P.close_gable_front(b, v, 16, 24, 11, trim)
     b.fill(16, 0, 10, 24, 0, 13, "smooth_quartz")
     b.fill(17, 0, 8, 23, 0, 8, stairs(trim, "back"))
     b.fill(17, 0, 9, 23, 0, 9, "smooth_quartz")
@@ -579,8 +586,9 @@ def country_house(ident="georgian_country_house", name="Georgian Country House")
     for u in (16, 24):
         for i in range(5):
             b.set(u, 1 + i, 22 + i, stairs(trim, "back"))
-        opening(b, u, 5, 22, u, 5, 26)
+        opening(b, u, 5, 22, u, 5, 25)              # stairwell: the top step sits in the floor
     b.fill(17, 6, 27, 23, 6, 27, B("iron_bars"))
+    P.flight(b, 9, 6, 28, 1, 0, 5, trim)               # back stairs up to the second floor
     b.set(20, 4, 21, B("lantern", hanging=True, waterlogged=False))
     b.set(20, 9, 21, B("lantern", hanging=True, waterlogged=False))
     P.rug(b, 18, 16, 22, 26, 1, "red")
@@ -592,7 +600,8 @@ def country_house(ident="georgian_country_house", name="Georgian Country House")
     for (u, v) in ((11, 17), (11, 26)):
         b.set(u, 4, v, B("lantern", hanging=True, waterlogged=False))
     for v in range(15, 29):
-        P.bookcase(b, 32, 1, v, 3)
+        if v not in (21, 22):                          # leave the doorway through to the east wing
+            P.bookcase(b, 32, 1, v, 3)
     for u in range(27, 32):
         P.bookcase(b, u, 1, 28, 3)
     P.table(b, 29, 1, 21, top="dark_oak_pressure_plate", leg="dark_oak_fence")
@@ -658,6 +667,8 @@ def thatched_cottage(ident="thatched_cottage", name="Thatched Cottage"):
         b.set(u, 5, 3, AIR)
         b.set(u, 5, 4, pane(win))
         b.set(u, 6, 3, stairs(thatch, "back"))
+        b.set(u - 1, 5, 4, thatch)                         # packed thatch either side, so the glass joins on
+        b.set(u + 1, 5, 4, thatch)
         b.fill(u - 1, 2, 4, u, 3, 4, pane(win))
     b.door(7, 1, 4, "spruce", facing="back", hinge="left")
     for u in (6, 8):
@@ -683,10 +694,9 @@ def thatched_cottage(ident="thatched_cottage", name="Thatched Cottage"):
     b.fill(11, 1, 5, 11, 2, 5, B("barrel", facing="west", open=False))
     P.armchair(b, 5, 1, 7, "left")
     P.rug(b, 4, 5, 6, 8, 1, "red")
-    for i in range(3):                                   # steep cottage stair up the back wall
-        b.set(11, 1 + i, 6 + i if i < 2 else 8, stairs("oak", "back"))
-    b.set(11, 4, 8, AIR)
-    b.set(11, 4, 7, AIR)
+    for i in range(4):                                   # cottage stair along the back wall, up into the loft
+        b.set(11 - i, 1 + i, 8, stairs("oak", "left"))
+        P.clear_over(b, 11 - i, 1 + i, 8, 3 if i < 3 else 2)
     P.bed(b, 5, 5, 6, "white", "back")
     b.set(9, 5, 7, B("barrel", facing="south", open=False))
     # back garden: vegetable beds, compost bin, apple tree, fences
@@ -740,7 +750,7 @@ def slab_block(ident="slab_block", name="1960s Slab Block (12 Storeys)", storeys
     for u in (4, 10, 32, 38):
         b.door(u, 1, 3, "iron", facing="back", hinge="left")
     for cu in (12, 31):
-        P.stair_core(b, cu, 6, floors, material="stone_brick")
+        P.stair_core(b, cu, 6, floors[:-1], material="stone_brick")
     P.flat_roof(b, 1, 43, 3, 15, top, deck="gray_concrete", parapet=conc, coping="smooth_stone")
     for cu in (12, 31):
         b.fill(cu - 1, top + 1, 6, cu + 2, top + 3, 11, conc)
@@ -790,7 +800,7 @@ def residential_tower(ident="residential_tower", name="Modern Residential Tower 
                 solid = (v - z0) % 4 == 0 and not penthouse
                 b.fill(side_u, y + 1, v, side_u, y + 3, v, clad if solid else pane(win))
         lights(b, [(5, y + 3, 6), (17, y + 3, 6), (5, y + 3, 18), (17, y + 3, 18)], level=11)
-    P.stair_core(b, 10, 9, floors, material="stone_brick")
+    P.stair_core(b, 10, 9, floors[:-1], material="stone_brick")
     # crown: a lit band and a plant screen
     P.flat_roof(b, x0, x1, z0, z1, top, deck="gray_concrete", parapet=None)
     b.walls(x0, top + 1, z0, x1, top + 1, z1, "sea_lantern")
@@ -845,6 +855,11 @@ def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Bloc
         b.window(u, 1, p0, 1, 2, win)
     # archway through the front range into the courtyard, with gates
     opening(b, 16, 1, p0, 20, 3, q0 - 1)
+    b.fill(15, 1, p0, 15, 3, q0 - 1, brick)               # the passage has walls of its own,
+    b.fill(21, 1, p0, 21, 3, q0 - 1, brick)               # with an entrance hall door either side
+    b.door(15, 1, 7, "dark_oak", facing="left", hinge="left")
+    b.door(21, 1, 7, "dark_oak", facing="right", hinge="right")
+    lights(b, [(18, 3, 4), (18, 3, 9)], level=12)
     b.fill(16, 0, p0, 20, 0, q0 - 1, "ptmuk:paving_slabs")
     b.fill(16, 1, p0, 20, 3, p0, B("iron_bars"))
     b.door(18, 1, p0, "iron", facing="back", hinge="left")
@@ -904,7 +919,7 @@ def maisonette_block(ident="maisonette_block", name="1960s Maisonette Block (4 S
             # stairs up inside each maisonette, against the party wall
             for n in range(S):
                 b.set(a + 2, y0 + 1 + n, 5 + n, stairs("oak", "back"))
-            b.fill(a + 2, y0 + S, 6, a + 2, y0 + S, 7, AIR)        # stairwell through the floor above
+            b.fill(a + 2, y0 + S, 5, a + 2, y0 + S, 7, AIR)        # stairwell through the floor above
         for y in range(0, top, S):
             b.window(a, y + 1, 11, 3, 2, "ptmuk:upvc_window")
         if k < 6:

@@ -88,6 +88,14 @@ def light(level=13):
     return B("light", level=level, waterlogged=False)
 
 
+# windows and the solid block that matches each one's frame
+PANE_LIKE = ("_pane", "_window", "office_glazing")
+FRAME_FOR = {"ptmuk:upvc_window": "smooth_quartz", "ptmuk:sash_window": "smooth_quartz",
+             "ptmuk:georgian_window": "smooth_quartz", "ptmuk:leaded_window": "smooth_quartz",
+             "ptmuk:shop_window": "black_concrete", "ptmuk:grey_framed_window": "gray_concrete",
+             "ptmuk:office_glazing": "gray_concrete"}
+
+
 # ------------------------------------------------------------------ builder
 
 class Build:
@@ -95,6 +103,8 @@ class Build:
         self.ident, self.name, self.category, self.description = ident, name, category, description
         self.W, self.H, self.D = w, h, d
         self.cells = {}
+        self.roof_cells = set()          # stairs and slabs laid as roofing, not to be walked on
+        self._roofing = False
 
     # basic placing
     def inside(self, u, y, v):
@@ -106,6 +116,10 @@ class Build:
         if isinstance(block, str):
             block = B(block)
         self.cells[(u, y, v)] = block
+        if self._roofing:
+            self.roof_cells.add((u, y, v))
+        else:
+            self.roof_cells.discard((u, y, v))
 
     def get(self, u, y, v):
         return self.cells.get((u, y, v), AIR)
@@ -152,6 +166,8 @@ class Build:
             else:
                 nu, nv = D - 1 - v, u
             self.set(du + nu, dy + y, dv + nv, rotate_block(b, k))
+            if (u, y, v) in src.roof_cells:
+                self.roof_cells.add((du + nu, dy + y, dv + nv))
 
     @staticmethod
     def footprint(src, turns):
@@ -163,6 +179,20 @@ class Build:
         for half, dy in (("lower", 0), ("upper", 1)):
             self.set(u, y + dy, v, B(name, facing=DIRS[facing], half=half, hinge=hinge, open=False, powered=False))
 
+    def frame_doors(self):
+        """A window right beside a door leaves a slit (the door hangs at the edge of its block, the
+        glass runs down the middle of the next one), so a window touching a door along the wall
+        becomes a solid frame post of the window's colour."""
+        for (u, y, v), blk in list(self.cells.items()):
+            if not blk.name.endswith("_door"):
+                continue
+            along = ((1, 0), (-1, 0)) if blk.props.get("facing") in ("north", "south") else ((0, 1), (0, -1))
+            for du, dv in along:
+                n = (u + du, y, v + dv)
+                nb = self.cells.get(n)
+                if nb is not None and nb.name.endswith(PANE_LIKE):
+                    self.cells[n] = B(FRAME_FOR.get(nb.name, "smooth_stone"))
+
     def window(self, u0, y0, v, w, h, kind="ptmuk:sash_window"):
         self.fill(u0, y0, v, u0 + w - 1, y0 + h - 1, v, B(kind, north=False, south=False, east=False, west=False,
                                                          waterlogged=False))
@@ -173,6 +203,17 @@ class Build:
                                                         waterlogged=False))
 
     # roofs
+    def roofing(fn):
+        def wrapped(self, *args, **kw):
+            was, self._roofing = self._roofing, True
+            try:
+                return fn(self, *args, **kw)
+            finally:
+                self._roofing = was
+        wrapped.__name__, wrapped.__doc__ = fn.__name__, fn.__doc__
+        return wrapped
+
+    @roofing
     def gable_roof(self, u0, u1, v0, v1, y, material, ridge="ridge", gable_fill=None, end_walls=True):
         """Pitched roof over [u0, u1] x [v0, v1] with the ridge running left to right (parallel to
         the street); eaves at height y along the front (v0) and back (v1). Gable ends are filled
@@ -194,6 +235,7 @@ class Build:
             # an odd depth leaves a single middle row: a top slab at the last stair height makes a ridge
         return top
 
+    @roofing
     def gable_roof_side(self, u0, u1, v0, v1, y, material, gable_fill=None):
         """Pitched roof with the ridge running front to back (gable end facing the street)."""
         width = u1 - u0 + 1
@@ -212,6 +254,7 @@ class Build:
                 self.set(u0 + half, top - 1 if half else top, v, slab(material, "top") if half else slab(material))
         return top
 
+    @roofing
     def hipped_roof(self, u0, u1, v0, v1, y, material, ridge_slab=True):
         """Hipped roof: slopes on all four sides, shrinking one block per course. Minecraft
         works out the corner shapes of the stairs when the structure is placed."""

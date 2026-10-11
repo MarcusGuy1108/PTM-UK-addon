@@ -69,7 +69,8 @@ def victorian_unit(b, o, mirror, brick, band, door, roof="ptmuk:roof_slate", bin
         b.set(u, 1, 1, brick)
         b.fill(u, 2, 1, u, 3, 1, B("ptmuk:sash_window", north=False, south=False, east=False, west=False, waterlogged=False))
         b.set(u, 4, 1, stairs(roof, "back"))
-        b.fill(u, 1, 2, u, 3, 2, AIR)                      # the room opens into the bay
+        if lu == 2:                                        # the room opens into the bay; its end windows
+            b.fill(u, 1, 2, u, 3, 2, AIR)                  # turn back into the wall, so no gaps at the sides
         b.set(u, 0, 1, "oak_planks")
     # ---- porch, front door and fanlight
     b.fill(U(5), 1, 2, U(5), 3, 2, AIR)
@@ -111,10 +112,10 @@ def victorian_unit(b, o, mirror, brick, band, door, roof="ptmuk:roof_slate", bin
     b.fill(U(3), 5, 7, U(3), 6, 7, AIR)
     for lu in (1, 2):
         P.bed(b, U(lu), 5, 6, "white", "back")
-    P.wardrobe(b, U(3), 5, 6)
+    P.wardrobe(b, U(3), 5, 3)                               # clear of the doorway through to the back bedroom
     P.bed(b, U(5), 5, 3, "light_blue", "front")
     P.bed(b, U(1), 5, 9, "blue", "back")
-    P.wardrobe(b, U(3), 5, 9)
+    P.wardrobe(b, U(2), 5, 9)                               # clear of the door from the landing
     # back of the main house: windows onto the side return
     P.back_window(b, U(2), 2, 10)
     P.back_window(b, U(2), 5, 10)
@@ -223,15 +224,16 @@ def semi_house(b, o, mirror, style, door, y_top=8):
         b.set(u, 5, 2, P.pane(win))
         b.set(u, 6, 2, P.pane(win_top))
         b.set(u, 7, 2, upper)
-        b.fill(u, 1, 3, u, 3, 3, AIR)
-        b.fill(u, 5, 3, u, 7, 3, AIR)
+        if lu == 2:                                        # open in the middle; the end windows turn into the wall
+            b.fill(u, 1, 3, u, 3, 3, AIR)
+            b.fill(u, 5, 3, u, 7, 3, AIR)
     # porch and door
     if style == "thirties":
         b.fill(U(6), 1, 3, U(6), 3, 3, AIR)
         b.set(U(5), 3, 3, stairs(brick, S("left"), "top"))
         b.set(U(7), 3, 3, stairs(brick, S("right"), "top"))
         b.door(U(6), 1, 4, door, facing="back", hinge="left")
-        b.set(U(6), 3, 4, P.pane("ptmuk:leaded_window"))
+        b.set(U(6), 3, 4, "smooth_quartz")                 # door head (a fanlight here would open into the hall)
         P.sash(b, U(6), 5, 3, kind="ptmuk:leaded_window", lintel=None)
     else:
         b.door(U(6), 1, 3, door, facing="back", hinge="left")
@@ -415,6 +417,8 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     for u in (11, 12, 13):
         for y in (1, 2):
             b.set(u, y, 5, B("iron_trapdoor", facing="north", half="bottom", open=True, powered=False, waterlogged=False))
+    b.door(9, 1, 10, "spruce", facing="right", hinge="left")        # from the hall into the garage
+    b.fill(10, 1, 10, 10, 2, 10, AIR)
     b.gable_roof_side(10, 14, 4, 13, 4, roof)
     P.close_gable_front(b, 5, 11, 13, 4, brick)
     P.close_gable_front(b, 13, 11, 13, 4, brick)
@@ -488,7 +492,7 @@ def bungalow(ident="bungalow", name="1960s Bungalow"):
     b.fill(4, 1, 7, 4, 2, 7, AIR)
     b.fill(7, 1, 7, 10, 3, 7, "calcite")
     b.fill(9, 1, 7, 9, 2, 7, AIR)
-    P.sofa(b, 2, 4, 1, 6, "back", "spruce")
+    P.sofa(b, 2, 3, 1, 6, "back", "spruce")                  # clear of the bedroom door
     P.bed(b, 3, 1, 10, "pink", "back")
     P.kitchen_run(b, 7, 10, 1, 10, facing="front")
     for (u, y, v) in ((3, 3, 5), (3, 3, 9), (8, 3, 5), (8, 3, 9)):
@@ -622,16 +626,18 @@ def shop_interior(b, kind, u0, u1, v0, v1, y=1):
             b.set(u, y, v0 + 2, B("spruce_fence"))
             b.set(u, y + 1, v0 + 2, B("spruce_pressure_plate", powered=False))
             b.set(u, y, v0 + 3, stairs("spruce", "back"))
-        P.counter(b, u0, u1, v1 - 1, y, top="smooth_quartz_slab")
+        P.counter(b, u0, u1 - 1, v1 - 1, y, top="smooth_quartz_slab")       # a gap at the end to get behind
         b.set(u0 + 1, y + 2, v1 - 1, B("cake", bites=1))
         b.set(u1 - 1, y + 2, v1 - 1, B("brewing_stand", has_bottle_0=False, has_bottle_1=False, has_bottle_2=False))
     elif kind == "takeaway":
-        P.counter(b, u0, u1, v0 + 2, y, top="smooth_quartz_slab")
+        P.counter(b, u0, u1 - 1, v0 + 2, y, top="smooth_quartz_slab")       # a gap at the end to get behind
         b.fill(u0, y, v1, u1, y, v1, B("smoker", facing="north", lit=False))
         b.fill(u0, y + 1, v1, u1, y + 1, v1, "iron_block")
     elif kind == "convenience":
+        s0, s1 = v0 + (2 if v1 - v0 > 4 else 1), v1 - 2      # aisles front and back, in front of the fridges
         for u in range(u0 + 2, u1 - 2, 3):
-            b.fill(u, y, v0 + 2, u, y + 1, v1 - 3, "bookshelf")
+            if s1 >= s0:
+                b.fill(u, y, s0, u, y + 1, s1, "bookshelf")
         P.fridge_row(b, u0, u1 - 3, v1)
         P.counter(b, u1 - 2, u1, v0 + 2, y)
 
@@ -665,13 +671,13 @@ def corner_shop(ident="corner_shop", name="Corner Shop with Flat Above"):
         b.set(9, 5, v, slab(P.STONE, "top"))
     b.fill(0, 5, 1, 8, 5, 1, P.STONE)
     b.fill(1, 1, 7, 7, 3, 7, "calcite")
-    b.fill(3, 1, 7, 3, 2, 7, AIR)
+    b.fill(6, 1, 7, 6, 2, 7, AIR)                           # shop to stockroom, clear of the fridges
     b.hipped_roof(-0 + 0, 8, 1, 12, 9, "ptmuk:roof_slate")
     b.chimney(1, 10, 10, 12, brick, w=1, d=1, pots=1)
     shop_interior(b, "grocer", 1, 7, 2, 6)
-    for k in range(4):
-        b.set(7, 1 + k, 8 + k, stairs("oak", "back"))
-    b.fill(7, 4, 8, 7, 4, 10, AIR)
+    for k in range(4):                                      # up from the flat's side door, along the hall
+        b.set(6 - k, 1 + k, 9, stairs("oak", "left"))
+        P.clear_over(b, 6 - k, 1 + k, 9, 3 if k < 3 else 2)
     P.bed(b, 2, 5, 11, "orange", "back")
     P.sofa(b, 3, 4, 5, 4, "back", "spruce")
     P.ceiling_lights(b, 1, 2, 7, 6, 4, step=3)
@@ -712,6 +718,9 @@ def high_street_parade(ident="high_street_parade", name="Victorian High Street P
         b.door(o + 3, 1, 12, "spruce", facing="front", hinge="left")
         b.window(o + 2, 5, 12, 1, 2, "ptmuk:upvc_window")
         b.window(o + 5, 9, 12, 1, 2, "ptmuk:upvc_window")
+        # stairs up from the back room to the two flats over the shop
+        P.flight(b, o + 2, 1, 10, 1, 0, 4, "oak")
+        P.flight(b, o + 5, 5, 11, -1, 0, 4, "oak")
     # pilasters with console brackets between the shops
     for u in (0, 7, 14, 21):
         b.fill(u, 1, 1, u, 4, 1, stone)
@@ -774,6 +783,7 @@ def corner_pub(ident="corner_pub", name="Victorian Corner Pub"):
     for u in (4, 6, 8):
         b.set(u, 3, 8, B("lightning_rod", facing="up", powered=False, waterlogged=False))
     b.fill(3, 1, 11, 9, 3, 11, B("barrel", facing="north", open=False))
+    P.flight(b, 3, 1, 10, 1, 0, 5, "dark_oak")             # behind the bar, up to the landlord's flat
     for (u, v) in ((2, 3), (5, 3), (8, 4)):
         b.set(u, 1, v, B("dark_oak_fence"))
         b.set(u, 2, v, B("dark_oak_pressure_plate", powered=False))
@@ -809,6 +819,7 @@ def cafe_takeaway(ident="cafe_takeaway", name="Cafe and Takeaway (Pair)"):
         b.window(o + 5, 5, 1, 1, 2, "ptmuk:upvc_window")
         b.set(o + 3, 7, 4, light(11))
         b.door(o + 3, 1, 11, "spruce", facing="front", hinge="left")
+        P.flight(b, o + 2, 1, 9, 1, 0, 4, "oak")              # up to the flat from the back
     P.flat_roof(b, 0, W - 1, 1, 11, 8, deck="gray_concrete", parapet=brick, coping=P.STONE)
     return b
 
@@ -900,7 +911,7 @@ def office_floors(b, u0, u1, v0, v1, floors, core):
         P.ceiling_lights(b, u0, v0, u1, v1, nxt, step=3)
         if i:
             P.office_desks(b, u0 + 2, u1 - 2, v0 + 2, cv - 2, y + 1, every=3)
-    P.stair_core(b, cu, cv, floors, material="stone_brick")
+    P.stair_core(b, cu, cv, floors[:-1], material="stone_brick")     # the last level is the roof
 
 
 def glass_office(ident="glass_office", name="Modern Glass Office Block"):
@@ -989,15 +1000,26 @@ def brick_office(ident="brick_office", name="1990s Brick Office"):
             b.window(u, y0 + 1, 5, 1, 2, "ptmuk:office_glazing")
         for v in (7, 8, 11, 12):
             b.side_window(0, y0 + 1, v, 1, 2, "ptmuk:office_glazing")
-    # glass stair tower on the right front corner
-    b.fill(10, 0, 4, 12, 0, 8, "polished_andesite")
-    for y in range(1, 14):
-        b.walls(10, y, 4, 12, y, 8, P.pane("ptmuk:office_glazing"))
-    b.fill(10, 1, 4, 10, 14, 4, "light_gray_concrete")
-    b.fill(12, 1, 4, 12, 14, 4, "light_gray_concrete")
-    b.fill(10, 14, 4, 12, 14, 8, "light_gray_concrete")
-    b.door(11, 1, 4, "birch", facing="back", hinge="left")
-    b.fill(9, 4, 3, 13 - 1, 4, 3, slab("smooth_stone", "top"))
+    # glass stair tower on the right, sharing the office's end wall, with a landing into each floor
+    b.fill(10, 0, 5, 11, 0, 12, "polished_andesite")
+    for y in range(1, 12):
+        b.fill(10, y, 5, 11, y, 5, P.pane("ptmuk:office_glazing"))
+        b.fill(10, y, 12, 11, y, 12, P.pane("ptmuk:office_glazing"))
+        b.fill(12, y, 6, 12, y, 11, P.pane("ptmuk:office_glazing"))
+    b.fill(10, 12, 5, 11, 12, 5, "light_gray_concrete")       # a solid band where the office roof meets the tower
+    b.fill(10, 12, 12, 11, 12, 12, "light_gray_concrete")
+    b.fill(12, 12, 6, 12, 12, 11, "light_gray_concrete")
+    b.fill(12, 1, 5, 12, 12, 5, "light_gray_concrete")
+    b.fill(12, 1, 12, 12, 12, 12, "light_gray_concrete")
+    b.fill(9, 13, 5, 12, 13, 12, "light_gray_concrete")
+    for y in floors[1:-1]:
+        b.fill(10, y, 6, 11, y, 11, "light_gray_concrete")
+        b.fill(10, y, 5, 11, y, 5, "light_gray_concrete")
+        b.fill(10, y, 12, 11, y, 12, "light_gray_concrete")
+        b.fill(12, y, 6, 12, y, 11, "light_gray_concrete")
+    b.door(10, 1, 5, "birch", facing="back", hinge="left")
+    b.set(11, 1, 5, "light_gray_concrete")
+    b.fill(9, 3, 4, 12, 3, 4, slab("smooth_stone", "top"))
     name_plate(b, 1, 8, 4, 4, "RIVERSIDE COURT", "", 0xFF1C2E4A, WHITE_INK, True)
     b.hipped_roof(0, 9, 5, 14, 12, "ptmuk:roof_concrete_tiles")
     for i, y in enumerate(floors[:-1]):
@@ -1005,19 +1027,12 @@ def brick_office(ident="brick_office", name="1990s Brick Office"):
             b.fill(1, y, 6, 8, y, 13, "light_gray_concrete")
         P.ceiling_lights(b, 0, 5, 9, 14, floors[i + 1], step=3)
         P.office_desks(b, 2, 7, 7, 12, y + 1, every=3)
-    for i, y in enumerate(floors[:-1]):
-        b.fill(11, y + 1, 5, 11, y + 3, 5, AIR)
-    for k in range(12):
-        v = 5 + (k % 4) if (k // 4) % 2 == 0 else 8 - (k % 4)
-    for (y, vs, facing) in ((1, 5, "back"), (5, 8, "front"), (9, 5, "back")):
-        for k in range(4):
-            v = vs + k if facing == "back" else vs - k
-            b.set(11, y + k, v, stairs("stone_brick", facing))
-    for y in floors[1:]:
-        b.fill(10, y, 5, 10, y, 7, "light_gray_concrete") if y < 12 else None
-    for y in (4, 8):
-        b.fill(9, y + 1, 6, 9, y + 2, 6, AIR)
-    b.fill(9, 1, 6, 9, 2, 6, AIR)
+    P.stair_core(b, 10, 6, floors[:-1], material="stone_brick")
+    b.fill(9, 1, 6, 9, 2, 6, AIR)                 # ground floor, off the entrance landing
+    b.fill(9, 5, 11, 9, 6, 11, AIR)               # first floor, off the half landing
+    b.fill(9, 9, 6, 9, 10, 6, AIR)                # second floor
+    for (u, y, v) in ((11, 3, 6), (10, 7, 11), (11, 11, 6)):
+        b.set(u, y, v, light(12))
     return b
 
 
@@ -1065,7 +1080,7 @@ def tower_block(ident="tower_block", name="Council Tower Block (16 Storeys)", st
     b.set(1, 1, 1, B("ptmuk:communal_bin", facing="south"))
     b.set(15, 1, 1, B("ptmuk:communal_bin", facing="south"))
     # core and roof
-    P.stair_core(b, 7, 8, floors, material="stone_brick")
+    P.stair_core(b, 7, 8, floors[:-1], material="stone_brick")
     P.flat_roof(b, 0, W - 1, 2, 15, top, deck="gray_concrete", parapet="light_gray_concrete", coping="smooth_stone")
     b.fill(6, top + 1, 7, 10, top + 3, 12, "light_gray_concrete")
     b.fill(7, top + 4, 8, 9, top + 4, 11, slab("smooth_stone"))
@@ -1104,13 +1119,14 @@ def mansion_block(ident="mansion_block", name="1930s Mansion Block"):
     b.door(10, 1, 1, "dark_oak", facing="back", hinge="left")
     b.set(9, 1, 1, stone)
     b.set(11, 1, 1, stone)
+    b.fill(10, 1, 2, 10, 2, 2, AIR)                         # through the main wall into the hall
     b.set(10, 3, 1, P.pane("ptmuk:georgian_window"))
     name_plate(b, 8, 12, 4, 0, "PARKVIEW MANSIONS", "", 0xFFE6DCC2, 0xFF2A2A2A, False)
     b.fill(0, top, 1, W - 1, top, 1, slab(stone, "top"))
     b.hipped_roof(0, W - 1, 2, 13, top + 1, "ptmuk:roof_slate")
     for u in (3, 17):
         b.chimney(u, 7, top + 2, top + 7, brick, w=1, d=2, pots=2)
-    P.stair_core(b, 9, 6, floors, material="oak")
+    P.stair_core(b, 9, 6, floors[:-1], material="oak")
     return b
 
 
@@ -1141,7 +1157,7 @@ def modern_apartments(ident="modern_apartments", name="Modern Apartment Block"):
     b.fill(6, 1, 2, 9, 3, 2, P.pane("ptmuk:shop_window"))
     b.door(8, 1, 2, "birch", facing="back", hinge="left")
     name_plate(b, 6, 9, STOREY, 1, "THE COBALT BUILDING", "", 0xFF2A2E34, WHITE_INK, True)
-    P.stair_core(b, 8, 7, floors, material="stone_brick")
+    P.stair_core(b, 8, 7, floors[:-1], material="stone_brick")
     P.flat_roof(b, 0, W - 1, 2, 14, top, deck="gray_concrete", parapet=clad, coping="polished_deepslate")
     for u in range(2, W - 2, 2):
         for v in (4, 5, 11, 12):
@@ -1158,39 +1174,42 @@ def deck_access_flats(ident="deck_access_flats", name="1960s Deck-Access Flats")
     top = floors[-1]
     b = Build(ident, name, "Flats", W, top + 3, D,
               "Low-rise 1960s council flats: brown brick, concrete walkway decks with front doors, stair towers at each end.")
-    brick = "ptmuk:red_brick"
-    P.lawn(b, 0, 0, W - 1, 1)
-    b.fill(0, 0, 2, W - 1, 0, 11, "polished_andesite")
-    b.walls(3, 1, 3, W - 4, top, 11, brick)
+    brick, conc = "ptmuk:red_brick", "light_gray_concrete"
+    P.lawn(b, 0, 0, W - 1, 0)
+    b.fill(0, 0, 1, W - 1, 0, 11, "polished_andesite")
+    b.walls(3, 1, 3, W - 4, top - 1, 11, brick)
     for y in floors[1:-1]:
         b.fill(4, y, 4, W - 5, y, 10, "oak_planks")
-        # walkway deck in front with a concrete balustrade
-        b.fill(3, y, 2, W - 4, y, 2, "light_gray_concrete")
-        b.fill(3, y + 1, 2, W - 4, y + 1, 2, "polished_andesite")
-    b.fill(3, top, 2, W - 4, top, 2, "light_gray_concrete")
+        # walkway deck in front, two blocks wide, with a concrete parapet along the edge
+        b.fill(4, y, 1, W - 5, y, 2, conc)
+        b.fill(4, y + 1, 1, W - 5, y + 1, 1, "polished_andesite")
     for y in floors[:-1]:
-        for i, u in enumerate(range(5, W - 5, 4)):
-            b.door(u, y + 1, 3, ["oak", "spruce", "birch", "dark_oak"][i % 4],
-                   facing="back", hinge="left")
-            b.fill(u + 1, y + 2, 3, u + 2, y + 2, 3, P.pane("ptmuk:upvc_window"))
-            b.fill(u, y + 2, 11, u + 2, y + 3, 11, P.pane("ptmuk:upvc_window")) if y + 3 < top else b.fill(u, y + 2, 11, u + 2, y + 2, 11, P.pane("ptmuk:upvc_window"))
-            b.set(u + 1, y + 3, 7, light(11)) if b.get(u + 1, y + 3, 7).name == "minecraft:air" else None
-    # stair towers at each end
-    for u0 in (0, W - 3):
-        b.walls(u0, 1, 2, u0 + 2, top + 1, 6, "light_gray_concrete")
-        for y in range(2, top, 2):
-            b.set(u0 + 1, y, 2, P.pane("glass_pane"))
-        b.door(u0 + 1, 1, 2, "birch", facing="back", hinge="left")
-        for (y, vs, facing) in ((1, 3, "back"), (5, 6, "front"), (9, 3, "back")):
-            for k in range(4):
-                v = vs + k if facing == "back" else vs - k
-                if 3 <= v <= 5:
-                    b.set(u0 + 1, y + k, v, stairs("stone_brick", facing))
-        for y in floors[1:]:
-            inner = u0 + 2 if u0 == 0 else u0
-            b.fill(inner, y + 1, 2, inner, y + 2, 2, AIR) if y < top else None
-    P.flat_roof(b, 3, W - 4, 2, 11, top, deck="gray_concrete", parapet=None)
-    b.fill(3, top + 1, 2, W - 4, top + 1, 2, slab("smooth_stone"))
+        for i, u in enumerate(range(5, W - 5, 4)):      # a door, then a window clear of it
+            b.door(u, y + 1, 3, ["oak", "spruce", "birch", "dark_oak"][i % 4], facing="back", hinge="left")
+            b.window(u + 2, y + 1, 3, 1, 2, "ptmuk:upvc_window")
+            b.window(u, y + 1, 11, 3, 2, "ptmuk:upvc_window")
+            b.set(u + 1, y + 3, 7, light(11))
+        for u in range(8, W - 5, 4):                   # party walls between the flats
+            b.fill(u, y + 1, 4, u, y + 3, 10, brick)
+    # stair towers at each end: dog-leg stairs that land at the front on every floor, beside the deck
+    for a in (0, W - 4):
+        b.walls(a, 1, 1, a + 3, top + 1, 6, conc)
+        b.fill(a + 1, 0, 2, a + 2, 0, 5, "polished_andesite")
+        for y in floors[1:-1]:
+            b.fill(a + 1, y, 2, a + 2, y, 5, "polished_andesite")
+        b.fill(a, top + 2, 1, a + 3, top + 2, 6, conc)
+        for y in range(5, top + 1, 2):
+            b.set(a + 1, y, 1, P.pane("glass_pane"))
+            b.set(a + 2, y, 1, P.pane("glass_pane"))
+        b.door(a + 1, 1, 1, "birch", facing="back", hinge="left")
+        P.dogleg_stairs(b, a + 1, 2, floors[:-1], material="stone_brick")
+        inner = a + 3 if a == 0 else a
+        for y in floors[1:-1]:
+            b.fill(inner, y + 1, 2, inner, y + 2, 2, AIR)
+        for y in floors[:-1]:
+            b.set(a + 2, y + 3, 2, light(11))
+    P.flat_roof(b, 3, W - 4, 3, 11, top, deck="gray_concrete", parapet=None)
+    b.fill(3, top + 1, 3, W - 4, top + 1, 3, slab("smooth_stone"))
     return b
 
 
@@ -1219,6 +1238,9 @@ def church(ident="church", name="Victorian Parish Church"):
     b.walls(4, 1, 1, 10, 18, 7, stone)
     b.fill(5, 0, 2, 9, 0, 6, "polished_andesite")
     b.door(7, 1, 1, "dark_oak", facing="back", hinge="left")
+    b.fill(6, 1, 7, 8, 3, 7, AIR)                            # tower arch into the nave
+    b.set(6, 3, 7, stairs(stone, "left", "top"))
+    b.set(8, 3, 7, stairs(stone, "right", "top"))
     b.set(7, 3, 1, P.pane("purple_stained_glass_pane"))
     b.fill(6, 1, 1, 6, 3, 1, stone)
     b.fill(7, 6, 1, 7, 9, 1, P.pane("blue_stained_glass_pane"))
@@ -1337,6 +1359,13 @@ def petrol_station(ident="petrol_station", name="Petrol Station"):
 # ================================================================== catalogue
 
 def all_prefabs():
+    builds = _all_prefabs()
+    for b in builds:
+        b.frame_doors()
+    return builds
+
+
+def _all_prefabs():
     import prefab_big          # bigger houses, flats and estates (built from the ones here)
     return [
         victorian_terrace("victorian_terrace", "Victorian Terraced House", 1),
@@ -1401,7 +1430,14 @@ public final class PrefabCatalog {{
 
 
 def generate():
+    import prefab_check
     builds = all_prefabs()
+    broken = []
+    for b in builds:                     # no gaps, usable stairs, every room reachable
+        panes, stairs_ = prefab_check.check(b)
+        broken += [f"{b.ident} {pos}: {msg}" for pos, msg, _ in panes + stairs_]
+    if broken:
+        raise SystemExit("prefabs failed their checks:\n  " + "\n  ".join(broken[:40]))
     out = DATA / "structures/prefab"
     if out.exists():
         for f in out.glob("*.nbt"):

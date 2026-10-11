@@ -16,10 +16,17 @@ def roof_line(b, u, v, y_from):
     return None
 
 
+def roof_top(b, u, v, y_from):
+    """The highest roofing block over column (u, v): where two roofs cross, a gable end has to go
+    right up under the higher one or it leaves a hole into the loft."""
+    tops = [y for y in range(y_from, b.H) if (u, y, v) in b.roof_cells]
+    return max(tops) if tops else roof_line(b, u, v, y_from)
+
+
 def close_gable(b, u, v0, v1, y_from, material):
     """Fill a wall column by column up to the underside of the roof above it."""
     for v in range(v0, v1 + 1):
-        top = roof_line(b, u, v, y_from)
+        top = roof_top(b, u, v, y_from)
         if top is None:
             continue
         for y in range(y_from, top):
@@ -30,7 +37,7 @@ def close_gable(b, u, v0, v1, y_from, material):
 def close_gable_front(b, v, u0, u1, y_from, material):
     """Same for a wall running across (a gable end facing front or back)."""
     for u in range(u0, u1 + 1):
-        top = roof_line(b, u, v, y_from)
+        top = roof_top(b, u, v, y_from)
         if top is None:
             continue
         for y in range(y_from, top):
@@ -248,10 +255,24 @@ def ceiling_lights(b, u0, v0, u1, v1, y, step=3, block="sea_lantern"):
             b.set(u, y, v, block)
 
 
+def stair_headroom(steps, top_floor=None):
+    """How many clear blocks each step of a flight needs above it. Walking up, you step onto the next
+    stair while still half over the last, which lifts your head a third of a block above it: every
+    step but the top one needs three clear blocks, not two."""
+    return [3] * (steps - 1) + [2]
+
+
+def clear_over(b, u, y, v, h):
+    for yy in range(y + 1, y + 1 + h):
+        cur = b.get(u, yy, v).name
+        if cur != "minecraft:air" and not cur.endswith("_stairs"):
+            b.clear(u, yy, v)
+
+
 def stair_core(b, cu, vs, y_floors, material="stone_brick"):
     """Switchback stairs in a 2 x 6 core: flights alternate between the two columns, rising
     towards the back then the front, with landings at both ends. y_floors are the floor
-    levels (floor blocks at those heights)."""
+    levels (floor blocks at those heights); the last one is the floor the stairs arrive on."""
     for i in range(len(y_floors) - 1):
         base, top = y_floors[i], y_floors[i + 1]
         steps = top - base
@@ -259,17 +280,57 @@ def stair_core(b, cu, vs, y_floors, material="stone_brick"):
             col, vstart, d, facing = cu, vs + 1, 1, "back"
         else:
             col, vstart, d, facing = cu + 1, vs + steps, -1, "front"
+        room = stair_headroom(steps)
         for k in range(steps):
             v = vstart + d * k
             y = base + 1 + k
             b.set(col, y, v, stairs(material, facing))
-            for yy in range(y + 1, y + 3):
-                if yy <= top + 2:
-                    cur = b.get(col, yy, v).name
-                    if cur != "minecraft:air" and not cur.endswith("_stairs"):
-                        b.clear(col, yy, v)
+            clear_over(b, col, y, v, room[k])
             if k:                    # a solid stringer under every step but the first
                 b.set(col, y - 1, v, material + "s" if material.endswith("brick") else material)
+
+
+DIR_OF = {(0, 1): "back", (0, -1): "front", (1, 0): "right", (-1, 0): "left"}
+
+
+def flight(b, u, y, v, du, dv, steps, material="oak", stringer=True):
+    """A straight flight of `steps` stairs starting at (u, y, v) and rising one block for each block
+    along (du, dv), with the headroom cleared above it (cutting the stairwell through the floor
+    above) and a solid stringer under each step."""
+    room = stair_headroom(steps)
+    solid = material + "s" if material.endswith("brick") else material + ("_planks" if material in WOODS else "")
+    for k in range(steps):
+        uu, yy, vv = u + du * k, y + k, v + dv * k
+        b.set(uu, yy, vv, stairs(material, DIR_OF[(du, dv)]))
+        clear_over(b, uu, yy, vv, room[k])
+        if stringer and k:
+            b.set(uu, yy - 1, vv, solid)
+
+
+WOODS = ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "crimson", "warped")
+
+
+def dogleg_stairs(b, cu, vs, y_floors, material="stone_brick"):
+    """British dog-leg stairs in a 2 x 4 core: half a storey up towards the back in column cu, a half
+    landing, then the other half back towards the front in column cu + 1, so every floor's landing
+    is at the front (v = vs) on the same side. Storey heights must be even."""
+    stringer = material + "s" if material.endswith("brick") else material
+    for i in range(len(y_floors) - 1):
+        base, top = y_floors[i], y_floors[i + 1]
+        half = (top - base) // 2
+        room = stair_headroom(half)
+        b.fill(cu, base + half, vs + half + 1, cu + 1, base + half, vs + half + 1, stringer)   # half landing
+        for k in range(half):
+            u, y, v = cu, base + 1 + k, vs + 1 + k
+            b.set(u, y, v, stairs(material, "back"))
+            clear_over(b, u, y, v, 3)
+            if k:
+                b.set(u, y - 1, v, stringer)
+        for k in range(half):
+            u, y, v = cu + 1, base + half + 1 + k, vs + half - k
+            b.set(u, y, v, stairs(material, "front"))
+            clear_over(b, u, y, v, room[k])
+            b.set(u, y - 1, v, stringer)
 
 
 def shop_shelves(b, u0, u1, v, y=1, h=2, kind="bookshelf"):
@@ -369,7 +430,7 @@ def lock_up_garages(b, u0, v0, n, facing="front", material="ptmuk:red_brick"):
         b.walls(a, 1, v0, a + 3, 2, v1, material)
         for u in (a + 1, a + 2):
             for y in (1, 2):
-                b.set(u, y, door_v, B("iron_trapdoor", facing="north" if facing == "back" else "south", half="bottom",
+                b.set(u, y, door_v, B("spruce_trapdoor", facing="north" if facing == "back" else "south", half="top",
                                        open=True, powered=False, waterlogged=False))
     b.fill(u0, 3, v0, u0 + 3 * n, 3, v1, slab("smooth_stone"))
 
