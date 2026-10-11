@@ -707,7 +707,7 @@ def thatched_cottage(ident="thatched_cottage", name="Thatched Cottage"):
 
 def slab_block(ident="slab_block", name="1960s Slab Block (12 Storeys)", storeys=12):
     W, D = 45, 18
-    top = 3 * storeys
+    top = PD.STOREY * storeys
     b = Build(ident, name, "Flats", W, top + 6, D,
               f"A long {storeys}-storey 1960s council slab block: precast concrete, rows of balconies, blank end walls, "
               "two stair cores, a glazed entrance and lift motor rooms on the roof.")
@@ -715,7 +715,7 @@ def slab_block(ident="slab_block", name="1960s Slab Block (12 Storeys)", storeys
     P.paving(b, 0, 0, W - 1, D - 1)
     b.fill(1, 0, 3, 43, 0, 15, "polished_andesite")
     b.walls(1, 1, 3, 43, top, 15, conc)
-    floors = list(range(0, top + 1, 3))
+    floors = list(range(0, top + 1, PD.STOREY))
     for y in floors[1:-1]:
         b.fill(2, y, 4, 42, y, 14, "smooth_stone")
         b.walls(1, y, 3, 43, y, 15, "polished_andesite")
@@ -729,7 +729,7 @@ def slab_block(ident="slab_block", name="1960s Slab Block (12 Storeys)", storeys
             b.fill(a, y + 1, 2, a + 4, y + 1, 2, pane("white_stained_glass_pane"))
             b.set(a + 5, y + 1, 2, conc)
             b.window(a + 1, y + 1, 15, 3, 2, "ptmuk:upvc_window")
-            lights(b, [(a + 2, y + 2, 7), (a + 2, y + 2, 12)], level=11)
+            lights(b, [(a + 2, y + 3, 7), (a + 2, y + 3, 12)], level=11)
     for u in (1, 43):                                  # blank end walls with a white stripe
         b.fill(u, 1, 9, u, top, 9, panel)
     # ground floor: glazed entrance in the middle, bin store doors, two cores
@@ -752,8 +752,8 @@ def slab_block(ident="slab_block", name="1960s Slab Block (12 Storeys)", storeys
 
 def residential_tower(ident="residential_tower", name="Modern Residential Tower (24 Storeys)", storeys=24):
     W, D = 23, 24
-    base = 7
-    top = base + 3 * storeys
+    base = 8
+    top = base + PD.STOREY * storeys
     b = Build(ident, name, "Flats", W, top + 5, D,
               f"A {storeys}-storey 2010s apartment tower: a double-height glass lobby, alternating glazing and pale "
               "cladding, glass balconies, a glazed penthouse floor and a lit crown.")
@@ -772,7 +772,7 @@ def residential_tower(ident="residential_tower", name="Modern Residential Tower 
     b.door(11, 1, z0, "birch", facing="back", hinge="left")
     b.fill(7, base, z0 - 1, 15, base, z0 - 1, slab("smooth_stone", "top"))
     PD.name_plate(b, 8, 14, base - 1, z0 - 1, "THE BELVEDERE", "", 0xFF2A2E34, 0xFFFFFFFF, True)
-    floors = [0] + [base + 3 * i for i in range(storeys + 1)]
+    floors = [0] + [base + PD.STOREY * i for i in range(storeys + 1)]
     for i, y in enumerate(floors[1:-1]):
         penthouse = i == storeys - 1
         b.fill(x0 + 1, y, z0 + 1, x1 - 1, y, z1 - 1, "light_gray_concrete")
@@ -780,7 +780,7 @@ def residential_tower(ident="residential_tower", name="Modern Residential Tower 
         for (side_v, step) in ((z0, -1), (z1, 1)):
             for u in range(x0 + 1, x1):
                 solid = (u - x0) % 4 == 0 and not penthouse
-                b.fill(u, y + 1, side_v, u, y + 2, side_v, clad if solid else pane(win))
+                b.fill(u, y + 1, side_v, u, y + 3, side_v, clad if solid else pane(win))
             if not penthouse and i % 2 == 0:
                 for (a, z) in ((x0 + 2, x0 + 6), (x1 - 6, x1 - 2)):
                     b.fill(a, y, side_v + step, z, y, side_v + step, slab("smooth_stone", "top"))
@@ -788,8 +788,8 @@ def residential_tower(ident="residential_tower", name="Modern Residential Tower 
         for side_u in (x0, x1):
             for v in range(z0 + 1, z1):
                 solid = (v - z0) % 4 == 0 and not penthouse
-                b.fill(side_u, y + 1, v, side_u, y + 2, v, clad if solid else pane(win))
-        lights(b, [(5, y + 2, 6), (17, y + 2, 6), (5, y + 2, 18), (17, y + 2, 18)], level=11)
+                b.fill(side_u, y + 1, v, side_u, y + 3, v, clad if solid else pane(win))
+        lights(b, [(5, y + 3, 6), (17, y + 3, 6), (5, y + 3, 18), (17, y + 3, 18)], level=11)
     P.stair_core(b, 10, 9, floors, material="stone_brick")
     # crown: a lit band and a plant screen
     P.flat_roof(b, x0, x1, z0, z1, top, deck="gray_concrete", parapet=None)
@@ -805,14 +805,15 @@ def residential_tower(ident="residential_tower", name="Modern Residential Tower 
 
 def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Block (7 Storeys)"):
     W, D = 37, 35
-    b = Build(ident, name, "Flats", W, 24, D,
+    b = Build(ident, name, "Flats", W, 30, D,
               "Seven storeys of 2010s flats round a private garden courtyard: stock brick with a dark plinth, "
               "Juliet balconies, a gated archway, and a set-back top floor with roof terraces.")
     brick, plinth, top_clad, win = STOCK, "polished_deepslate", "gray_concrete", "ptmuk:grey_framed_window"
     P.paving(b, 0, 0, W - 1, 1)
     o0, o1, p0, p1 = 1, 35, 2, 33            # outer ring
     i0, i1, q0, q1 = 11, 25, 12, 23          # courtyard
-    floors = [0, 3, 6, 9, 12, 15, 18]
+    floors = [PD.STOREY * i for i in range(7)]
+    roof = floors[-1]                        # the set-back top floor stands on the roof
     for u in range(o0, o1 + 1):
         for v in range(p0, p1 + 1):
             if i0 <= u <= i1 and q0 <= v <= q1:
@@ -820,9 +821,9 @@ def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Bloc
             b.set(u, 0, v, "polished_andesite")
             for y in floors[1:]:
                 b.set(u, y, v, "light_gray_concrete")
-    b.walls(o0, 1, p0, o1, 17, p1, brick)
-    b.walls(i0 - 1, 1, q0 - 1, i1 + 1, 17, q1 + 1, brick)
-    b.walls(o0, 1, p0, o1, 2, p1, plinth)
+    b.walls(o0, 1, p0, o1, roof - 1, p1, brick)
+    b.walls(i0 - 1, 1, q0 - 1, i1 + 1, roof - 1, q1 + 1, brick)
+    b.walls(o0, 1, p0, o1, 3, p1, plinth)
     for y in floors[1:-1]:
         for u in range(o0 + 2, o1 - 1, 3):
             for (v, step) in ((p0, -1), (p1, 1)):
@@ -838,29 +839,29 @@ def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Bloc
         for v in range(q0, q1 + 1, 3):
             b.side_window(i0 - 1, y + 1, v, 1, 2, win)
             b.side_window(i1 + 1, y + 1, v, 1, 2, win)
-        lights(b, [(5, y + 2, 6), (31, y + 2, 6), (5, y + 2, 28), (31, y + 2, 28), (18, y + 2, 6), (18, y + 2, 28),
-                   (5, y + 2, 17), (31, y + 2, 17)], level=11)
+        lights(b, [(5, y + 3, 6), (31, y + 3, 6), (5, y + 3, 28), (31, y + 3, 28), (18, y + 3, 6), (18, y + 3, 28),
+                   (5, y + 3, 17), (31, y + 3, 17)], level=11)
     for u in range(o0 + 2, o1 - 1, 3):
         b.window(u, 1, p0, 1, 2, win)
     # archway through the front range into the courtyard, with gates
-    opening(b, 16, 1, p0, 20, 4, q0 - 1)
+    opening(b, 16, 1, p0, 20, 3, q0 - 1)
     b.fill(16, 0, p0, 20, 0, q0 - 1, "ptmuk:paving_slabs")
     b.fill(16, 1, p0, 20, 3, p0, B("iron_bars"))
     b.door(18, 1, p0, "iron", facing="back", hinge="left")
-    PD.name_plate(b, 15, 21, 5, p0 - 1, "ALBION COURT", "", 0xFF2A2E34, 0xFFFFFFFF, True)
+    PD.name_plate(b, 15, 21, 4, p0 - 1, "ALBION COURT", "", 0xFF2A2E34, 0xFFFFFFFF, True)
     # set-back top floor with roof terraces behind a glass balustrade
-    b.walls(o0, 18, p0, o1, 18, p1, slab("smooth_stone", "top"))
-    b.walls(o0, 19, p0, o1, 19, p1, pane("glass_pane"))
-    b.walls(o0 + 2, 19, p0 + 2, o1 - 2, 20, p1 - 2, top_clad)
-    b.walls(i0 - 1, 19, q0 - 1, i1 + 1, 20, q1 + 1, top_clad)
+    b.walls(o0, roof, p0, o1, roof, p1, slab("smooth_stone", "top"))
+    b.walls(o0, roof + 1, p0, o1, roof + 1, p1, pane("glass_pane"))
+    b.walls(o0 + 2, roof + 1, p0 + 2, o1 - 2, roof + 3, p1 - 2, top_clad)
+    b.walls(i0 - 1, roof + 1, q0 - 1, i1 + 1, roof + 3, q1 + 1, top_clad)
     for u in range(o0 + 3, o1 - 2, 3):
-        b.window(u, 19, p0 + 2, 1, 2, win)
-        b.window(u, 19, p1 - 2, 1, 2, win)
+        b.window(u, roof + 1, p0 + 2, 1, 2, win)
+        b.window(u, roof + 1, p1 - 2, 1, 2, win)
     for u in range(o0 + 2, o1 - 1):
         for v in range(p0 + 2, p1 - 1):
             if not (i0 - 1 <= u <= i1 + 1 and q0 - 1 <= v <= q1 + 1):
-                b.set(u, 21, v, "gray_concrete")
-    b.walls(o0 + 2, 22, p0 + 2, o1 - 2, 22, p1 - 2, slab("smooth_stone"))
+                b.set(u, roof + 4, v, "gray_concrete")
+    b.walls(o0 + 2, roof + 5, p0 + 2, o1 - 2, roof + 5, p1 - 2, slab("smooth_stone"))
     # courtyard garden: lawn, paths, trees, benches
     P.lawn(b, i0, q0, i1, q1)
     b.fill(18, 0, q0, 18, 0, q1, "ptmuk:paving_slabs")
@@ -875,48 +876,56 @@ def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Bloc
 
 
 def maisonette_block(ident="maisonette_block", name="1960s Maisonette Block (4 Storeys)"):
-    W, D = 34, 13
-    b = Build(ident, name, "Flats", W, 15, D,
+    S = PD.STOREY
+    W, D = 36, 13
+    top = 4 * S
+    b = Build(ident, name, "Flats", W, top + 2, D,
               "A four-storey 1960s council block of maisonettes: brick and white panels, front doors at ground level "
               "and along an access deck on the second floor, stair towers at both ends.")
-    brick, panel = RED, "white_concrete"
+    brick, panel, conc = RED, "white_concrete", "light_gray_concrete"
+    deck = 2 * S
     P.paving(b, 0, 0, W - 1, D - 1)
-    b.fill(3, 0, 3, 30, 0, 11, "oak_planks")
-    b.walls(3, 1, 3, 30, 12, 11, brick)
-    for y in (3, 6, 9):
-        b.fill(4, y, 4, 29, y, 10, "oak_planks")
-    b.fill(3, 6, 2, 30, 6, 2, "light_gray_concrete")            # access deck
-    b.fill(3, 7, 2, 30, 7, 2, slab("smooth_stone", "bottom"))
+    b.fill(4, 0, 4, 31, 0, 10, "oak_planks")
+    b.walls(3, 1, 3, 32, top - 1, 11, brick)
+    for y in (S, deck, 3 * S):
+        b.fill(4, y, 4, 31, y, 10, "oak_planks")
+    # access deck along the front on the second floor, with a solid parapet
+    b.fill(4, deck, 1, 31, deck, 2, conc)
+    b.fill(4, deck + 1, 1, 31, deck + 1, 1, conc)
     woods = ["oak", "spruce", "birch", "dark_oak"]
-    for k in range(7):
-        a = 4 + 4 * k
-        b.door(a, 1, 3, woods[k % 4], facing="back", hinge="left")    # lower maisonette
-        b.window(a + 1, 2, 3, 2, 1, "ptmuk:upvc_window")
-        b.fill(a + 1, 1, 3, a + 2, 1, 3, panel)
-        b.window(a, 4, 3, 3, 1, "ptmuk:upvc_window")
-        b.fill(a, 5, 3, a + 2, 5, 3, panel)
-        b.door(a, 7, 3, woods[(k + 1) % 4], facing="back", hinge="left")   # upper maisonette, off the deck
-        b.window(a + 1, 8, 3, 2, 1, "ptmuk:upvc_window")
-        b.window(a, 10, 3, 3, 1, "ptmuk:upvc_window")
-        b.fill(a, 11, 3, a + 2, 11, 3, panel)
-        for y in (2, 4, 8, 10):
-            b.window(a + 1, y, 11, 2, 1, "ptmuk:upvc_window")
-        lights(b, [(a + 1, 2, 7), (a + 1, 5, 7), (a + 1, 8, 7), (a + 1, 11, 7)], level=11)
-    # stair towers at each end, up to the deck
-    for a in (0, 31):
-        b.walls(a, 1, 2, a + 2, 8, 6, "light_gray_concrete")
-        b.fill(a + 1, 0, 3, a + 1, 0, 5, "polished_andesite")
-        for y in (2, 4, 6):
-            b.set(a + 1, y, 2, pane("glass_pane"))
-        b.door(a + 1, 1, 2, "birch", facing="back", hinge="left")
-        for k in range(3):
-            b.set(a + 1, 1 + k, 3 + k, stairs("stone_brick", "back"))
-            b.set(a + 1, 4 + k, 5 - k, stairs("stone_brick", "front"))
-        inner = a + 2 if a == 0 else a
-        opening(b, inner, 7, 2, inner, 8, 2)
-        b.fill(a + 1, 6, 2, a + 1, 6, 2, "light_gray_concrete")
-    P.flat_roof(b, 3, 30, 3, 11, 12, deck="gray_concrete", parapet=None)
-    b.fill(3, 13, 3, 30, 13, 3, slab("smooth_stone"))
+    for k in range(7):                          # seven maisonettes up and seven down, four blocks each
+        a = 5 + 4 * k
+        for y0 in (0, deck):                    # front: a door and window, then a full-width window above
+            b.door(a, y0 + 1, 3, woods[(k + y0) % 4], facing="back", hinge="left")
+            b.window(a + 1, y0 + 1, 3, 2, 2, "ptmuk:upvc_window")
+            b.fill(a, y0 + 3, 3, a + 2, y0 + 3, 3, panel)
+            b.window(a, y0 + S + 1, 3, 3, 2, "ptmuk:upvc_window")
+            b.fill(a, y0 + S + 3, 3, a + 2, y0 + S + 3, 3, panel)
+            # stairs up inside each maisonette, against the party wall
+            for n in range(S):
+                b.set(a + 2, y0 + 1 + n, 5 + n, stairs("oak", "back"))
+            b.fill(a + 2, y0 + S, 6, a + 2, y0 + S, 7, AIR)        # stairwell through the floor above
+        for y in range(0, top, S):
+            b.window(a, y + 1, 11, 3, 2, "ptmuk:upvc_window")
+        if k < 6:
+            b.fill(a + 3, 1, 4, a + 3, top - 1, 10, brick)            # party wall
+        lights(b, [(a + 1, y + 3, 6) for y in range(0, top, S)], level=11)
+    # stair towers at each end, up to the deck: switchback stairs with a landing halfway
+    for a in (0, 32):
+        b.walls(a, 1, 1, a + 3, deck + 2, 8, conc)
+        b.fill(a + 1, 0, 2, a + 2, 0, 7, "polished_andesite")
+        for y in (S, deck):
+            b.fill(a + 1, y, 2, a + 2, y, 7, "polished_andesite")
+        b.fill(a, deck + 3, 1, a + 3, deck + 3, 8, conc)
+        b.fill(a + 2, 2, 1, a + 2, deck + 2, 1, pane("glass_pane"))
+        b.fill(a + 1, 4, 1, a + 1, deck + 2, 1, pane("glass_pane"))
+        b.door(a + 1, 1, 1, "birch", facing="back", hinge="left")
+        P.stair_core(b, a + 1, 2, [0, S, deck], material="stone_brick")
+        inner = a + 3 if a == 0 else a
+        opening(b, inner, deck + 1, 2, inner, deck + 2, 2)
+        lights(b, [(a + 2, 3, 2), (a + 2, S + 3, 7), (a + 1, deck + 2, 5)], level=11)
+    P.flat_roof(b, 3, 32, 3, 11, top, deck="gray_concrete", parapet=None)
+    b.fill(3, top + 1, 3, 32, top + 1, 3, slab("smooth_stone"))
     return b
 
 
@@ -1063,8 +1072,8 @@ def newbuild_estate(ident="estate_newbuild", name="New-Build Estate (Cul-de-sac)
 
 
 def tower_estate(ident="estate_tower_block", name="Council Tower Block Estate"):
-    tower = PD.tower_block("_t", "", storeys=16, house_name="WILLOW HOUSE")     # 17 x 53 x 16
-    blocks = [maisonette_block(f"_m{i}", "") for i in range(2)]                 # 34 x 15 x 13
+    tower = PD.tower_block("_t", "", storeys=16, house_name="WILLOW HOUSE")     # 17 x 69 x 16
+    blocks = [maisonette_block(f"_m{i}", "") for i in range(2)]                 # 36 x 18 x 13
     mw, md = blocks[0].W, blocks[0].D
     W = 2 * md + 30
     D = mw + 20

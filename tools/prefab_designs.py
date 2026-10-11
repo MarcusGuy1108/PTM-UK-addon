@@ -1023,9 +1023,12 @@ def brick_office(ident="brick_office", name="1990s Brick Office"):
 
 # ================================================================== flats
 
+# Floor to floor in flats, the same as the houses: a floor block and a 3-block ceiling.
+STOREY = 4
+
 def tower_block(ident="tower_block", name="Council Tower Block (16 Storeys)", storeys=16, house_name="ROWAN HOUSE"):
     W, D = 17, 16
-    floors = [3 * i for i in range(storeys + 1)]
+    floors = [STOREY * i for i in range(storeys + 1)]
     top = floors[-1]
     b = Build(ident, name, "Flats", W, top + 5, D,
               "A 1960s council tower block, refurbished: concrete and white panels, balconies, a named entrance and lift room.")
@@ -1037,25 +1040,23 @@ def tower_block(ident="tower_block", name="Council Tower Block (16 Storeys)", st
         b.fill(1, y, 3, W - 2, y, 14, "light_gray_concrete")
     for y in floors[1:-1]:
         for u in (2, 3, 6, 10, 13, 14):
-            b.set(u, y + 1, 2, P.pane("ptmuk:upvc_window"))
-            b.set(u, y + 1, 15, P.pane("ptmuk:upvc_window"))
+            b.fill(u, y + 1, 2, u, y + 2, 2, P.pane("ptmuk:upvc_window"))
+            b.fill(u, y + 1, 15, u, y + 2, 15, P.pane("ptmuk:upvc_window"))
         for u in (7, 9):
             b.fill(u, y + 1, 2, u, y + 2, 2, P.pane("ptmuk:upvc_window"))
         for v in (4, 5, 11, 12):
-            b.set(0, y + 1, v, P.pane("ptmuk:upvc_window"))
-            b.set(W - 1, y + 1, v, P.pane("ptmuk:upvc_window"))
+            b.fill(0, y + 1, v, 0, y + 2, v, P.pane("ptmuk:upvc_window"))
+            b.fill(W - 1, y + 1, v, W - 1, y + 2, v, P.pane("ptmuk:upvc_window"))
         for u in (1, 4, 12, 15):
-            b.set(u, y + 1, 2, "white_concrete")
-            b.set(u, y + 2, 2, "white_concrete")
+            b.fill(u, y + 1, 2, u, y + 3, 2, "white_concrete")
         # balconies on the front
         for u0 in (2, 12):
             b.fill(u0, y, 1, u0 + 2, y, 1, slab("smooth_stone", "top"))
             b.fill(u0, y + 1, 1, u0 + 2, y + 1, 1, P.pane("white_stained_glass_pane"))
         for u in (3, 13):
             b.fill(u, y + 1, 2, u, y + 2, 2, P.pane("ptmuk:upvc_window"))
-        b.set(4, y + 2, 7, light(11)) if b.get(4, y + 2, 7).name == "minecraft:air" else None
-        b.set(12, y + 2, 7, light(11)) if b.get(12, y + 2, 7).name == "minecraft:air" else None
-        b.set(4, y + 2, 12, light(10)) if b.get(4, y + 2, 12).name == "minecraft:air" else None
+        for (u, v) in ((4, 7), (12, 7), (4, 12)):
+            b.set(u, y + 3, v, light(11)) if b.get(u, y + 3, v).name == "minecraft:air" else None
     # ground floor: entrance with canopy and name, bin store
     b.fill(6, 1, 2, 10, 2, 2, P.pane("ptmuk:shop_window"))
     b.door(8, 1, 2, "birch", facing="back", hinge="left")
@@ -1115,31 +1116,31 @@ def mansion_block(ident="mansion_block", name="1930s Mansion Block"):
 
 def modern_apartments(ident="modern_apartments", name="Modern Apartment Block"):
     W, D = 19, 15
-    floors = [0, 3, 6, 9, 12, 15]
+    floors = [STOREY * i for i in range(6)]
     top = floors[-1]
     b = Build(ident, name, "Flats", W, top + 3, D,
               "A 2010s apartment block: stock brick and grey cladding, big grey-framed windows, glass balconies and solar panels.")
     brick, clad = "ptmuk:london_stock_brick", "polished_deepslate"
     P.paving(b, 0, 0, W - 1, 1)
     b.fill(0, 0, 2, W - 1, 0, 14, "polished_andesite")
-    b.walls(0, 1, 2, W - 1, 6, 14, brick)
-    b.walls(0, 7, 2, W - 1, top, 14, clad)
+    b.walls(0, 1, 2, W - 1, 2 * STOREY, 14, brick)
+    b.walls(0, 2 * STOREY + 1, 2, W - 1, top, 14, clad)
     for y in floors[1:-1]:
         b.fill(1, y, 3, W - 2, y, 13, "light_gray_concrete")
     for y in floors[:-1]:
         for u0 in (1, 6, 11, 15):
-            b.fill(u0, y + 1, 2, u0 + 2, y + 2, 2, P.pane("ptmuk:grey_framed_window"))
-            b.fill(u0, y + 1, 14, u0 + 2, y + 2, 14, P.pane("ptmuk:grey_framed_window"))
+            b.fill(u0, y + 1, 2, u0 + 2, y + 3, 2, P.pane("ptmuk:grey_framed_window"))
+            b.fill(u0, y + 1, 14, u0 + 2, y + 3, 14, P.pane("ptmuk:grey_framed_window"))
         if y:
             for u0 in (1, 11):
                 b.fill(u0, y, 1, u0 + 2, y, 1, slab("smooth_stone", "top"))
                 b.fill(u0, y + 1, 1, u0 + 2, y + 1, 1, P.pane("glass_pane"))
         for (u, v) in ((3, 6), (13, 6), (3, 11), (13, 11)):
-            b.set(u, y + 2, v, light(11)) if b.get(u, y + 2, v).name == "minecraft:air" else None
+            b.set(u, y + 3, v, light(11)) if b.get(u, y + 3, v).name == "minecraft:air" else None
     # glazed entrance lobby
-    b.fill(6, 1, 2, 9, 2, 2, P.pane("ptmuk:shop_window"))
+    b.fill(6, 1, 2, 9, 3, 2, P.pane("ptmuk:shop_window"))
     b.door(8, 1, 2, "birch", facing="back", hinge="left")
-    name_plate(b, 6, 9, 3, 1, "THE COBALT BUILDING", "", 0xFF2A2E34, WHITE_INK, True)
+    name_plate(b, 6, 9, STOREY, 1, "THE COBALT BUILDING", "", 0xFF2A2E34, WHITE_INK, True)
     P.stair_core(b, 8, 7, floors, material="stone_brick")
     P.flat_roof(b, 0, W - 1, 2, 14, top, deck="gray_concrete", parapet=clad, coping="polished_deepslate")
     for u in range(2, W - 2, 2):
