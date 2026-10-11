@@ -1,0 +1,34 @@
+{
+ "variants": {
+  "lit=false,facing=north": {
+   "model": "ptmuk:block/home/fireplace"
+  },
+  "lit=false,facing=east": {
+   "model": "ptmuk:block/home/fireplace",
+   "y": 90
+  },
+  "lit=false,facing=south": {
+   "model": "ptmuk:block/home/fireplace",
+   "y": 180
+  },
+  "lit=false,facing=west": {
+   "model": "ptmuk:block/home/fireplace",
+   "y": 270
+  },
+  "lit=true,facing=north": {
+   "model": "ptmuk:block/home/fireplace_on"
+  },
+  "lit=true,facing=east": {
+   "model": "ptmuk:block/home/fireplace_on",
+   "y": 90
+  },
+  "lit=true,facing=south": {
+   "model": "ptmuk:block/home/fireplace_on",
+   "y": 180
+  },
+  "lit=true,facing=west": {
+   "model": "ptmuk:block/home/fireplace_on",
+   "y": 270
+  }
+ }
+}

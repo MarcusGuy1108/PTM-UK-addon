@@ -1,0 +1,64 @@
+{
+ "variants": {
+  "shape=single,facing=north": {
+   "model": "ptmuk:block/home/sofa_navy_single"
+  },
+  "shape=single,facing=east": {
+   "model": "ptmuk:block/home/sofa_navy_single",
+   "y": 90
+  },
+  "shape=single,facing=south": {
+   "model": "ptmuk:block/home/sofa_navy_single",
+   "y": 180
+  },
+  "shape=single,facing=west": {
+   "model": "ptmuk:block/home/sofa_navy_single",
+   "y": 270
+  },
+  "shape=west,facing=north": {
+   "model": "ptmuk:block/home/sofa_navy_west"
+  },
+  "shape=west,facing=east": {
+   "model": "ptmuk:block/home/sofa_navy_west",
+   "y": 90
+  },
+  "shape=west,facing=south": {
+   "model": "ptmuk:block/home/sofa_navy_west",
+   "y": 180
+  },
+  "shape=west,facing=west": {
+   "model": "ptmuk:block/home/sofa_navy_west",
+   "y": 270
+  },
+  "shape=east,facing=north": {
+   "model": "ptmuk:block/home/sofa_navy_east"
+  },
+  "shape=east,facing=east": {
+   "model": "ptmuk:block/home/sofa_navy_east",
+   "y": 90
+  },
+  "shape=east,facing=south": {
+   "model": "ptmuk:block/home/sofa_navy_east",
+   "y": 180
+  },
+  "shape=east,facing=west": {
+   "model": "ptmuk:block/home/sofa_navy_east",
+   "y": 270
+  },
+  "shape=middle,facing=north": {
+   "model": "ptmuk:block/home/sofa_navy_middle"
+  },
+  "shape=middle,facing=east": {
+   "model": "ptmuk:block/home/sofa_navy_middle",
+   "y": 90
+  },
+  "shape=middle,facing=south": {
+   "model": "ptmuk:block/home/sofa_navy_middle",
+   "y": 180
+  },
+  "shape=middle,facing=west": {
+   "model": "ptmuk:block/home/sofa_navy_middle",
+   "y": 270
+  }
+ }
+}

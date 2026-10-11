@@ -159,7 +159,7 @@ def victorian_villa(ident="victorian_villa", name="Victorian Detached Villa"):
     P.rug(b, 5, 6, 7, 9, 1, "red")
     P.bookcase(b, 7, 1, 10)
     # dining room (front right)
-    for v in (7, 8):
+    for v in (6, 7):                                   # clear of the door from the hall
         P.table(b, 14, 1, v, top="dark_oak_pressure_plate", leg="dark_oak_fence")
         b.set(13, 1, v, stairs("dark_oak", "left"))
         b.set(15, 1, v, stairs("dark_oak", "right"))

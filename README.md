@@ -96,6 +96,25 @@ All the shop, pub and office names are made up. Change them in game: right-click
 
 Every building is checked when the prefabs are generated: no gaps beside windows or doors, every staircase climbable (Minecraft needs three blocks of headroom over each step, not two, or you bump your head stepping up), and every room reachable on foot from the street. Garages open with their up-and-over doors (click them) or a door from the house.
 
+### Home furniture
+
+In the **UK Home Furniture** tab, all drawn for this mod:
+
+- **Living room:** sofas in grey, navy, green, brown leather and cream. Put seats side by side and they join into one long sofa, with arms only at the ends; a single seat is an armchair. Also a coffee table, a TV unit, a flat screen TV, a floor lamp, a table lamp, a ceiling pendant light, a bookcase, an electric fire with a marble mantel, a radiator, a house plant, a dining table (tables side by side join into one long table) and dining chairs.
+- **Kitchen** (white or oak): a cupboard, drawers, a sink, an oven and hob, and a wall cupboard. Also a fridge freezer, a washing machine, a microwave, a kettle and a toaster.
+- **Bathroom:** a toilet, a basin, a bath (two blocks long), a walk-in shower, a heated towel rail and a mirror cabinet.
+- **Bedroom and study** (oak or white): a wardrobe, a chest of drawers and a bedside table. Also a desk, an office chair and a computer.
+
+What they do:
+- **Sit:** right-click a sofa, chair, toilet or bath to sit down, and sneak to get up.
+- **Store things:** cupboards, drawers, the wardrobe, the fridge, the bedside table, the desk, the TV unit and the cabinet hold items like a chest (the wardrobe holds as much as a double chest).
+- **Cook:** the oven cooks food like a smoker; the hob glows while it's on.
+- **Switch on:** right-click the TV (it shows made-up programmes), lamps, the fire, the computer, the washing machine, the microwave, the kettle, the toaster and the shower to switch them on. Lamps and the fire light the room. The microwave, kettle, toaster, washing machine and shower switch themselves off after a while.
+- **Taps:** the sink and basin run water, and fill an empty bucket or glass bottle. Click the sink's worktop for the tap and its doors for the cupboard. Sneak and right-click the bath to run it, or the toilet to flush it.
+- **Tabletop things** (TV, lamps, kettle, toaster, microwave, computer, plant) sit down onto whatever they're placed on: a TV on its unit, a kettle on the worktop, a lamp on a bedside table.
+
+The prefab houses, flats, shops and offices are furnished with these.
+
 ### Building blocks
 
 In the **UK Buildings** tab, each material as a full block, a slab and stairs:

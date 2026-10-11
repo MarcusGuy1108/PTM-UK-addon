@@ -1,0 +1,124 @@
+{
+ "variants": {
+  "level=floor,lit=false,facing=north": {
+   "model": "ptmuk:block/home/houseplant_floor"
+  },
+  "level=floor,lit=false,facing=east": {
+   "model": "ptmuk:block/home/houseplant_floor",
+   "y": 90
+  },
+  "level=floor,lit=false,facing=south": {
+   "model": "ptmuk:block/home/houseplant_floor",
+   "y": 180
+  },
+  "level=floor,lit=false,facing=west": {
+   "model": "ptmuk:block/home/houseplant_floor",
+   "y": 270
+  },
+  "level=floor,lit=true,facing=north": {
+   "model": "ptmuk:block/home/houseplant_floor"
+  },
+  "level=floor,lit=true,facing=east": {
+   "model": "ptmuk:block/home/houseplant_floor",
+   "y": 90
+  },
+  "level=floor,lit=true,facing=south": {
+   "model": "ptmuk:block/home/houseplant_floor",
+   "y": 180
+  },
+  "level=floor,lit=true,facing=west": {
+   "model": "ptmuk:block/home/houseplant_floor",
+   "y": 270
+  },
+  "level=low,lit=false,facing=north": {
+   "model": "ptmuk:block/home/houseplant_low"
+  },
+  "level=low,lit=false,facing=east": {
+   "model": "ptmuk:block/home/houseplant_low",
+   "y": 90
+  },
+  "level=low,lit=false,facing=south": {
+   "model": "ptmuk:block/home/houseplant_low",
+   "y": 180
+  },
+  "level=low,lit=false,facing=west": {
+   "model": "ptmuk:block/home/houseplant_low",
+   "y": 270
+  },
+  "level=low,lit=true,facing=north": {
+   "model": "ptmuk:block/home/houseplant_low"
+  },
+  "level=low,lit=true,facing=east": {
+   "model": "ptmuk:block/home/houseplant_low",
+   "y": 90
+  },
+  "level=low,lit=true,facing=south": {
+   "model": "ptmuk:block/home/houseplant_low",
+   "y": 180
+  },
+  "level=low,lit=true,facing=west": {
+   "model": "ptmuk:block/home/houseplant_low",
+   "y": 270
+  },
+  "level=table,lit=false,facing=north": {
+   "model": "ptmuk:block/home/houseplant_table"
+  },
+  "level=table,lit=false,facing=east": {
+   "model": "ptmuk:block/home/houseplant_table",
+   "y": 90
+  },
+  "level=table,lit=false,facing=south": {
+   "model": "ptmuk:block/home/houseplant_table",
+   "y": 180
+  },
+  "level=table,lit=false,facing=west": {
+   "model": "ptmuk:block/home/houseplant_table",
+   "y": 270
+  },
+  "level=table,lit=true,facing=north": {
+   "model": "ptmuk:block/home/houseplant_table"
+  },
+  "level=table,lit=true,facing=east": {
+   "model": "ptmuk:block/home/houseplant_table",
+   "y": 90
+  },
+  "level=table,lit=true,facing=south": {
+   "model": "ptmuk:block/home/houseplant_table",
+   "y": 180
+  },
+  "level=table,lit=true,facing=west": {
+   "model": "ptmuk:block/home/houseplant_table",
+   "y": 270
+  },
+  "level=counter,lit=false,facing=north": {
+   "model": "ptmuk:block/home/houseplant_counter"
+  },
+  "level=counter,lit=false,facing=east": {
+   "model": "ptmuk:block/home/houseplant_counter",
+   "y": 90
+  },
+  "level=counter,lit=false,facing=south": {
+   "model": "ptmuk:block/home/houseplant_counter",
+   "y": 180
+  },
+  "level=counter,lit=false,facing=west": {
+   "model": "ptmuk:block/home/houseplant_counter",
+   "y": 270
+  },
+  "level=counter,lit=true,facing=north": {
+   "model": "ptmuk:block/home/houseplant_counter"
+  },
+  "level=counter,lit=true,facing=east": {
+   "model": "ptmuk:block/home/houseplant_counter",
+   "y": 90
+  },
+  "level=counter,lit=true,facing=south": {
+   "model": "ptmuk:block/home/houseplant_counter",
+   "y": 180
+  },
+  "level=counter,lit=true,facing=west": {
+   "model": "ptmuk:block/home/houseplant_counter",
+   "y": 270
+  }
+ }
+}

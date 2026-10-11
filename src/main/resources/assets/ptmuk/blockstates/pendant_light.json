@@ -1,0 +1,34 @@
+{
+ "variants": {
+  "lit=false,facing=north": {
+   "model": "ptmuk:block/home/pendant_light"
+  },
+  "lit=false,facing=east": {
+   "model": "ptmuk:block/home/pendant_light",
+   "y": 90
+  },
+  "lit=false,facing=south": {
+   "model": "ptmuk:block/home/pendant_light",
+   "y": 180
+  },
+  "lit=false,facing=west": {
+   "model": "ptmuk:block/home/pendant_light",
+   "y": 270
+  },
+  "lit=true,facing=north": {
+   "model": "ptmuk:block/home/pendant_light_on"
+  },
+  "lit=true,facing=east": {
+   "model": "ptmuk:block/home/pendant_light_on",
+   "y": 90
+  },
+  "lit=true,facing=south": {
+   "model": "ptmuk:block/home/pendant_light_on",
+   "y": 180
+  },
+  "lit=true,facing=west": {
+   "model": "ptmuk:block/home/pendant_light_on",
+   "y": 270
+  }
+ }
+}

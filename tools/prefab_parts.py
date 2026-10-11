@@ -119,13 +119,14 @@ def stair_flight(b, u, v_start, y_start, steps, direction="back", material="oak"
 # ------------------------------------------------------------------ furniture
 
 def sofa(b, u0, u1, y, v, facing="front", material="dark_oak"):
-    """A settee: a row of stairs whose backs are towards `facing`."""
-    for u in range(u0, u1 + 1):
-        b.set(u, y, v, stairs(material, facing))
+    """A settee along u with its back towards `facing` (the seats join into one sofa)."""
+    import prefab_furnish
+    prefab_furnish.sofa(b, u0, u1, y, v, facing, material)
 
 
 def armchair(b, u, y, v, facing, material="spruce"):
-    b.set(u, y, v, stairs(material, facing))
+    import prefab_furnish
+    prefab_furnish.sofa(b, u, u, y, v, facing, material)
 
 
 def table(b, u, y, v, top="oak_pressure_plate", leg="oak_fence"):
@@ -154,42 +155,44 @@ def wardrobe(b, u, y, v, facing="front"):
     b.set(u, y + 1, v, B("spruce_planks"))
 
 
-def kitchen_run(b, u0, u1, y, v, facing="front", side=False):
-    """Base units along a wall: cooker at one end, sink in the middle, a tall fridge at the
-    other. With side=True the run goes along v (u0..u1 are then v values at column y... ) """
+def kitchen_run(b, u0, u1, y, v, facing="front", side=False, finish=None):
+    """Fitted kitchen units along a wall, facing `facing`: an oven and hob at one end, the sink in
+    the middle and a fridge freezer at the other, wall cupboards over some of them. With
+    side=True the run goes along v (u0..u1 are then v values in column v)."""
     from prefab_lib import DIRS
+    import prefab_furnish
     cells = [(u, v) for u in range(u0, u1 + 1)] if not side else [(v, w) for w in range(u0, u1 + 1)]
-    for (cu, cv) in cells:
-        b.set(cu, y, cv, B("spruce_planks"))
-        b.set(cu, y + 2, cv, B("spruce_trapdoor", facing=DIRS[facing], half="top", open=False, powered=False,
-                                 waterlogged=False))
-    (cu0, cv0), (cu1, cv1) = cells[0], cells[-1]
-    mid = cells[len(cells) // 2]
-    b.set(cu0, y, cv0, B("smoker", facing=DIRS[facing], lit=False))
-    b.set(mid[0], y, mid[1], B("cauldron"))
-    b.set(cu1, y, cv1, B("white_concrete"))
-    b.set(cu1, y + 1, cv1, B("white_concrete"))
-    b.set(cu1, y + 2, cv1, B("white_concrete"))
+    finish = finish or ("white" if (u0 + u1 + v) % 2 else "oak")
+    prefab_furnish.kitchen(b, cells, y, DIRS[facing], finish)
 
 
 def bath(b, u0, u1, y, v):
-    for u in range(u0, u1 + 1):
-        b.set(u, y, v, B("smooth_quartz_slab", type="bottom", waterlogged=False))
-    b.set(u0, y, v, B("cauldron"))
+    """A bath along u (a basin beside it if there's a third block)."""
+    import prefab_furnish
+    prefab_furnish.bath(b, [(u, v) for u in range(u0, u1 + 1)], y)
 
 
 def tv(b, u, y, v):
-    b.set(u, y, v, B("dark_oak_slab", type="bottom", waterlogged=False))
-    b.set(u, y + 1, v, B("black_stained_glass_pane", north=False, south=False, east=False, west=False, waterlogged=False))
+    """A TV on its unit, standing against the wall behind it."""
+    import prefab_furnish as PF
+    facing = PF.back_to_wall(b, u, y, v)
+    b.set(u, y, v, PF.home("tv_unit", facing=facing, lit=False))
+    b.set(u, y + 1, v, PF.home("tv", facing=facing, lit=False, level="low"))
 
 
 def bookcase(b, u, y, v, h=2):
-    for i in range(h):
+    """A bookcase two blocks high against the wall (taller runs stack plain bookshelves on top)."""
+    import prefab_furnish as PF
+    facing = PF.back_to_wall(b, u, y, v)
+    b.set(u, y, v, PF.home("bookcase", facing=facing, lit=False, half="lower"))
+    b.set(u, y + 1, v, PF.home("bookcase", facing=facing, lit=False, half="upper"))
+    for i in range(2, h):
         b.set(u, y + i, v, B("bookshelf"))
 
 
-def plant(b, u, y, v, kind="potted_azalea_bush"):
-    b.set(u, y, v, B(kind))
+def plant(b, u, y, v, kind=None):
+    import prefab_furnish as PF
+    b.set(u, y, v, PF.home("houseplant", facing="south", lit=False, level="floor"))
 
 
 # ------------------------------------------------------------------ larger buildings
@@ -353,14 +356,16 @@ def fridge_row(b, u0, u1, v, y=1):
 
 
 def office_desks(b, u0, u1, v0, v1, y, every=3):
+    """Rows of desks with a computer on each and an office chair behind it."""
+    import prefab_furnish as PF
     for u in range(u0, u1 + 1, every):
         for v in range(v0, v1 + 1, 2):
             if b.get(u, y, v).name == "minecraft:air":
-                b.set(u, y, v, B("white_concrete"))
-                b.set(u, y + 1, v, B("black_stained_glass_pane", north=False, south=False, east=False, west=False,
-                                     waterlogged=False))
+                b.set(u, y, v, PF.home("desk", facing="north", lit=False))
+                if b.get(u, y + 1, v).name == "minecraft:air":
+                    b.set(u, y + 1, v, PF.home("computer", facing="north", lit=False, level="table"))
                 if b.inside(u, y, v + 1) and b.get(u, y, v + 1).name == "minecraft:air":
-                    b.set(u, y, v + 1, stairs("dark_oak", "back"))
+                    b.set(u, y, v + 1, PF.home("office_chair", facing="south", lit=False))
 
 
 # ------------------------------------------------------------------ streets (estates)

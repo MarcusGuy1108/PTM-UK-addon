@@ -1359,9 +1359,11 @@ def petrol_station(ident="petrol_station", name="Petrol Station"):
 # ================================================================== catalogue
 
 def all_prefabs():
+    import prefab_furnish
     builds = _all_prefabs()
     for b in builds:
         b.frame_doors()
+        prefab_furnish.furnish(b)
     return builds
 
 

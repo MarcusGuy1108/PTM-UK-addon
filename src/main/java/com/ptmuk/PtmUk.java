@@ -19,11 +19,13 @@ public class PtmUk {
 
     public PtmUk() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+        com.ptmuk.home.HomeBlocks.init();
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modBus);
         ModCreativeTabs.TABS.register(modBus);
         com.ptmuk.bus.UkBuses.ENTITIES.register(modBus);
+        com.ptmuk.home.HomeBlocks.ENTITIES.register(modBus);
         modBus.addListener(PtmUk::attributes);
         PtmUkNetwork.register();
     }
