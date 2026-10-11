@@ -22,6 +22,8 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.BUS_STOP.get(), com.ptmuk.client.sign.BusStopRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.COUNTDOWN_SIGN.get(), com.ptmuk.client.sign.CountdownSignRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.SHOP_SIGN.get(), com.ptmuk.client.building.ShopSignRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.FUEL_PRICE_SIGN.get(), com.ptmuk.client.building.FuelPriceSignRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.CAR_WASH.get(), com.ptmuk.client.building.CarWashRenderer::new);
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.ALX400_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "alx400"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.UKDD_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "ukdd"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.E400_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "e400"));

@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=south": {
+   "model": "ptmuk:block/petrol/car_wash"
+  },
+  "facing=west": {
+   "model": "ptmuk:block/petrol/car_wash",
+   "y": 90
+  },
+  "facing=north": {
+   "model": "ptmuk:block/petrol/car_wash",
+   "y": 180
+  },
+  "facing=east": {
+   "model": "ptmuk:block/petrol/car_wash",
+   "y": 270
+  }
+ }
+}

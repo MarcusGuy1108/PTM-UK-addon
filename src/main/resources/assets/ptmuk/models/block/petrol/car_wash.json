@@ -1,0 +1,65 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "ptmuk:block/petrol/car_wash_plate",
+  "p": "ptmuk:block/petrol/car_wash_plate"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    0.5,
+    16
+   ],
+   "faces": {
+    "up": {
+     "texture": "#p"
+    },
+    "down": {
+     "texture": "#p"
+    },
+    "north": {
+     "texture": "#p",
+     "uv": [
+      0,
+      0,
+      16,
+      0.5
+     ]
+    },
+    "south": {
+     "texture": "#p",
+     "uv": [
+      0,
+      0,
+      16,
+      0.5
+     ]
+    },
+    "east": {
+     "texture": "#p",
+     "uv": [
+      0,
+      0,
+      16,
+      0.5
+     ]
+    },
+    "west": {
+     "texture": "#p",
+     "uv": [
+      0,
+      0,
+      16,
+      0.5
+     ]
+    }
+   }
+  }
+ ]
+}

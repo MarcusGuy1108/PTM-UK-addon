@@ -31,6 +31,7 @@ import bus_ukdd  # noqa: E402
 import bus_e400  # noqa: E402
 import bus_omnicity  # noqa: E402
 import prefab_designs  # noqa: E402
+import petrol  # noqa: E402
 import car_k4  # noqa: E402
 import bus_extras  # noqa: E402
 
@@ -935,6 +936,7 @@ def write_lang():
     lang.update(pylons.lang(sys.modules[__name__]))
     lang.update(building.lang(sys.modules[__name__]))
     lang.update(bus_extras.lang())
+    lang.update(petrol.lang(MOD_ID))
     lang.update({"item.ptmuk.alx400": "Alexander ALX400 (Double Decker)", "entity.ptmuk.ptm_124d_alx400": "Alexander ALX400",
                  "item.ptmuk.uk_double_decker": "UK Double Decker", "entity.ptmuk.ptm_124e_ukdd": "UK Double Decker",
                  "item.ptmuk.enviro400": "Alexander Dennis Enviro400 (London, Double Decker)",
@@ -967,7 +969,7 @@ def write_data():
                {"replace": False, "values": everything + [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" not in n]})
     write_json(DATA / "minecraft/tags/blocks/mineable/axe.json",
                {"replace": False, "values": [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" in n]})
-    everything += [f"{MOD_ID}:{n}" for n in building.block_ids()]
+    everything += [f"{MOD_ID}:{n}" for n in building.block_ids()] + [f"{MOD_ID}:fuel_price_sign", f"{MOD_ID}:car_wash"]
     write_json(DATA / "minecraft/tags/blocks/mineable/pickaxe.json",
                {"replace": False, "values": everything + [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" not in n]})
     write_json(DATA / "minecraft/tags/blocks/slabs.json",
@@ -1011,6 +1013,7 @@ def main():
     bus_ukdd.main()
     bus_e400.main()
     bus_omnicity.main()
+    petrol.generate(sys.modules[__name__])
     prefab_designs.generate()
     car_k4.main()
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)

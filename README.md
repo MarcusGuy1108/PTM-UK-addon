@@ -88,7 +88,7 @@ The buildings use vanilla blocks wherever they can, plus the mod's roofing, bric
 - **Shops:** a corner shop with a flat above, a Victorian high street parade of three shops, a corner pub, a cafe and takeaway pair, a Portland stone bank, a modern convenience store.
 - **Offices:** a modern glass office block, a 1960s concrete office block, a 1990s brick office.
 - **Flats:** 16- and 24-storey council tower blocks, a 12-storey 1960s slab block, a 24-storey modern residential tower, a 7-storey courtyard apartment block, a 1930s mansion block, a modern apartment block, 1960s deck-access flats and a maisonette block.
-- **Other:** a Victorian parish church, a petrol station.
+- **Other:** a Victorian parish church, a petrol station with a canopy over two pump islands, EV chargers, a kiosk shop, a price sign, an air and water machine and a working car wash.
 
 All the shop, pub and office names are made up. Change them in game: right-click a shop sign.
 
@@ -102,6 +102,24 @@ In the **UK Buildings** tab, each material as a full block, a slab and stairs:
 - **Roofs:** Welsh slate, clay tiles, concrete tiles, thatch.
 - **Windows** that join up like glass panes: white UPVC, sash, Georgian, leaded lights, shop window, office glazing, grey-framed.
 - **Shop Sign:** a fascia board for over a shop front. Boards placed side by side make one sign, with the name centred across them. Right-click to set the name, a second line, the board and letter colours and whether it's lit at night.
+
+### Petrol station
+
+In the **UK Street Furniture** tab:
+
+- **Fuel Price Sign:** the tall price totem by the forecourt entrance. Right-click it to change:
+  - the name at the top and its logo
+  - the sign colour, the name colour, and the colour of the price digits (amber, red, green, white or blue)
+  - four fuels, each with its name, a coloured plate and a price on LED digits
+  - a line of extras at the bottom (shop, car wash and so on); put a `|` where it should split onto two lines
+  - whether it lights up at night
+
+  It shows the same thing on both sides.
+- **Your own logos:** the sign comes with eight made-up logos. To use your own design (a real brand you want in your world, for example), save it as a PNG file in `.minecraft/ptmuk/images/`, then pick it with the sign's **Logo** button; the **Images folder** button opens the folder for you. Pictures can be up to 2048 pixels on each side and 8 MB, and transparent backgrounds work. The sign only saves the file's name, so on a server everyone who wants to see the logo needs the same file in their own images folder; anyone without it just sees the brand name.
+- **Automatic Car Wash:** place it on the floor in the middle of the wash bay, facing you; the bay needs about 5 by 9 blocks of space. It starts by itself when a PTM2 vehicle, a minecart, a boat or a player comes into the bay, or when you right-click it or give it a redstone pulse. The wash takes about 22 seconds: a gantry with spinning brushes runs over the car spraying water, comes back drying it, then the board tells you to drive out. The board on the gantry shows what it's doing (DRIVE IN, STOP - ENGINE OFF, WASHING, RINSING, DRYING, PLEASE EXIT).
+- **Fuel Pump** with a display and nozzles on both sides, and an **Air & Water Machine**.
+
+The **petrol station** prefab (Prefab Tool, **Other** tab) has all of these set up together.
 
 ### Road signs
 

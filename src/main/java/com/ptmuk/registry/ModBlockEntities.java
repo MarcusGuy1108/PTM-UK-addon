@@ -43,6 +43,14 @@ public final class ModBlockEntities {
     public static final RegistryObject<BlockEntityType<com.ptmuk.building.ShopSignBlockEntity>> SHOP_SIGN = BLOCK_ENTITIES.register(
             "shop_sign", () -> BlockEntityType.Builder.of(com.ptmuk.building.ShopSignBlockEntity::new, ModBlocks.SHOP_SIGN.get()).build(null));
 
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<com.ptmuk.building.FuelPriceSignBlockEntity>> FUEL_PRICE_SIGN = BLOCK_ENTITIES.register(
+            "fuel_price_sign", () -> BlockEntityType.Builder.of(com.ptmuk.building.FuelPriceSignBlockEntity::new, ModBlocks.FUEL_PRICE_SIGN.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<com.ptmuk.building.CarWashBlockEntity>> CAR_WASH = BLOCK_ENTITIES.register(
+            "car_wash", () -> BlockEntityType.Builder.of(com.ptmuk.building.CarWashBlockEntity::new, ModBlocks.CAR_WASH.get()).build(null));
+
     private ModBlockEntities() {
     }
 }

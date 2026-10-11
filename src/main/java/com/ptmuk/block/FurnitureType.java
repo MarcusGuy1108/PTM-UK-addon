@@ -31,6 +31,8 @@ public enum FurnitureType {
     PARKING_METER("parking_meter", 6, 0, 6, 10, 22, 10, 0, SoundType.METAL),
     EV_CHARGER("ev_charger", 4, 0, 5, 12, 22, 11, 4, SoundType.METAL),
     BIKE_STAND("bike_stand", 1, 0, 7, 15, 13, 9, 0, SoundType.METAL),
+    FUEL_PUMP("fuel_pump", 2, 0, 4, 14, 24, 12, 0, SoundType.METAL),
+    AIR_WATER_MACHINE("air_water_machine", 3, 0, 5, 13, 20, 11, 0, SoundType.METAL),
     TELECOMS_CABINET("telecoms_cabinet", 0, 0, 4, 16, 20, 12, 0, SoundType.METAL),
     CONTROLLER_CABINET("controller_cabinet", 1, 0, 4, 15, 22, 12, 0, SoundType.METAL),
     FEEDER_PILLAR("feeder_pillar", 3, 0, 5, 13, 15, 11, 0, SoundType.METAL),

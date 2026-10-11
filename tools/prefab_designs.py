@@ -1256,10 +1256,27 @@ def church(ident="church", name="Victorian Parish Church"):
     return b
 
 
+def fuel_sign_nbt(brand="FILL & GO", logo="builtin:drop", panel=0xFFF2F0EA, ink=0xFFB3202A,
+                  info="Shop | Car Wash | Air & Water"):
+    def signed(c):
+        return c - (1 << 32) if c >= (1 << 31) else c
+    rows = (("Unleaded", "145.9", 0xFF1E7A3C), ("Diesel", "152.9", 0xFF121214), ("Super Unleaded", "159.9", 0xFFB3202A),
+            ("Super Diesel", "164.9", 0xFF4A4F57))
+    tag = {"id": ("string", "ptmuk:fuel_price_sign"), "brand": ("string", brand), "logo": ("string", logo),
+           "panel": ("int", signed(panel)), "ink": ("int", signed(ink)), "digits": ("int", signed(0xFFFFB21E)),
+           "lit": ("byte", 1), "info": ("string", info)}
+    for i, (label, price, plate) in enumerate(rows):
+        tag[f"label{i}"] = ("string", label)
+        tag[f"price{i}"] = ("string", price)
+        tag[f"plate{i}"] = ("int", signed(plate))
+    return tag
+
+
 def petrol_station(ident="petrol_station", name="Petrol Station"):
-    W, D = 22, 21
+    W, D = 31, 21
     b = Build(ident, name, "Other", W, 9, D,
-              "A forecourt with a lit canopy over four pump islands (EV chargers on one), a price board and a kiosk shop.")
+              "A forecourt under a lit canopy with fuel pumps on two islands and EV chargers, a price sign you can "
+              "edit (logo and prices), an air & water machine, a kiosk shop and an automatic car wash bay.")
     P.paving(b, 0, 0, W - 1, D - 1, "smooth_stone")
     b.fill(0, 0, 0, W - 1, 0, 1, "ptmuk:tarmac")
     # canopy on four columns, lit underneath, with a fascia
@@ -1276,35 +1293,43 @@ def petrol_station(ident="petrol_station", name="Petrol Station"):
         b.set(2, 6, v, "red_concrete")
         b.set(17, 6, v, "red_concrete")
     name_plate(b, 7, 12, 6, 1, "FILL & GO", "", 0xFFB3202A, WHITE_INK, True)
-    # pump islands
-    for u0 in (6, 12):
-        for v0 in (5, 9):
-            b.fill(u0, 1, v0, u0 + 1, 1, v0 + 1, slab("smooth_stone"))
-            if u0 == 12 and v0 == 9:
-                b.set(u0, 2, v0, B("ptmuk:ev_charger", facing="south"))
-                b.set(u0 + 1, 2, v0 + 1, B("ptmuk:ev_charger", facing="north"))
-            else:
-                b.set(u0, 2, v0, "white_concrete")
-                b.set(u0, 3, v0, "light_gray_concrete")
-                b.set(u0 + 1, 2, v0 + 1, "white_concrete")
-                b.set(u0 + 1, 3, v0 + 1, "light_gray_concrete")
-    # price totem at the front corner
-    b.fill(20, 1, 1, 20, 2, 1, "white_concrete")
-    for i, (t, sub) in enumerate((("Diesel 152.9", ""), ("Unleaded 145.9", ""), ("FILL & GO", ""))):
-        b.set(20, 3 + i, 1, Block("ptmuk:shop_sign", {"facing": "south"},
-                                  shop_sign_nbt(t, sub, 0xFFB3202A if i == 2 else 0xFF121214, WHITE_INK if i == 2 else YELLOW_INK)))
+    # two pump islands running front to back, pumps facing the lanes either side, EV chargers on a third
+    for u in (7, 12):
+        b.fill(u, 0, 4, u, 0, 10, "polished_andesite")
+        for v in (4, 10):
+            b.set(u, 1, v, B("ptmuk:bollard_steel", facing="south"))
+        for v in (6, 8):
+            b.set(u, 1, v, B("ptmuk:fuel_pump", facing="east"))
+    b.fill(16, 0, 6, 16, 0, 8, "polished_andesite")
+    b.set(16, 1, 6, B("ptmuk:ev_charger", facing="west"))
+    b.set(16, 1, 8, B("ptmuk:ev_charger", facing="west"))
+    # the price sign at the front corner (right-click it in game to change the logo and prices)
+    b.set(20, 1, 1, Block("ptmuk:fuel_price_sign", {"facing": "south"}, fuel_sign_nbt()))
+    b.set(19, 1, 12, B("ptmuk:air_water_machine", facing="west"))
     # kiosk shop at the back
     b.walls(5, 1, 15, 16, 4, 20, "light_gray_concrete")
     b.fill(5, 0, 15, 16, 0, 20, "polished_andesite")
     b.window(6, 1, 15, 10, 3, "ptmuk:shop_window")
     b.door(10, 1, 15, "birch", facing="back", hinge="left")
     for u in range(5, 17):
-        nbt = shop_sign_nbt("FILL & GO SHOP", "Food to go • Coffee • Car Wash • Air & Water", 0xFFB3202A, WHITE_INK) \
+        nbt = shop_sign_nbt("FILL & GO SHOP", "Food to go \u2022 Coffee \u2022 Car Wash \u2022 Air & Water", 0xFFB3202A, WHITE_INK) \
             if u == 5 else shop_sign_nbt("", "", 0xFFB3202A, WHITE_INK)
         b.set(u, 4, 14, Block("ptmuk:shop_sign", {"facing": "south"}, nbt))
     P.flat_roof(b, 5, 16, 15, 20, 5, deck="gray_concrete", parapet=None)
     shop_interior(b, "convenience", 6, 15, 16, 19)
     P.ceiling_lights(b, 5, 15, 16, 20, 5, step=3)
+    # car wash bay: drive in from the front, the gantry is parked at the far end
+    b.fill(23, 0, 5, 28, 0, 16, "smooth_stone")
+    b.set(25, 1, 10, Block("ptmuk:car_wash", {"facing": "south"}))
+    for v in (5, 16):
+        for u in (22, 29):
+            b.set(u, 1, v, B("ptmuk:bollard_steel", facing="south"))
+    for u in (22, 23, 24):
+        nbt = shop_sign_nbt("CAR WASH", "Drive in - it starts by itself", 0xFF1F5FB0, WHITE_INK) if u == 22 \
+            else shop_sign_nbt("", "", 0xFF1F5FB0, WHITE_INK)
+        b.set(u, 3, 3, Block("ptmuk:shop_sign", {"facing": "south"}, nbt))
+    for u in (22, 24):
+        b.fill(u, 1, 4, u, 3, 4, B("ptmuk:sign_pole_galvanised", base=True, cap=False))
     return b
 
 

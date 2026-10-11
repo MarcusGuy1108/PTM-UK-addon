@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 
 import bus_extras as B
+import petrol
 import furniture_hd as H
 import furniture_textures as F
 
@@ -91,6 +92,8 @@ def make_textures():
         "pay_display": s(H.pay_display_face(), p + "pay_display_face"),
         "meter": s(H.meter_face(), p + "meter_face"),
         "ev": s(H.ev_face(), p + "ev_face"),
+        "pump": s(petrol.pump_face(), p + "pump_face"),
+        "air": s(petrol.air_face(), p + "air_face"),
         "cab_green_door": s(H.cabinet_door((40, 74, 54)), p + "cabinet_green_door"),
         "cab_grey_door": s(H.cabinet_door((152, 156, 154), sticker=True), p + "cabinet_grey_door"),
         "feeder_door": s(H.cabinet_door((112, 126, 118), sticker=True), p + "feeder_door"),
@@ -388,6 +391,36 @@ def ev_charger():
     return els, {"white": t("white"), "dark": t("dark"), "ev": t("ev"), "led": t("bin_green")}, {}
 
 
+def fuel_pump():
+    """A modern fuel dispenser: display and grade buttons on both faces, a nozzle holster with
+    unleaded (green) and diesel (black) nozzles at each end, hoses up to the head."""
+    els = [box((2, 0, 4), (14, 1.5, 12), "#concrete"),
+           box((3, 1.5, 5.5), (13, 15, 10.5), "#white"),
+           box((2.5, 15, 5), (13.5, 26, 11), "#white"),
+           face(3.5, 15.6, 12.5, 25.4, 4.97, "pump"),
+           {"from": [3.5, 15.6, 11.01], "to": [12.5, 25.4, 11.03], "faces": {"south": {"texture": "#pump", "uv": [0, 0, 16, 16]}}},
+           box((2.3, 26, 4.8), (13.7, 27.2, 11.2), "#green_cab")]
+    for x0, x1 in ((1.3, 2.5), (13.5, 14.7)):
+        els.append(box((x0, 10, 6), (x1, 13, 10), "#dark"))
+    for x0, x1 in ((0.8, 1.4), (14.6, 15.2)):
+        els += [box((x0, 11, 6.5), (x1, 14, 7.5), "#nozzle"), box((x0, 11, 8.5), (x1, 14, 9.5), "#dark")]
+    for x0, x1 in ((1.6, 2.2), (13.8, 14.4)):
+        els += [box((x0, 14, 6.8), (x1, 25, 7.3), "#rubber"), box((x0, 14, 8.7), (x1, 25, 9.2), "#rubber")]
+    return els, {"white": t("white"), "dark": t("dark"), "concrete": t("concrete"), "pump": t("pump"),
+                 "green_cab": t("green_cab"), "nozzle": t("bin_green"), "rubber": t("rubber")}, {}
+
+
+def air_water_machine():
+    els = [box((3, 0, 5), (13, 1, 11), "#concrete"),
+           box((4, 1, 6), (12, 18, 10), "#blue"),
+           face(4.5, 5, 11.5, 17, 5.97, "air"),
+           box((3.6, 18, 5.6), (12.4, 19, 10.4), "#dark"),
+           box((12, 7, 7), (13.4, 13, 9), "#rubber"),
+           box((13.4, 9, 7.5), (14, 10, 8.5), "#dark")]
+    return els, {"concrete": t("concrete"), "blue": t("blue_metal"), "air": t("air"), "dark": t("dark"),
+                 "rubber": t("rubber")}, {}
+
+
 def bike_stand():
     els = cyl(3, 8, 0.55, 0, 11.6, "#galv") + cyl(13, 8, 0.55, 0, 11.6, "#galv")
     els += [box((3.8, 12.0, 7.45), (12.2, 13.1, 8.55), "#galv"),
@@ -589,6 +622,8 @@ FURNITURE = {
     "parking_meter": (parking_meter, "Parking Meter"),
     "ev_charger": (ev_charger, "EV Charging Point"),
     "bike_stand": (bike_stand, "Cycle Stand"),
+    "fuel_pump": (fuel_pump, "Fuel Pump"),
+    "air_water_machine": (air_water_machine, "Air & Water Machine"),
     "telecoms_cabinet": (telecoms_cabinet, "Telecoms Cabinet"),
     "controller_cabinet": (controller_cabinet, "Traffic Signal Controller Cabinet"),
     "feeder_pillar": (feeder_pillar, "Electricity Feeder Pillar"),
@@ -630,6 +665,8 @@ SCALE = {
     "emergency_phone": (1.08, 1.08, 1.08),
     "traffic_cone": (1.0, 0.97, 1.0),
     "top_up_machine": (1.1, 1.15, 1.1),          # 1.75 m to the top of the hood
+    "fuel_pump": (1.1, 1.2, 1.1),                 # about 2 m to the top of the head
+    "air_water_machine": (1.1, 1.1, 1.1),
 }
 
 

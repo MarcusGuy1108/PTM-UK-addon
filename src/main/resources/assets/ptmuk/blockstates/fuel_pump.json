@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "ptmuk:block/furniture/fuel_pump"
+  },
+  "facing=east": {
+   "model": "ptmuk:block/furniture/fuel_pump",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "ptmuk:block/furniture/fuel_pump",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "ptmuk:block/furniture/fuel_pump",
+   "y": 270
+  }
+ }
+}

@@ -80,6 +80,8 @@ public final class ModItems {
         BUS_ITEMS.add(item("bus_countdown_sign", ModBlocks.COUNTDOWN_SIGN));
         register(ModBlocks.BUS_FURNITURE, BUS_ITEMS);
         register(ModBlocks.FURNITURE, STREET_ITEMS);
+        STREET_ITEMS.add(item("fuel_price_sign", ModBlocks.FUEL_PRICE_SIGN));
+        STREET_ITEMS.add(item("car_wash", ModBlocks.CAR_WASH));
         // the stop furniture shows in the buses tab as well
         for (RegistryObject<Item> item : List.copyOf(STREET_ITEMS)) {
             if (java.util.Set.of("bus_shelter", "bus_shelter_london", "bus_stop_flag").contains(item.getId().getPath())) {
