@@ -85,7 +85,7 @@ The buildings use vanilla blocks wherever they can, plus the mod's roofing, bric
 
 They are built a little bigger than real life, like most Minecraft builds, so there's room to walk round inside: storeys are 4 blocks floor to floor (3-block ceilings) in houses, offices and flats alike, a little more for shop floors and entrance lobbies, so a 16-storey tower block is 69 blocks tall. The buses are scaled to match.
 
-- **Houses:** Victorian terraced house (stock brick or red brick) and a terrace of four, Edwardian and 1930s semi-detached pairs, a terrace of four post-war council houses, a new-build detached house with garage, a 1960s bungalow, a Georgian townhouse. Bigger houses: a double-fronted Victorian villa, an Edwardian Arts & Crafts house, an executive detached house with double garage, a 1930s mock-Tudor detached house, a Georgian country house with portico, wings and formal gardens, and a thatched cottage.
+- **Houses:** Victorian terraced house (stock brick or red brick) and a terrace of four, Edwardian and 1930s semi-detached pairs, a terrace of four post-war council houses, a new-build detached house with garage, a 1960s bungalow, a Georgian townhouse. Bigger houses: a double-fronted Victorian villa, an Edwardian Arts & Crafts house, an executive detached house with double garage, a 1930s mock-Tudor detached house, a Georgian country house with portico, wings and formal gardens, and a thatched cottage. The biggest is a red-brick **country mansion** (60 x 64): four bedrooms (two en-suite), a family bathroom, drawing, dining and family rooms, a study, a big kitchen and a boot room, round a block-paved courtyard with a fountain, room to park and a car care corner with a lift and workbench; a separate four-bay coach house garage with a workshop, joined to the house by a covered walkway; and behind it a terrace, a swimming pool sunk into the ground with a pool house, lawns, a greenhouse and vegetable beds.
 - **Estates:** whole streets with roads, pavements, kerbs and street lights, opening onto your road at the front: a 1930s semi-detached cul-de-sac (ten homes), a Victorian terraced street (fourteen homes), a post-war council estate round a green with a playground, flats and lock-up garages, a new-build cul-de-sac (eight detached homes), and a tower block estate with maisonettes, car park and playground.
 - **Shops:** a corner shop with a flat above, a Victorian high street parade of three shops, a corner pub, a cafe and takeaway pair, a Portland stone bank, a modern convenience store.
 - **Offices:** a modern glass office block, a 1960s concrete office block, a 1990s brick office.
@@ -94,7 +94,7 @@ They are built a little bigger than real life, like most Minecraft builds, so th
 
 All the shop, pub and office names are made up. Change them in game: right-click a shop sign.
 
-Every building is checked when the prefabs are generated: no gaps beside windows or doors, every staircase climbable (Minecraft needs three blocks of headroom over each step, not two, or you bump your head stepping up), and every room reachable on foot from the street. Garages open with their up-and-over doors (click them) or a door from the house.
+Every building is checked when the prefabs are generated: no gaps beside windows or doors, every staircase climbable (Minecraft needs three blocks of headroom over each step, not two, or you bump your head stepping up), and every room reachable on foot from the street. Garages open with their up-and-over doors (click any panel) or a door from the house.
 
 ### Home furniture
 
@@ -124,6 +124,7 @@ In the **UK Buildings** tab, each material as a full block, a slab and stairs:
 - **Walls:** red brick, London stock brick, blue engineering brick, pebbledash, white render, Portland stone, green and burgundy glazed faience tiles (pub and shop fronts).
 - **Roofs:** Welsh slate, clay tiles, concrete tiles, thatch.
 - **Windows** that join up like glass panes: white UPVC, sash, Georgian, leaded lights, shop window, office glazing, grey-framed.
+- **Garage doors:** up-and-over doors in white steel, oak boards or painted green. Fill an opening with panels (placed from outside so they all face out); right-click any panel, or give one a redstone signal, and the whole door swings up flat under the lintel, leaving the opening clear to drive a car in. Every prefab garage uses them.
 - **Shop Sign:** a fascia board for over a shop front. Boards placed side by side make one sign, with the name centred across them. Right-click to set the name, a second line, the board and letter colours and whether it's lit at night.
 
 ### Petrol station

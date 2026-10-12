@@ -52,7 +52,7 @@ public record PrefabPlacement(PrefabCatalog.Entry entry, BlockPos origin, Rotati
         }
         Mirror m = mirror ? Mirror.FRONT_BACK : Mirror.NONE;
         // the middle of the front row of the ground layer goes on the target block
-        BlockPos anchor = new BlockPos(entry.width() / 2, 0, entry.depth() - 1);
+        BlockPos anchor = new BlockPos(entry.width() / 2, entry.sink(), entry.depth() - 1);   // the ground layer, above any sunk part
         BlockPos moved = StructureTemplate.transform(anchor, m, rotation, BlockPos.ZERO);
         BlockPos origin = target.subtract(moved);
         BlockPos a = origin.offset(StructureTemplate.transform(BlockPos.ZERO, m, rotation, BlockPos.ZERO));

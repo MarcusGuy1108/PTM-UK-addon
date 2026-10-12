@@ -424,6 +424,15 @@ def tree(b, u, v, h=4, r=2, leaves="oak_leaves", log="oak_log", y0=1):
                         b.set(u + du, cy + dy, v + dv, B(leaves, persistent=True, distance=1, waterlogged=False))
 
 
+def garage_door(b, u0, u1, v, y0, y1, outside="front", kind="white_garage_door"):
+    """An up-and-over garage door filling u0..u1 x y0..y1 in a wall running across (front or back),
+    facing out towards `outside`. Clicking any panel opens the whole door."""
+    from prefab_lib import DIRS
+    for u in range(u0, u1 + 1):
+        for y in range(y0, y1 + 1):
+            b.set(u, y, v, B(f"ptmuk:{kind}", facing=DIRS[outside], open=False, powered=False, top=(y == y1)))
+
+
 def lock_up_garages(b, u0, v0, n, facing="front", material="ptmuk:red_brick"):
     """A row of n council lock-up garages, 3 wide and 6 deep each, doors towards `facing`
     (front or back), flat roof."""
@@ -433,10 +442,7 @@ def lock_up_garages(b, u0, v0, n, facing="front", material="ptmuk:red_brick"):
         a = u0 + 3 * i
         b.fill(a, 0, v0, a + 3, 0, v1, "smooth_stone")
         b.walls(a, 1, v0, a + 3, 2, v1, material)
-        for u in (a + 1, a + 2):
-            for y in (1, 2):
-                b.set(u, y, door_v, B("spruce_trapdoor", facing="north" if facing == "back" else "south", half="top",
-                                       open=True, powered=False, waterlogged=False))
+        garage_door(b, a + 1, a + 2, door_v, 1, 2, facing)
     b.fill(u0, 3, v0, u0 + 3 * n, 3, v1, slab("smooth_stone"))
 
 

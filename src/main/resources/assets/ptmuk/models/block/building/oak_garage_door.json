@@ -1,0 +1,77 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "ptmuk:block/building/oak_garage_door",
+  "door": "ptmuk:block/building/oak_garage_door"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    12
+   ],
+   "to": [
+    16,
+    16,
+    14
+   ],
+   "faces": {
+    "north": {
+     "texture": "#door",
+     "uv": [
+      0,
+      0,
+      16,
+      16
+     ]
+    },
+    "south": {
+     "texture": "#door",
+     "uv": [
+      0,
+      0,
+      16,
+      16
+     ]
+    },
+    "east": {
+     "texture": "#door",
+     "uv": [
+      0,
+      0,
+      2,
+      16
+     ]
+    },
+    "west": {
+     "texture": "#door",
+     "uv": [
+      14,
+      0,
+      16,
+      16
+     ]
+    },
+    "up": {
+     "texture": "#door",
+     "uv": [
+      0,
+      0,
+      16,
+      2
+     ]
+    },
+    "down": {
+     "texture": "#door",
+     "uv": [
+      0,
+      14,
+      16,
+      16
+     ]
+    }
+   }
+  }
+ ]
+}

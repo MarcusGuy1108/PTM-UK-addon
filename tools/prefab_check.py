@@ -103,7 +103,7 @@ def outside(g):
     seen = set()
     stack = []
     for u in range(b.W):
-        for y in range(b.H):
+        for y in range(-b.sink, b.H):
             for v in range(b.D):
                 if (u in (0, b.W - 1) or v in (0, b.D - 1) or y == b.H - 1) and _open(g, u, y, v):
                     seen.add((u, y, v))

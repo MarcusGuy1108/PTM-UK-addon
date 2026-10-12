@@ -282,6 +282,7 @@ def generate(gmod):
         G.write_json(G.ASSETS / f"models/item/{name}_stairs.json", {"parent": f"{mid}:block/building/{name}_stairs"})
     generate_shop_sign(mid)
     generate_windows(mid)
+    generate_garage_doors(mid)
     (G.ASSETS / "textures/item").mkdir(parents=True, exist_ok=True)
     prefab_tool_icon().save(G.ASSETS / "textures/item/prefab_tool.png")
     G.write_json(G.ASSETS / "models/item/prefab_tool.json", {"parent": "minecraft:item/generated",
@@ -425,6 +426,78 @@ def generate_windows(mid):
         G.write_json(G.ASSETS / f"models/item/{name}.json", {"parent": "minecraft:item/generated", "textures": {"layer0": tex}})
 
 
+# ---------------------------------------------------------------- up-and-over garage doors
+
+def garage_white():
+    """Ribbed white steel, the usual up-and-over door."""
+    rgb = np.zeros((S, S, 3)) + np.array([234, 234, 228.0]) + noise(1.5)
+    for y in range(0, S, 8):
+        rgb[y] = (186, 188, 184)
+        rgb[y + 1] = (250, 250, 246)
+        rgb[y + 6] = (222, 222, 216)
+    return img_from(rgb)
+
+
+def _boards(base, gap, grain=6.0, width=8):
+    rgb = np.zeros((S, S, 3)) + np.array(base, float)
+    rng_b = np.random.default_rng(7)
+    for x0 in range(0, S, width):
+        shade = rng_b.normal(0, 6)
+        streak = rng_b.normal(0, grain, (1, width))                    # the grain runs down each board
+        rgb[:, x0:x0 + width] += shade + streak[..., None] * 0.6
+        rgb[:, x0] = gap
+        rgb[:, x0 + 1] = np.array(gap, float) * 0.5 + np.array(base, float) * 0.5
+    rgb += noise(2.5)
+    return rgb
+
+
+def garage_oak():
+    """Vertical oak boards, a coach house door."""
+    rgb = _boards((158, 116, 70), (82, 56, 32), grain=10)
+    return img_from(rgb)
+
+
+def garage_green():
+    """Tongue-and-groove boards painted heritage green."""
+    rgb = _boards((46, 82, 58), (22, 40, 28), grain=3)
+    return img_from(rgb)
+
+
+GARAGE_DOORS = {
+    "white_garage_door": ("Garage Door (White Steel)", garage_white),
+    "oak_garage_door": ("Garage Door (Oak Boarded)", garage_oak),
+    "green_garage_door": ("Garage Door (Painted Green)", garage_green),
+}
+
+
+def generate_garage_doors(mid):
+    sides = ("north", "south", "east", "west", "up", "down")
+    for name, (_, painter) in GARAGE_DOORS.items():
+        tex = G.save(painter(), f"building/{name}")
+        shut = {"north": [0, 0, 16, 16], "south": [0, 0, 16, 16], "east": [0, 0, 2, 16], "west": [14, 0, 16, 16],
+                "up": [0, 0, 16, 2], "down": [0, 14, 16, 16]}
+        G.write_json(G.ASSETS / f"models/block/building/{name}.json", {
+            "parent": "minecraft:block/block", "textures": {"particle": tex, "door": tex},
+            "elements": [{"from": [0, 0, 12], "to": [16, 16, 14],
+                          "faces": {f: {"texture": "#door", "uv": shut[f]} for f in sides}}]})
+        up = {"north": [0, 0, 16, 2], "south": [0, 0, 16, 2], "east": [0, 0, 14, 2], "west": [2, 0, 16, 2],
+              "up": [0, 0, 16, 14], "down": [0, 2, 16, 16]}
+        G.write_json(G.ASSETS / f"models/block/building/{name}_raised.json", {
+            "parent": "minecraft:block/block", "textures": {"particle": tex, "door": tex},
+            "elements": [{"from": [0, 13, 0], "to": [16, 15, 14],
+                          "faces": {f: {"texture": "#door", "uv": up[f]} for f in sides}}]})
+        G.write_json(G.ASSETS / f"models/block/building/{name}_gone.json",
+                     {"parent": "minecraft:block/block", "textures": {"particle": tex}})
+        m = f"{mid}:block/building/{name}"
+        variants = {}
+        for f, y in (("south", 0), ("west", 90), ("north", 180), ("east", 270)):
+            for key, model in ((f"facing={f},open=false", m), (f"facing={f},open=true,top=true", m + "_raised"),
+                               (f"facing={f},open=true,top=false", m + "_gone")):
+                variants[key] = {"model": model, "y": y} if y else {"model": model}
+        G.write_json(G.ASSETS / f"blockstates/{name}.json", {"variants": variants})
+        G.write_json(G.ASSETS / f"models/item/{name}.json", {"parent": m})
+
+
 def shop_sign_board():
     """Edge and back of a painted fascia board (the front is painted live by ShopSignRenderer)."""
     rgb = np.zeros((S, S, 3)) + np.array([38, 40, 46.0]) + noise(3)
@@ -466,7 +539,7 @@ def generate_shop_sign(mid):
 
 
 def block_ids():
-    return list(MATERIALS) + [n + "_slab" for n in MATERIALS] + [n + "_stairs" for n in MATERIALS] + ["shop_sign"] + list(WINDOWS)
+    return list(MATERIALS) + [n + "_slab" for n in MATERIALS] + [n + "_stairs" for n in MATERIALS] + ["shop_sign"] + list(WINDOWS) + list(GARAGE_DOORS)
 
 
 def slab_loot(full):
@@ -485,6 +558,8 @@ def lang(gmod):
         out[f"block.{gmod.MOD_ID}.{n}_stairs"] = title + " Stairs"
     out[f"block.{gmod.MOD_ID}.shop_sign"] = "Shop Sign (Fascia)"
     for n, (title, _, _) in WINDOWS.items():
+        out[f"block.{gmod.MOD_ID}.{n}"] = title
+    for n, (title, _) in GARAGE_DOORS.items():
         out[f"block.{gmod.MOD_ID}.{n}"] = title
     out[f"item.{gmod.MOD_ID}.prefab_tool"] = "Prefab Tool (British Buildings)"
     out["key.ptmuk.prefab_rotate"] = "Turn prefab building"

@@ -336,9 +336,8 @@ def executive_house(ident="executive_house", name="Executive Detached House"):
     # double garage u16..22 v7..14
     b.fill(16, 0, 7, 22, 0, 14, "smooth_stone")
     b.walls(16, 1, 7, 22, 3, 14, brick)
-    for u in (17, 18, 20, 21):
-        for y in (1, 2):
-            b.set(u, y, 7, B("iron_trapdoor", facing="south", half="bottom", open=True, powered=False, waterlogged=False))
+    for u in (17, 20):
+        P.garage_door(b, u, u + 1, 7, 1, 2)
     b.set(16, 1, 6, B("ptmuk:ev_charger", facing="south"))
     b.door(19, 1, 14, "spruce", facing="front", hinge="left")
     # roofs
@@ -446,9 +445,7 @@ def tudorbethan_detached(ident="thirties_detached", name="1930s Detached House (
     # side garage with a flat roof
     b.fill(15, 0, 7, 18, 0, 14, "smooth_stone")
     b.walls(15, 1, 7, 18, 3, 14, brick)
-    for u in (16, 17):
-        for y in (1, 2):
-            b.set(u, y, 7, B("spruce_trapdoor", facing="south", half="top", open=True, powered=False, waterlogged=False))   # click to swing it up
+    P.garage_door(b, 16, 17, 7, 1, 2, kind="oak_garage_door")
     b.fill(15, 4, 7, 18, 4, 14, slab("smooth_stone"))
     b.door(14, 1, 12, "spruce", facing="right", hinge="left")      # from the house into the garage
     b.fill(15, 1, 12, 15, 2, 12, AIR)
@@ -1117,12 +1114,14 @@ def tower_estate(ident="estate_tower_block", name="Council Tower Block Estate"):
 # ================================================================== catalogue
 
 def all_big():
+    import prefab_mansion
     return [
         victorian_villa(),
         arts_and_crafts(),
         executive_house(),
         tudorbethan_detached(),
         country_house(),
+        prefab_mansion.mansion(),
         thatched_cottage(),
         slab_block(),
         residential_tower(),

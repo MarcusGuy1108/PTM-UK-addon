@@ -113,9 +113,17 @@ public final class ModBlocks {
         for (String window : WINDOWS) {
             BUILDING.put(window, BLOCKS.register(window, com.ptmuk.building.WindowPaneBlock::new));
         }
+        // up-and-over garage doors; must match GARAGE_DOORS in tools/building.py
+        garageDoor("white_garage_door", net.minecraft.world.level.material.MapColor.SNOW, SoundType.METAL);
+        garageDoor("oak_garage_door", net.minecraft.world.level.material.MapColor.WOOD, SoundType.WOOD);
+        garageDoor("green_garage_door", net.minecraft.world.level.material.MapColor.COLOR_GREEN, SoundType.WOOD);
         for (String name : PylonCells.COUNTS.keySet()) {
             PYLONS.put(name, BLOCKS.register(name, () -> new PylonBlock(name)));
         }
+    }
+
+    private static void garageDoor(String id, net.minecraft.world.level.material.MapColor colour, SoundType sound) {
+        BUILDING.put(id, BLOCKS.register(id, () -> new com.ptmuk.building.GarageDoorBlock(colour, sound)));
     }
 
     private static void fence(String id, SoundType sound) {

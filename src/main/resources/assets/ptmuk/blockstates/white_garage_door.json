@@ -1,0 +1,49 @@
+{
+ "variants": {
+  "facing=south,open=false": {
+   "model": "ptmuk:block/building/white_garage_door"
+  },
+  "facing=south,open=true,top=true": {
+   "model": "ptmuk:block/building/white_garage_door_raised"
+  },
+  "facing=south,open=true,top=false": {
+   "model": "ptmuk:block/building/white_garage_door_gone"
+  },
+  "facing=west,open=false": {
+   "model": "ptmuk:block/building/white_garage_door",
+   "y": 90
+  },
+  "facing=west,open=true,top=true": {
+   "model": "ptmuk:block/building/white_garage_door_raised",
+   "y": 90
+  },
+  "facing=west,open=true,top=false": {
+   "model": "ptmuk:block/building/white_garage_door_gone",
+   "y": 90
+  },
+  "facing=north,open=false": {
+   "model": "ptmuk:block/building/white_garage_door",
+   "y": 180
+  },
+  "facing=north,open=true,top=true": {
+   "model": "ptmuk:block/building/white_garage_door_raised",
+   "y": 180
+  },
+  "facing=north,open=true,top=false": {
+   "model": "ptmuk:block/building/white_garage_door_gone",
+   "y": 180
+  },
+  "facing=east,open=false": {
+   "model": "ptmuk:block/building/white_garage_door",
+   "y": 270
+  },
+  "facing=east,open=true,top=true": {
+   "model": "ptmuk:block/building/white_garage_door_raised",
+   "y": 270
+  },
+  "facing=east,open=true,top=false": {
+   "model": "ptmuk:block/building/white_garage_door_gone",
+   "y": 270
+  }
+ }
+}

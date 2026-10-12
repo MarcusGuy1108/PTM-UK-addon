@@ -99,16 +99,19 @@ FRAME_FOR = {"ptmuk:upvc_window": "smooth_quartz", "ptmuk:sash_window": "smooth_
 # ------------------------------------------------------------------ builder
 
 class Build:
-    def __init__(self, ident, name, category, w, h, d, description=""):
+    def __init__(self, ident, name, category, w, h, d, description="", sink=0):
+        """h is the height above ground (y = 0 is the ground layer); sink is how many layers it
+        goes down below that (a swimming pool, a basement): those use negative y."""
         self.ident, self.name, self.category, self.description = ident, name, category, description
         self.W, self.H, self.D = w, h, d
+        self.sink = sink
         self.cells = {}
         self.roof_cells = set()          # stairs and slabs laid as roofing, not to be walked on
         self._roofing = False
 
     # basic placing
     def inside(self, u, y, v):
-        return 0 <= u < self.W and 0 <= y < self.H and 0 <= v < self.D
+        return 0 <= u < self.W and -self.sink <= y < self.H and 0 <= v < self.D
 
     def set(self, u, y, v, block):
         if not self.inside(u, y, v):
@@ -309,17 +312,17 @@ class Build:
 
         # every cell of the box is written (air included), so placing a prefab clears what was there
         for u in range(W):
-            for y in range(H):
+            for y in range(-self.sink, H):
                 for v in range(D):
                     block = self.get(u, y, v)
                     x, z = u, D - 1 - v
-                    entry = {"pos": ("list", ("int", [x, y, z])), "state": ("int", state_index(block))}
+                    entry = {"pos": ("list", ("int", [x, y + self.sink, z])), "state": ("int", state_index(block))}
                     if block.nbt:
                         entry["nbt"] = ("compound", block.nbt)
                     blocks.append(("compound", entry))
         root = {
             "DataVersion": ("int", DATA_VERSION),
-            "size": ("list", ("int", [W, H, D])),
+            "size": ("list", ("int", [W, H + self.sink, D])),
             "palette": ("list", ("compound", [p[1] for p in palette])),
             "blocks": ("list", ("compound", [b[1] for b in blocks])),
             "entities": ("list", ("end", [])),
@@ -500,6 +503,8 @@ def render_thumbnail(build, assets, size=256):
         col = block_colour(b, assets)
         if col is None:
             continue
+        if y < 0 and b.name not in ("minecraft:water",):
+            continue                         # below ground: only water (a pool) shows from above
         thin = b.name.endswith(("_slab", "_pane", "_door", "_trapdoor", "flower_pot", "_carpet", "_sign", "_bars",
                                 "_window", "_glazing", "lantern", "_wall"))
         if col[3] >= 200 and not thin:

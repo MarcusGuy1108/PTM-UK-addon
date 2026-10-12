@@ -1,0 +1,6 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "ptmuk:block/building/oak_garage_door"
+ }
+}
