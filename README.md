@@ -96,6 +96,27 @@ All the shop, pub and office names are made up. Change them in game: right-click
 
 Every building is checked when the prefabs are generated: no gaps beside windows or doors, every staircase climbable (Minecraft needs three blocks of headroom over each step, not two, or you bump your head stepping up), and every room reachable on foot from the street. Garages open with their up-and-over doors (click any panel) or a door from the house.
 
+### Road Planner (roads and junctions)
+
+The **Road Planner** (UK Buildings tab, creative mode) opens a top-down map of the area round you to draw roads on, then builds them for you, junctions and all.
+
+- **Draw:** click to lay a road point by point; it curves smoothly through the points. End on another road to join it (that makes a junction), or right-click to finish. Right-drag or WASD moves the map, the scroll wheel zooms.
+- **Edit:** drag points around, drag the dot in the middle of a road to bend it, Delete removes, Ctrl+Z undoes. Select a point to change its junction, or a road to change its lanes, markings and pavements.
+- The map shows exactly what will be built before you press **Build**. Building happens over a few seconds so big plans don't freeze the game. **Undo build** puts everything back, and the plan stays on the item so you can change it and build again.
+
+Roads come in UK styles you can mix and adjust: main road (21 wide: two 6-block lanes, dashed centre line and 4-block pavements), residential street (15 wide), high street, wide 4-lane road, dual carriageway with a central reservation and crash barrier, country road with grass verges, one-way street and slip road. Each has settings for lanes, lane width, centre line (dashed, hazard, double white or none), pavement width and surface (light grey concrete, tarmac, paving slabs or block paving), grass verge, raised kerbs, street lights, white edge lines and yellow lines (single, double, or auto: single along the road and double near junctions).
+
+Junctions:
+
+- **Give way** (the default where three or more roads meet): rounded kerbs, the main road's lines carry through, double dashed give-way lines and a triangle on the side roads. **Stop** junctions get a solid stop line.
+- **Roundabouts:** a kerbed central island sized to the roads (or a size you pick) and give-way lines at every entry. **Mini roundabouts** get a white painted dome.
+- **Traffic lights:** stop lines, a pedestrian crossing on every arm with red tactile paving at the dropped kerbs, and black UK signal poles with LED heads facing each approach. A PTM2 intersection is set up automatically so the lights cycle straight away and PTM2's AI traffic obeys them.
+- **Slip roads:** draw a one-way road onto a dual carriageway (or hold Shift when ending on any road) and it merges into the side of the road with a taper instead of making a junction.
+
+Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 recognises them, and UK style: hazard lines (long dashes) approaching junctions, solid up to stop lines, and yellow lines that follow the kerb round corners. Pavements use PTM2's sidewalk blocks by default, so PTM2's pedestrians walk on them.
+
+Roads are levelled into the ground: hills are cut through and dips built up with a smooth gradient (no steeper than 1 in 10, in half-block steps), junctions are flat, and the ground either side is sloped to meet the road. Trees in the way are cleared. Set PTM2 to left-hand traffic in its settings so its AI cars use the left lane.
+
 ### Home furniture
 
 In the **UK Home Furniture** tab, all drawn for this mod:

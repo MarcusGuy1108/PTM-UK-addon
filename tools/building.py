@@ -287,6 +287,9 @@ def generate(gmod):
     prefab_tool_icon().save(G.ASSETS / "textures/item/prefab_tool.png")
     G.write_json(G.ASSETS / "models/item/prefab_tool.json", {"parent": "minecraft:item/generated",
                                                              "textures": {"layer0": f"{mid}:item/prefab_tool"}})
+    road_planner_icon().save(G.ASSETS / "textures/item/road_planner.png")
+    G.write_json(G.ASSETS / "models/item/road_planner.json", {"parent": "minecraft:item/generated",
+                                                              "textures": {"layer0": f"{mid}:item/road_planner"}})
 
 
 # ---------------------------------------------------------------- framed windows (glass panes)
@@ -523,6 +526,29 @@ def prefab_tool_icon():
     return img
 
 
+def road_planner_icon():
+    """A folded street map with a red road, a roundabout and a pencil."""
+    n = 32
+    img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.polygon([(3, 6), (11, 3), (20, 6), (29, 3), (29, 26), (20, 29), (11, 26), (3, 29)], fill=(236, 230, 206, 255),
+              outline=(120, 110, 80, 255))
+    d.line([(11, 3), (11, 26)], fill=(200, 190, 160, 255))
+    d.line([(20, 6), (20, 29)], fill=(200, 190, 160, 255))
+    d.rectangle((4, 7, 9, 12), fill=(150, 196, 120, 255))
+    d.rectangle((22, 20, 27, 25), fill=(150, 196, 120, 255))
+    d.line([(4, 18), (28, 18)], fill=(70, 72, 78, 255), width=3)                       # main road
+    d.line([(16, 5), (16, 28)], fill=(70, 72, 78, 255), width=2)                       # side road
+    d.ellipse((12, 14, 20, 22), outline=(70, 72, 78, 255), width=2)                   # roundabout
+    d.ellipse((15, 17, 17, 19), fill=(120, 170, 90, 255))
+    for x in range(5, 28, 3):
+        d.point((x, 18), fill=(255, 255, 255, 255))
+    d.line([(21, 13), (28, 6)], fill=(240, 190, 40, 255), width=3)                     # pencil
+    d.line([(20, 14), (21, 13)], fill=(60, 50, 40, 255), width=2)
+    d.point((28, 5), fill=(230, 120, 140, 255))
+    return img
+
+
 def generate_shop_sign(mid):
     tex = G.save(shop_sign_board(), "building/shop_sign_board")
     G.write_json(G.ASSETS / "models/block/building/shop_sign.json", {
@@ -562,6 +588,7 @@ def lang(gmod):
     for n, (title, _) in GARAGE_DOORS.items():
         out[f"block.{gmod.MOD_ID}.{n}"] = title
     out[f"item.{gmod.MOD_ID}.prefab_tool"] = "Prefab Tool (British Buildings)"
+    out[f"item.{gmod.MOD_ID}.road_planner"] = "Road Planner"
     out["key.ptmuk.prefab_rotate"] = "Turn prefab building"
     out["key.categories.ptmuk"] = "PTM UK Addon"
     out["itemGroup.ptmuk.building"] = "UK Buildings"

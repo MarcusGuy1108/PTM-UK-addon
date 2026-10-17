@@ -30,5 +30,10 @@ public final class PtmUkNetwork {
                 .decoder(PrefabToolMessage::decode)
                 .consumerMainThread(PrefabToolMessage::handle)
                 .add();
+        CHANNEL.messageBuilder(RoadPlannerMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RoadPlannerMessage::encode)
+                .decoder(RoadPlannerMessage::decode)
+                .consumerMainThread(RoadPlannerMessage::handle)
+                .add();
     }
 }
