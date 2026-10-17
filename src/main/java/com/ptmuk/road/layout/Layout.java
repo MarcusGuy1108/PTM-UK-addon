@@ -843,7 +843,7 @@ public final class Layout {
         List<Line> out = new ArrayList<>();
         int lw = st.laneWidth;
         int laneOn = st.laneLinesSolid ? 1 : 3, laneOff = st.laneLinesSolid ? 0 : 5;
-        boolean edge = st.edgeLines && (st.yellow == RoadStyle.Yellow.NONE || !st.kerbs);
+        boolean edge = st.edgeLines && st.yellow == RoadStyle.Yellow.NONE;      // yellows take the edge
         if (st.oneWay) {
             double left = -hc;
             for (int k = 1; k < st.lanes; k++) {
@@ -1003,8 +1003,10 @@ public final class Layout {
     }
 
     /**
-     * Yellow lines along the kerbs, following them round corners: single along the road, double
-     * (no waiting at any time) near junctions, as each road's style asks.
+     * Yellow lines along the edge of the carriageway, following it round corners: single along the
+     * road, double (no waiting at any time) near junctions, as each road's style asks. With kerbs
+     * they run beside the kerb; without, along the last block of road before the verge, pavement
+     * or ground.
      */
     private void yellows() {
         int size = w * h;
@@ -1025,7 +1027,7 @@ public final class Layout {
                     kerbDir = -1;
                     break;
                 }
-                if (nk == KERB || nk == TACTILE) {
+                if (nk == KERB || nk == TACTILE || nk == FOOTWAY || nk == VERGE || nk == BLEND || nk == NONE) {
                     kerbDir = k;
                 }
             }
@@ -1033,7 +1035,7 @@ public final class Layout {
                 continue;
             }
             RoadStyle st = styleOf(idx);
-            if (!st.kerbs || st.yellow == null || st.yellow == RoadStyle.Yellow.NONE) {
+            if (st.yellow == null || st.yellow == RoadStyle.Yellow.NONE) {
                 continue;
             }
             boolean nearJunction = toCore.dist[idx] < 16 || owner[idx] < 0;

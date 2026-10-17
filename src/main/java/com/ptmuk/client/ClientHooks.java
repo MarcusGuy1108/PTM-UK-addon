@@ -40,6 +40,12 @@ public final class ClientHooks {
         }
     }
 
+    /** The player on this client. Common code calls this rather than Minecraft.getInstance().player, so a
+     * dedicated server never has to load the client's player class to check the code. */
+    public static net.minecraft.world.entity.player.Player localPlayer() {
+        return Minecraft.getInstance().player;
+    }
+
     public static void usePrefabTool(net.minecraft.world.InteractionHand hand, boolean sneaking) {
         com.ptmuk.client.building.PrefabToolClient.use(hand, sneaking);
     }

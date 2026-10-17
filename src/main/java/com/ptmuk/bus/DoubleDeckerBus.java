@@ -100,7 +100,7 @@ public abstract class DoubleDeckerBus extends Bus {
     }
 
     private void pickDeckForLocalPlayer() {
-        Player player = net.minecraft.client.Minecraft.getInstance().player;
+        Player player = com.ptmuk.client.ClientHooks.localPlayer();
         boolean upper = player != null && player.distanceToSqr(this) < 200
                 && player.getY() - getY() > layout.deckSwitchHeight();
         List<FloorObject> wanted = upper ? upperFloors : lowerFloors;

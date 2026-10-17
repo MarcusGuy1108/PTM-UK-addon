@@ -6,7 +6,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class PtmUkNetwork {
-    private static final String VERSION = "1";
+    private static final String VERSION = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(PtmUk.id("main"), () -> VERSION,
             VERSION::equals, VERSION::equals);
 
@@ -34,6 +34,11 @@ public final class PtmUkNetwork {
                 .encoder(RoadPlannerMessage::encode)
                 .decoder(RoadPlannerMessage::decode)
                 .consumerMainThread(RoadPlannerMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(SchematicUploadMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SchematicUploadMessage::encode)
+                .decoder(SchematicUploadMessage::decode)
+                .consumerMainThread(SchematicUploadMessage::handle)
                 .add();
     }
 }

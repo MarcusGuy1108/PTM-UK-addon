@@ -19,10 +19,31 @@ public record PrefabPlacement(PrefabCatalog.Entry entry, BlockPos origin, Rotati
     public static final String TAG_ID = "prefab";
     public static final String TAG_ROT = "rotation";
     public static final String TAG_MIRROR = "mirror";
+    /** An imported schematic: its name and size, and whether it sits on the ground instead of replacing the top layer. */
+    public static final String TAG_CUSTOM = "custom";
+    public static final String TAG_ON_GROUND = "onGround";
 
     public static PrefabCatalog.Entry selected(ItemStack stack) {
         CompoundTag tag = stack.getTag();
-        return tag == null ? null : PrefabCatalog.get(tag.getString(TAG_ID));
+        if (tag == null) {
+            return null;
+        }
+        String id = tag.getString(TAG_ID);
+        if (id.startsWith(com.ptmuk.building.schematic.CustomSchematics.ID_PREFIX)) {
+            CompoundTag c = tag.getCompound(TAG_CUSTOM);
+            int w = c.getInt("w"), h = c.getInt("h"), d = c.getInt("d");
+            if (w <= 0 || h <= 0 || d <= 0) {
+                return null;
+            }
+            return new PrefabCatalog.Entry(id, c.getString("name"), "Custom", w, h, d, onGround(stack) ? -1 : 0,
+                    "Imported from " + c.getString("file"));
+        }
+        return PrefabCatalog.get(id);
+    }
+
+    public static boolean onGround(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        return tag != null && tag.getBoolean(TAG_ON_GROUND);
     }
 
     public static int turns(ItemStack stack) {
@@ -51,7 +72,7 @@ public record PrefabPlacement(PrefabCatalog.Entry entry, BlockPos origin, Rotati
             rotation = rotation.getRotated(Rotation.CLOCKWISE_90);
         }
         Mirror m = mirror ? Mirror.FRONT_BACK : Mirror.NONE;
-        // the middle of the front row of the ground layer goes on the target block
+        // the middle of the front row of the ground layer goes on the target block (sink -1: the bottom layer sits on it)
         BlockPos anchor = new BlockPos(entry.width() / 2, entry.sink(), entry.depth() - 1);   // the ground layer, above any sunk part
         BlockPos moved = StructureTemplate.transform(anchor, m, rotation, BlockPos.ZERO);
         BlockPos origin = target.subtract(moved);

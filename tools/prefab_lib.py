@@ -378,6 +378,13 @@ def _write_payload(buf, kind, value):
         buf.write(struct.pack(">i", len(value)))
         for i in value:
             buf.write(struct.pack(">i", i))
+    elif kind == "byte_array":
+        buf.write(struct.pack(">i", len(value)))
+        buf.write(bytes(value))
+    elif kind == "long_array":
+        buf.write(struct.pack(">i", len(value)))
+        for i in value:
+            buf.write(struct.pack(">q", i))
     else:
         raise ValueError(kind)
 

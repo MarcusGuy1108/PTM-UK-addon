@@ -79,6 +79,7 @@ The **Prefab Tool** (in the **UK Buildings** tab, creative mode only) places rea
 - **Right-click** to place it where you're looking. Its front faces you, and the middle of its front edge goes on the block you're aiming at. An outline shows where it will go, with the front edge in green.
 - **R** (or **Turn 90°** in the catalogue) turns it. **Mirrored** flips it left to right.
 - **Undo last placed** puts back what was there before (the last 8 placements).
+- **Custom** tab: import your own schematics. Put `.schem` (WorldEdit / Sponge), `.schematic` (old MCEdit / WorldEdit, or Sponge saved with that name), `.litematic` (Litematica, every region) or `.nbt` (structure block) files in the `schematics` folder in your game folder (**Open folder** opens it; WorldEdit's `config/worldedit/schematics` is listed too), press **Refresh** and pick one. It's read on your computer, shown as a map from above, and sent to the server; then place it like any prefab, turned, mirrored and undone the same way. Its south side counts as the front (the bottom of the map). **Bottom layer** chooses whether its lowest layer replaces the ground or sits on top of it. Blocks and chests from older game versions are brought up to date; blocks from mods you don't have are left out (it says how many). Up to 8 million blocks in its box.
 - The ground layer replaces the surface it stands on, and on a slope the gap underneath is filled in so it doesn't float. The whole area has to be loaded, so stand near the middle of where a big estate will go.
 
 The buildings use vanilla blocks wherever they can, plus the mod's roofing, brick, windows and shop signs. Most have simple furnished interiors, lights that show through the windows at night, gardens and bins.
@@ -114,7 +115,7 @@ Junctions:
 - **Traffic lights:** stop lines, a pedestrian crossing on every arm with red tactile paving at the dropped kerbs, and black UK signal poles with LED heads facing each approach. A PTM2 intersection is set up automatically so the lights cycle straight away and PTM2's AI traffic obeys them.
 - **Slip roads:** draw a one-way road onto a dual carriageway (or hold Shift when ending on any road) and it merges into the side of the road with a taper instead of making a junction.
 
-Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 recognises them, and UK style: hazard lines (long dashes) approaching junctions, solid up to stop lines, and yellow lines that follow the kerb round corners. Pavements use PTM2's sidewalk blocks by default, so PTM2's pedestrians walk on them.
+Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 recognises them, and UK style: hazard lines (long dashes) approaching junctions, solid up to stop lines, and yellow lines that follow the kerb round corners (or, with kerbs turned off, the edge of the road). Pavements use PTM2's sidewalk blocks by default, so PTM2's pedestrians walk on them.
 
 Roads are levelled into the ground: hills are cut through and dips built up with a smooth gradient (no steeper than 1 in 10, in half-block steps), junctions are flat, and the ground either side is sloped to meet the road. Trees in the way are cleared. Set PTM2 to left-hand traffic in its settings so its AI cars use the left lane.
 

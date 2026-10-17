@@ -1,6 +1,7 @@
 package com.ptmuk.building;
 
 import com.ptmuk.PtmUk;
+import com.ptmuk.building.schematic.CustomSchematics;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -27,7 +28,8 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
-/** Places prefabs on the server, fills foundations under them and keeps an undo history. */
+/** Places prefabs and imported schematics on the server, fills foundations under them and keeps an
+ * undo history. */
 public final class PrefabPlacer {
     /** How far below the ground layer foundations are filled on uneven ground. */
     private static final int FOUNDATION_DEPTH = 12;
@@ -37,7 +39,8 @@ public final class PrefabPlacer {
     private record Saved(BlockPos pos, BlockState state, CompoundTag nbt) {
     }
 
-    private record Undo(ResourceKey<Level> dimension, String name, List<Saved> blocks) {
+    /** What to put back: the box goes back to air, then everything that wasn't air before is restored. */
+    private record Undo(ResourceKey<Level> dimension, String name, BoundingBox box, List<Saved> blocks) {
     }
 
     private static final Map<UUID, Deque<Undo>> HISTORY = new HashMap<>();
@@ -47,8 +50,15 @@ public final class PrefabPlacer {
 
     public static boolean place(ServerPlayer player, PrefabPlacement p) {
         ServerLevel level = player.serverLevel();
-        Optional<StructureTemplate> template = level.getStructureManager().get(PtmUk.id("prefab/" + p.entry().id()));
-        if (template.isEmpty()) {
+        boolean custom = p.entry().id().startsWith(CustomSchematics.ID_PREFIX);
+        CustomSchematics.Loaded schematic = custom ? CustomSchematics.get(player.getUUID(), p.entry().id()) : null;
+        Optional<StructureTemplate> template = custom ? Optional.empty()
+                : level.getStructureManager().get(PtmUk.id("prefab/" + p.entry().id()));
+        if (custom && schematic == null) {
+            player.displayClientMessage(Component.literal("Choose the schematic again in the catalogue (sneak + right-click)"), true);
+            return false;
+        }
+        if (!custom && template.isEmpty()) {
             player.displayClientMessage(Component.literal("Prefab " + p.entry().id() + " is missing from the mod"), true);
             return false;
         }
@@ -66,23 +76,29 @@ public final class PrefabPlacer {
                 }
             }
         }
+        // remember what was there (air needs no remembering), and empty containers so they don't spill
         List<Saved> saved = new ArrayList<>();
-        BlockPos.betweenClosedStream(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())
-                .forEach(pos -> saved.add(save(level, pos)));
-        // clear first, so containers don't spill and old blocks don't linger where the prefab has air
+        BlockPos.betweenClosedStream(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ()).forEach(pos -> {
+            if (!level.getBlockState(pos).isAir()) {
+                saved.add(save(level, pos));
+            }
+        });
         for (Saved s : saved) {
-            BlockEntity be = level.getBlockEntity(s.pos());
-            Clearable.tryClear(be);
+            Clearable.tryClear(level.getBlockEntity(s.pos()));
         }
-        StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(p.rotation()).setMirror(p.mirror())
-                .setIgnoreEntities(true).setKnownShape(false);
-        template.get().placeInWorld(level, p.origin(), p.origin(), settings, RandomSource.create(), FLAGS);
+        if (custom) {
+            CustomSchematics.paste(level, p, schematic);
+        } else {
+            StructurePlaceSettings settings = new StructurePlaceSettings().setRotation(p.rotation()).setMirror(p.mirror())
+                    .setIgnoreEntities(true).setKnownShape(false);
+            template.get().placeInWorld(level, p.origin(), p.origin(), settings, RandomSource.create(), FLAGS);
+        }
         foundations(level, box, saved);
         if (p.mirror() != net.minecraft.world.level.block.Mirror.NONE) {
             fixShopSigns(level, box);
         }
         Deque<Undo> history = HISTORY.computeIfAbsent(player.getUUID(), k -> new ArrayDeque<>());
-        history.push(new Undo(level.dimension(), p.entry().name(), saved));
+        history.push(new Undo(level.dimension(), p.entry().name(), box, saved));
         while (history.size() > UNDO_STEPS) {
             history.removeLast();
         }
@@ -152,6 +168,13 @@ public final class PrefabPlacer {
         if (level == null) {
             return;
         }
+        BoundingBox box = undo.box();
+        BlockPos.betweenClosedStream(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ()).forEach(pos -> {
+            if (!level.getBlockState(pos).isAir()) {
+                Clearable.tryClear(level.getBlockEntity(pos));
+                level.setBlock(pos, Blocks.AIR.defaultBlockState(), FLAGS);
+            }
+        });
         for (Saved s : undo.blocks()) {
             Clearable.tryClear(level.getBlockEntity(s.pos()));
             level.setBlock(s.pos(), Blocks.AIR.defaultBlockState(), FLAGS);
