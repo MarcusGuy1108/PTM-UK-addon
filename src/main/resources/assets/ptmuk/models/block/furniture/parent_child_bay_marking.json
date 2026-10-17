@@ -1,0 +1,1 @@
+{"textures":{"parent_child_bay_marking":"ptmuk:block/furniture/parent_child_bay_marking","particle":"ptmuk:block/furniture/parent_child_bay_marking"},"elements":[{"from":[-8,0.05,-12],"to":[24,0.1,28],"faces":{"up":{"texture":"#parent_child_bay_marking","uv":[0,0,16,16],"rotation":180}}}],"render_type":"minecraft:cutout_mipped"}

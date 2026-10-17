@@ -124,6 +124,7 @@ def make_textures():
         "top_up": s(B.top_up_face(), p + "top_up_machine_face"),
         "bus_stop_marking": s(B.marking(["BUS", "STOP"], B.MARK_YELLOW), p + "bus_stop_marking"),
         "bus_lane_marking": s(B.marking(["BUS", "LANE"], B.MARK_WHITE), p + "bus_lane_marking"),
+        **{name: s(B.bay_marking(kind), p + name) for name, kind, _ in B.BAY_MARKINGS},
     })
     for name, colour in BIN_COLOURS.items():
         TEX[f"bin_{name}"] = s(H.plastic(colour), p + f"bin_{name}")
@@ -588,6 +589,15 @@ def top_up_machine():
     return els, {"dark": t("dark"), "blue_metal": t("blue_metal"), "top_up": t("top_up")}, {}
 
 
+def bay_marking(tex):
+    """A parking bay symbol on the road, 2 blocks across and 2.5 long (the block is the middle),
+    reading from the side the player stood on when placing it (the aisle)."""
+    top = box((-8, 0.05, -12), (24, 0.1, 28), "#" + tex, faces=("up",))
+    top["faces"]["up"]["uv"] = [0, 0, 16, 16]
+    top["faces"]["up"]["rotation"] = 180
+    return [top], {tex: t(tex)}, {"cutout": True}
+
+
 def road_marking(tex):
     """Road lettering laid on the road, 1.5 blocks wide and 3 long (the block is the middle), to
     read for a driver coming from where the player stood when placing it."""
@@ -645,6 +655,9 @@ FURNITURE = {
     "top_up_machine": (top_up_machine, "Ticket & Top-up Machine"),
     "bus_stop_marking": (lambda: road_marking("bus_stop_marking"), "BUS STOP Road Marking"),
     "bus_lane_marking": (lambda: road_marking("bus_lane_marking"), "BUS LANE Road Marking"),
+    "disabled_bay_marking": (lambda: bay_marking("disabled_bay_marking"), "Disabled Bay Road Marking"),
+    "parent_child_bay_marking": (lambda: bay_marking("parent_child_bay_marking"), "Parent & Child Bay Road Marking"),
+    "ev_bay_marking": (lambda: bay_marking("ev_bay_marking"), "Electric Vehicle Bay Road Marking"),
 }
 
 

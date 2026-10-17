@@ -225,6 +225,96 @@ def marking_icon(words, colour, ss=8):
     return img.resize((32, 32), Image.LANCZOS)
 
 
+# ----------------------------------------------------------------- parking bay markings
+
+MARK_GREEN = (36, 140, 72)
+
+
+def _worn(alpha, seed):
+    """Speckle painted lines a little, as road paint wears."""
+    a = np.asarray(alpha).astype(float)
+    rng = np.random.default_rng(seed)
+    a *= np.clip(1.0 - (rng.random(a.shape) < 0.05) * rng.random(a.shape) * 0.8, 0, 1)
+    return Image.fromarray(np.where(a > 110, 255, 0).astype(np.uint8), "L")
+
+
+def _wheelchair(d, x, y, s, fill=255):
+    """The wheelchair symbol, s across, its top left at x, y."""
+    def P(u, v):
+        return (x + u * s, y + v * s)
+    lw = int(s * 0.085)
+    d.ellipse([P(0.47, 0.0), P(0.63, 0.16)], fill=fill)
+    d.line([P(0.50, 0.24), P(0.45, 0.58), P(0.74, 0.58), P(0.82, 0.88), P(0.97, 0.88)], fill=fill, width=lw, joint="curve")
+    d.line([P(0.48, 0.38), P(0.72, 0.38)], fill=fill, width=lw)
+    d.arc([P(0.10, 0.46), P(0.62, 0.98)], 300, 250, fill=fill, width=lw)
+
+
+def _figure(d, cx, top, h, fill=255, skirt=False):
+    """A person pictogram h tall, centred on cx."""
+    r = h * 0.11
+    d.ellipse([cx - r, top, cx + r, top + 2 * r], fill=fill)
+    body_top, body_bot = top + 2.3 * r, top + h * 0.62
+    half = h * (0.17 if skirt else 0.12)
+    d.polygon([(cx - h * 0.1, body_top), (cx + h * 0.1, body_top), (cx + half, body_bot), (cx - half, body_bot)], fill=fill)
+    lw = max(2, int(h * 0.07))
+    d.line([(cx - h * 0.05, body_bot), (cx - h * 0.06, top + h)], fill=fill, width=lw)
+    d.line([(cx + h * 0.05, body_bot), (cx + h * 0.06, top + h)], fill=fill, width=lw)
+    return body_top + h * 0.06
+
+
+def _plug(d, cx, cy, s, fill=255):
+    """A charging plug with its lead, s tall, centred."""
+    w = s * 0.5
+    d.rounded_rectangle([cx - w / 2, cy - s * 0.2, cx + w / 2, cy + s * 0.2], radius=s * 0.08, fill=fill)
+    for dx in (-w * 0.25, w * 0.25):
+        d.rectangle([cx + dx - s * 0.04, cy - s * 0.42, cx + dx + s * 0.04, cy - s * 0.2], fill=fill)
+    d.line([(cx, cy + s * 0.2), (cx, cy + s * 0.32), (cx + s * 0.25, cy + s * 0.5)], fill=fill, width=int(s * 0.07), joint="curve")
+
+
+def bay_marking(kind, w=256, h=320):
+    """A parking bay symbol painted on the tarmac, 2 blocks across and 2.5 long, drawn to read
+    from the aisle at the bottom of the image: the wheelchair for disabled drivers, an adult and a
+    child for parents with children, green paint and a plug for electric cars."""
+    ss = 3
+    W, H = w * ss, h * ss
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    if kind == "ev":
+        base = Image.new("L", (W, H), 0)
+        ImageDraw.Draw(base).rounded_rectangle([W * 0.04, H * 0.03, W * 0.96, H * 0.97], radius=W * 0.06, fill=255)
+        alpha = _worn(base.resize((w, h), Image.LANCZOS), 31)
+        out.paste(Image.new("RGBA", (w, h), MARK_GREEN + (255,)), (0, 0), alpha)
+    sym = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(sym)
+    if kind == "disabled":
+        _wheelchair(d, W * 0.1, H * 0.16, W * 0.8)
+    elif kind == "parent":
+        hand = _figure(d, W * 0.36, H * 0.12, H * 0.7, skirt=True)
+        hand2 = _figure(d, W * 0.72, H * 0.4, H * 0.42)
+        d.line([(W * 0.36 + H * 0.1, hand + H * 0.08), (W * 0.72 - H * 0.06, hand2 + H * 0.04)], fill=255, width=int(H * 0.035))
+    else:
+        _plug(d, W * 0.5, H * 0.36, H * 0.42)
+        f = ImageFont.truetype(BOLD, int(H * 0.26))
+        d.text((W * 0.5, H * 0.78), "EV", font=f, fill=255, anchor="mm")
+    alpha = _worn(sym.resize((w, h), Image.LANCZOS), {"disabled": 11, "parent": 17, "ev": 23}[kind])
+    out.paste(Image.new("RGBA", (w, h), MARK_WHITE + (255,)), (0, 0), alpha)
+    return out
+
+
+def bay_icon(kind, ss=8):
+    """Inventory icon for a bay marking: the symbol on a patch of tarmac."""
+    S = 32 * ss
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(img).rounded_rectangle([1 * ss, 1 * ss, 31 * ss, 31 * ss], radius=3 * ss, fill=(52, 54, 58, 255))
+    sym = bay_marking(kind).resize((24 * ss, 30 * ss), Image.LANCZOS)
+    img.alpha_composite(sym, (4 * ss, 1 * ss))
+    return img.resize((32, 32), Image.LANCZOS)
+
+
+BAY_MARKINGS = (("disabled_bay_marking", "disabled", "Disabled Bay Road Marking"),
+                ("parent_child_bay_marking", "parent", "Parent & Child Bay Road Marking"),
+                ("ev_bay_marking", "ev", "Electric Vehicle Bay Road Marking"))
+
+
 def marking(words, colour, w=192, h=384, stretch=2.4):
     """Elongated road lettering (as UK road markings are), drawn the way a driver approaching
     from the bottom of the image reads it: the first word nearest, at the bottom."""
@@ -316,6 +406,10 @@ def generate(gmod):
         marking_icon(words, colour).save(item_tex / f"{name}.png")
         G.write_json(G.ASSETS / f"models/item/{name}.json",
                      {"parent": "minecraft:item/generated", "textures": {"layer0": f"{G.MOD_ID}:item/{name}"}})
+    for name, kind, _ in BAY_MARKINGS:
+        bay_icon(kind).save(item_tex / f"{name}.png")
+        G.write_json(G.ASSETS / f"models/item/{name}.json",
+                     {"parent": "minecraft:item/generated", "textures": {"layer0": f"{G.MOD_ID}:item/{name}"}})
     # the countdown sign is drawn by its renderer; the block model only gives the particle
     G.write_json(G.ASSETS / "models/block/bus_countdown_sign.json", {"textures": {"particle": f"{G.MOD_ID}:block/pole/galvanised"}})
     G.write_json(G.ASSETS / "blockstates/bus_countdown_sign.json",
@@ -332,6 +426,7 @@ def lang():
         f"block.{m}.top_up_machine": "Ticket & Top-up Machine",
         f"block.{m}.bus_stop_marking": "BUS STOP Road Marking",
         f"block.{m}.bus_lane_marking": "BUS LANE Road Marking",
+        **{f"block.{m}.{name}": title for name, _, title in BAY_MARKINGS},
         f"message.{m}.fare.pass_valid": "Bus pass valid. Have a good journey!",
         f"message.{m}.fare.hopper": "Hopper fare: no charge",
         f"message.{m}.fare.hopper_balance": "Hopper fare: no charge. Balance %s",

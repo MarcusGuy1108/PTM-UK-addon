@@ -54,7 +54,10 @@ public enum FurnitureType {
     CARD_READER("card_reader", 5, 0, 5, 11, 21, 11, 3, SoundType.METAL),
     TOP_UP_MACHINE("top_up_machine", 2, 0, 3, 14, 24, 13, 4, SoundType.METAL),
     BUS_STOP_MARKING("bus_stop_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
-    BUS_LANE_MARKING("bus_lane_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE);
+    BUS_LANE_MARKING("bus_lane_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
+    DISABLED_BAY_MARKING("disabled_bay_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
+    PARENT_CHILD_BAY_MARKING("parent_child_bay_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
+    EV_BAY_MARKING("ev_bay_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE);
 
     private final String id;
     public final double[] box;

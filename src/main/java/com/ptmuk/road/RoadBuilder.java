@@ -40,14 +40,17 @@ import net.minecraftforge.registries.ForgeRegistries;
 /**
  * Builds a road plan into the world on the server: levels the ground (cutting through hills,
  * building up dips, sloping the sides), lays PTM2 asphalt in full blocks and slabs, kerbs,
- * pavements, verges and islands, PTM2 road markings in white and yellow, and street lights. It
- * works through the columns over several ticks so long roads don't stall the server, saving what
- * was there for undo.
+ * pavements, verges and islands, PTM2 road markings in white and yellow, and street lights; then
+ * the sites' trees, lamp posts and furniture, and their buildings one a tick. It works through
+ * the columns over several ticks so long roads don't stall the server, saving what was there for
+ * undo.
  */
 public final class RoadBuilder {
     private static final int UNDO_STEPS = 5;
     private static final int COLUMNS_PER_TICK = 600;
     private static final int CLEAR_ABOVE = 6;
+    /** Over a building plot: clear enough for the building and its roof. */
+    private static final int CLEAR_ABOVE_PLOT = 16;
     private static final int MAX_FILL = 64;
     private static final int MAX_CELLS = 2_500_000;
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
@@ -71,6 +74,9 @@ public final class RoadBuilder {
         List<BlockPos> joins = new ArrayList<>();
         Palette palette;
         int changed;
+        /** After the columns: fixtures placed, then the buildings one at a time. */
+        boolean fixturesDone;
+        int nextBuilding;
     }
 
     private static final Map<UUID, Deque<Undo>> HISTORY = new HashMap<>();
@@ -104,6 +110,11 @@ public final class RoadBuilder {
                 n.y = first.heightOf(n.id);
             }
         }
+        for (RoadPlan.Site st : plan.sites) {
+            if (Double.isNaN(st.y)) {
+                st.y = first.siteLevel(st.id);
+            }
+        }
         Layout layout = Layout.of(plan, terrain);
         if ((long) layout.w * layout.h > MAX_CELLS) {
             player.displayClientMessage(Component.literal("That plan covers too big an area - build it in parts"), true);
@@ -116,7 +127,7 @@ public final class RoadBuilder {
             }
         }
         if (cells.isEmpty()) {
-            player.displayClientMessage(Component.literal("Nothing new to build - draw some roads first"), true);
+            player.displayClientMessage(Component.literal("Nothing new to build - draw some roads or sites first"), true);
             return;
         }
         // footprint first, then the blending margin, so slopes meet finished edges
@@ -146,7 +157,16 @@ public final class RoadBuilder {
                 column(job, job.cells[job.next]);
             }
             ServerPlayer player = server.getPlayerList().getPlayer(job.player);
-            if (job.next >= job.cells.length) {
+            if (job.next >= job.cells.length && !job.fixturesDone) {
+                fixtures(job);
+                job.fixturesDone = true;
+            } else if (job.fixturesDone && job.nextBuilding < job.layout.buildings.size()) {
+                Layout.SiteBuilding b = job.layout.buildings.get(job.nextBuilding++);
+                RoadPlan.Site st = job.plan.site(b.siteId());
+                if (st != null && !st.built) {
+                    SiteBuildings.build(out(job), b, job.palette);
+                }
+            } else if (job.fixturesDone) {
                 finish(job, player);
                 it.remove();
             } else if (player != null && job.next % (COLUMNS_PER_TICK * 10) < COLUMNS_PER_TICK) {
@@ -155,7 +175,7 @@ public final class RoadBuilder {
         }
     }
 
-    private static void finish(Job job, ServerPlayer player) {
+    private static void fixtures(Job job) {
         Layout layout = job.layout;
         // traffic-light junctions: a PTM2 intersection first, so the heads join it as they're placed
         for (Layout.SignalZone zone : layout.signalZones) {
@@ -170,6 +190,28 @@ public final class RoadBuilder {
                 fixture(job, f);
             }
         }
+    }
+
+    private static SiteBuildings.Out out(Job job) {
+        return new SiteBuildings.Out() {
+            @Override
+            public void set(BlockPos pos, BlockState state) {
+                RoadBuilder.set(job, pos, state);
+            }
+
+            @Override
+            public void join(BlockPos pos) {
+                job.joins.add(pos);
+            }
+
+            @Override
+            public ServerLevel level() {
+                return job.level;
+            }
+        };
+    }
+
+    private static void finish(Job job, ServerPlayer player) {
         for (BlockPos p : job.joins) {
             BlockState s = job.level.getBlockState(p);
             set(job, p, Block.updateFromNeighbourShapes(s, job.level, p));
@@ -183,6 +225,9 @@ public final class RoadBuilder {
             n.built = true;
         }
         for (RoadPlan.Segment s : job.plan.segments) {
+            s.built = true;
+        }
+        for (RoadPlan.Site s : job.plan.sites) {
             s.built = true;
         }
         if (player != null) {
@@ -312,6 +357,10 @@ public final class RoadBuilder {
                 full = tactile;
                 top = tactileSlab;
             }
+            case Layout.PLOT -> {
+                full = Blocks.POLISHED_ANDESITE.defaultBlockState();
+                top = slab(Blocks.POLISHED_ANDESITE_SLAB.defaultBlockState());
+            }
             default -> {
                 full = grass;
                 top = grass;
@@ -348,7 +397,7 @@ public final class RoadBuilder {
         // clear above: everything within head room, the rest of any hill, and tree trunks
         int ground = WorldTerrain.scan(level, x, z, surfaceY + 1);
         int trees = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
-        int clearTo = Math.max(surfaceY + CLEAR_ABOVE, ground - 1);
+        int clearTo = Math.max(surfaceY + (kind == Layout.PLOT ? CLEAR_ABOVE_PLOT : CLEAR_ABOVE), ground - 1);
         for (int y = surfaceY + 1; y <= Math.max(clearTo, trees); y++) {
             BlockState s = level.getBlockState(p.set(x, y, z));
             if (s.isAir()) {
@@ -429,20 +478,27 @@ public final class RoadBuilder {
         }
     }
 
-    private static void fixture(Job job, Layout.Fixture f) {
-        if (f.type() == Layout.FixtureType.SIGNAL) {
-            signal(job, f);
-            return;
-        }
+    /** The first block above the surface a fixture stands on (a half-height surface is made a full block). */
+    private static int standOn(Job job, Layout.Fixture f) {
         float t = f.top();
-        int y0;
         if (isHalf(t)) {
             int b = (int) Math.floor(t);
             set(job, new BlockPos(f.x(), b, f.z()), job.palette.get("ptmuk:paving_slabs", "smooth_stone"));
-            y0 = b + 1;
-        } else {
-            y0 = (int) t;
+            return b + 1;
         }
+        return (int) t;
+    }
+
+    private static void fixture(Job job, Layout.Fixture f) {
+        switch (f.type()) {
+            case SIGNAL -> signal(job, f);
+            case STREET_LIGHT -> streetLight(job, f);
+            default -> SiteFixtures.place(job.level, f, standOn(job, f), job.palette, (pos, state) -> set(job, pos, state));
+        }
+    }
+
+    private static void streetLight(Job job, Layout.Fixture f) {
+        int y0 = standOn(job, f);
         BlockState pole = job.palette.get("ptmuk:sign_pole_galvanised", "iron_bars");
         for (int k = 0; k < 5; k++) {
             set(job, new BlockPos(f.x(), y0 + k, f.z()), with(with(pole, "base", k == 0), "cap", false));
@@ -454,15 +510,7 @@ public final class RoadBuilder {
 
     /** A black signal pole with an LED head on top facing the traffic coming up to the stop line. */
     private static void signal(Job job, Layout.Fixture f) {
-        float t = f.top();
-        int y0;
-        if (isHalf(t)) {
-            int b = (int) Math.floor(t);
-            set(job, new BlockPos(f.x(), b, f.z()), job.palette.get("ptmuk:paving_slabs", "smooth_stone"));
-            y0 = b + 1;
-        } else {
-            y0 = (int) t;
-        }
+        int y0 = standOn(job, f);
         BlockState pole = job.palette.get("ptmuk:signal_pole_black", "iron_bars");
         BlockState head = job.palette.get("ptmuk:led_signal", "ptm2:traffic_light");
         head = with(head, "rotation", f.rot8());

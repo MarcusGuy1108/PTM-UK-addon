@@ -124,6 +124,16 @@ Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 r
 
 Roads are levelled into the ground: hills are cut through and dips built up with a smooth gradient (no steeper than 1 in 10, in half-block steps), junctions are flat, and the ground either side is sloped to meet the road. Trees in the way are cleared. Set PTM2 to left-hand traffic in its settings so its AI cars use the left lane.
 
+### Site planners: car parks, retail parks and drive-thrus
+
+The Road Planner's **Sites** mode (the Sites button, or Q) lays out whole sites. Drag out a rectangle on the map, pick what it is in the panel, and it's laid out to fit, shown on the map with everything else. Drag a site to move it or a corner to resize it. End a road on a site's edge and that becomes its way in (any number of them); the side the widest road reaches is the road side, or set it yourself. **Build** builds the sites with the roads, and **Undo build** takes them away again.
+
+- **Car park:** UK-sized bays (3 wide, 5 deep) in rows with 6-block aisles, cross aisles joining the rows, kerbed islands with trees and lamp posts at the row ends, a planted verge with trees round the edge, a blue P sign at each way in and pay and display machines. Wider bays nearest the way in for **disabled drivers**, **parents with children** and **electric cars** (with a charger at each), each with its symbol painted on. Choose how many of each, whether the bays face the road or run along it (or let it fit the most), trees (none, at the row ends, or lots) and lights.
+- **Retail park:** a terrace of big shop units across the back (as many as fit, or choose 1 to 8, and how deep), glazed fronts with double doors, a white fascia with each shop's lit sign, clad sides and a flat roof, and inside checkouts and fittings for what each one sells (clothes, sports, beauty, homeware, pets, electricals, DIY or food). A canopy on tall steel masts runs along the shop fronts over a paved walkway with bollards, bins, benches and trolleys, and zebra crossings with tactile paving lead to each door from the car park in front. The shop names are made up (TRAILHEAD, GLOW, FASHION FIX, NEST HOME, SPRINT, PET PLANET, SPARKS, FIX & BUILD, FRESHWAYS, COMFY SOFAS) and you can rename the signs in game.
+- **Drive-thru:** a brick restaurant with a glass front and its sign, a one-way lane round it (clockwise, so the order point and the pay and collect windows are on the driver's side) with arrows painted on, the menu board and order point on the island by the way in, picnic tables beside it, and a car park in front. Inside: tables, the counter with tills, menu boards and the kitchen with fryers. Pick from four made-up names (BUN & GONE, BEAN THERE, CLUCK SHACK, DOUGH TO GO).
+
+A site that's too small for a retail park or drive-thru is laid out as a car park and the planner says so. Sites sit level at the height of the ground under them (or raise and lower them), and roads that reach them meet them level. The bay markings (disabled, parent and child, EV) are also blocks of their own in the street furniture tab.
+
 ### Home furniture
 
 In the **UK Home Furniture** tab, all drawn for this mod:

@@ -11,10 +11,13 @@ import com.ptmuk.road.RoadPlannerItem;
 import com.ptmuk.road.RoadPlans;
 import com.ptmuk.road.layout.Curve;
 import com.ptmuk.road.layout.Layout;
+import com.ptmuk.road.layout.SiteLayout;
 import com.ptmuk.road.plan.RoadPlan;
 import com.ptmuk.road.plan.RoadPlan.Junction;
 import com.ptmuk.road.plan.RoadPlan.Node;
 import com.ptmuk.road.plan.RoadPlan.Segment;
+import com.ptmuk.road.plan.RoadPlan.Site;
+import com.ptmuk.road.plan.RoadPlan.SiteType;
 import com.ptmuk.road.plan.RoadStyle;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +40,8 @@ import org.lwjgl.glfw.GLFW;
  * point by point (it curves smoothly through them); end on another road to make a junction.
  * Select a point to drag it or change its junction (give way, stop, mini roundabout,
  * roundabout, traffic lights), select a road to bend it or change its lanes, pavements and
- * markings. The map shows exactly what will be built; Build sends it to the server.
+ * markings. Sites: drag out a car park, retail park or drive-thru; roads that reach its edge
+ * become its ways in. The map shows exactly what will be built; Build sends it to the server.
  */
 public class RoadPlannerScreen extends Screen {
     private static final ResourceLocation PREVIEW = PtmUk.id("road_planner/preview");
@@ -47,7 +51,10 @@ public class RoadPlannerScreen extends Screen {
     private static RoadStyle lastStyle = RoadStyle.mainRoad();
     private static double lastZoom = 2;
 
-    private enum Mode { DRAW, EDIT }
+    private enum Mode { DRAW, EDIT, SITES }
+
+    /** The smallest site that can be marked out. */
+    private static final int MIN_SITE = 12;
 
     private final InteractionHand hand;
     private RoadPlan plan;
@@ -72,6 +79,15 @@ public class RoadPlannerScreen extends Screen {
     private int messageTicks;
 
     private final List<Button> panelButtons = new ArrayList<>();
+
+    // sites: the one selected, what a new one will be, and dragging one out, along or by a corner
+    private Integer selSite;
+    private static SiteType newSiteType = SiteType.CAR_PARK;
+    private int siteDrag;               // 0 none, 1 marking out a new one, 2 moving, 3 resizing
+    private int siteCorner;             // bit 0: the east side, bit 1: the south side
+    private int dragX0, dragZ0, dragX1, dragZ1;
+    private double grabX, grabZ;
+    private int[] siteStart;
 
     public static void open(InteractionHand hand) {
         Minecraft.getInstance().setScreen(new RoadPlannerScreen(hand));
@@ -120,6 +136,7 @@ public class RoadPlannerScreen extends Screen {
         int x = PANEL + 4;
         drawButton = addRenderableWidget(Button.builder(Component.literal("Draw"), b -> setMode(Mode.DRAW)).bounds(x, 3, 36, 16).build());
         editButton = addRenderableWidget(Button.builder(Component.literal("Edit"), b -> setMode(Mode.EDIT)).bounds(x + 38, 3, 36, 16).build());
+        sitesButton = addRenderableWidget(Button.builder(Component.literal("Sites"), b -> setMode(Mode.SITES)).bounds(x + 76, 3, 38, 16).build());
         int right = width - 3;
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(right - 36, 3, 36, 16).build());
         addRenderableWidget(Button.builder(Component.literal("Build"), b -> build()).bounds(right - 76, 3, 38, 16).build());
@@ -128,6 +145,7 @@ public class RoadPlannerScreen extends Screen {
             // the roads are gone again, so the plan can be changed and built afresh
             plan.nodes.forEach(n -> n.built = false);
             plan.segments.forEach(sg -> sg.built = false);
+            plan.sites.forEach(st -> st.built = false);
             changed();
             flash("Last build undone - the plan is still here to change and build again");
         }).bounds(right - 136, 3, 58, 16).build());
@@ -136,6 +154,7 @@ public class RoadPlannerScreen extends Screen {
             plan = new RoadPlan();
             chainLast = null;
             selNode = selSeg = null;
+            selSite = null;
             changed();
         }).bounds(right - 172, 3, 34, 16).build());
         rebuildPanel();
@@ -147,7 +166,7 @@ public class RoadPlannerScreen extends Screen {
         rebuildPanel();
     }
 
-    private Button drawButton, editButton;
+    private Button drawButton, editButton, sitesButton;
 
     /** The left panel: the selected point's junction, or the selected (or next) road's style. */
     private void rebuildPanel() {
@@ -158,8 +177,13 @@ public class RoadPlannerScreen extends Screen {
         if (drawButton != null) {
             drawButton.active = mode != Mode.DRAW;
             editButton.active = mode != Mode.EDIT;
+            sitesButton.active = mode != Mode.SITES;
         }
         int y = TOP + 14;
+        if (mode == Mode.SITES) {
+            sitePanel(y);
+            return;
+        }
         Node n = selNode == null ? null : plan.node(selNode);
         if (n != null && mode == Mode.EDIT) {
             int arms = plan.segmentsAt(n.id).size();
@@ -271,6 +295,133 @@ public class RoadPlannerScreen extends Screen {
                 flash("New roads will be " + st.name);
             });
         }
+    }
+
+    /** The left panel in Sites mode: what a new site will be, or the selected site's options. */
+    private void sitePanel(int y) {
+        Site st = selSite == null ? null : plan.site(selSite);
+        if (st == null) {
+            button(y, () -> "New site: " + newSiteType.title, b -> {
+                SiteType[] all = SiteType.values();
+                newSiteType = all[(newSiteType.ordinal() + 1) % all.length];
+            });
+            return;
+        }
+        Consumer<Runnable> edit = r -> {
+            remember();
+            r.run();
+            st.built = false;
+            changed();
+        };
+        button(y, () -> "Type: " + st.type.title, b -> edit.accept(() -> {
+            SiteType[] all = SiteType.values();
+            st.type = all[(st.type.ordinal() + 1) % all.length];
+            siteDefaults(st);
+        }));
+        y += ROW;
+        button(y, () -> "Road side: " + sideName(st.front), b -> edit.accept(() -> st.front = st.front >= 3 ? -1 : st.front + 1));
+        y += ROW;
+        button(y, () -> "Bays: " + (st.rows == 0 ? "facing the road" : st.rows == 1 ? "along the road" : "most that fit"),
+                b -> edit.accept(() -> st.rows = st.rows >= 1 ? -1 : st.rows + 1));
+        y += ROW;
+        halfButtons(y, () -> "Disabled: " + st.disabled, b -> edit.accept(() -> st.disabled = (st.disabled + 1) % 9),
+                () -> "Parent: " + st.parentChild, b -> edit.accept(() -> st.parentChild = (st.parentChild + 1) % 7));
+        y += ROW;
+        halfButtons(y, () -> "EV bays: " + st.ev, b -> edit.accept(() -> st.ev = (st.ev + 1) % 9),
+                () -> "Lights: " + (st.lights ? "yes" : "no"), b -> edit.accept(() -> st.lights = !st.lights));
+        y += ROW;
+        button(y, () -> "Trees: " + (st.trees == 0 ? "none" : st.trees == 1 ? "at the row ends" : "lots"),
+                b -> edit.accept(() -> st.trees = (st.trees + 1) % 3));
+        y += ROW;
+        if (st.type == SiteType.RETAIL_PARK) {
+            halfButtons(y, () -> "Shops: " + (st.units == 0 ? "auto" : st.units), b -> edit.accept(() -> st.units = (st.units + 1) % 9),
+                    () -> "Depth: " + st.unitDepth, b -> edit.accept(() -> st.unitDepth = st.unitDepth >= 44 ? 16 : st.unitDepth + 4));
+            y += ROW;
+            halfButtons(y, () -> "Canopy: " + (st.canopy ? "yes" : "no"), b -> edit.accept(() -> st.canopy = !st.canopy),
+                    () -> "Names", b -> edit.accept(() -> st.brand = (st.brand + 1) % SiteLayout.RETAIL_BRANDS.size()));
+            y += ROW;
+        } else if (st.type == SiteType.DRIVE_THRU) {
+            button(y, () -> "Name: " + SiteLayout.DRIVE_THRU_BRANDS.get(Math.floorMod(st.brand, SiteLayout.DRIVE_THRU_BRANDS.size())).name(),
+                    b -> edit.accept(() -> st.brand = (st.brand + 1) % SiteLayout.DRIVE_THRU_BRANDS.size()));
+            y += ROW;
+        }
+        button(y, () -> "Height: " + (Double.isNaN(st.y) ? "from ground" : (int) st.y), b -> edit.accept(() -> st.y = Double.NaN));
+        y += ROW;
+        halfButtons(y, "Raise", b -> nudgeSite(st, 1), "Lower", b -> nudgeSite(st, -1));
+        y += ROW;
+        button(y, () -> "Delete site", b -> deleteSelection());
+    }
+
+    private static String sideName(int side) {
+        return switch (side) {
+            case 0 -> "south";
+            case 1 -> "west";
+            case 2 -> "north";
+            case 3 -> "east";
+            default -> "auto";
+        };
+    }
+
+    /** Sensible bays for each kind of site. */
+    private static void siteDefaults(Site st) {
+        switch (st.type) {
+            case CAR_PARK -> {
+                st.disabled = 2;
+                st.parentChild = 0;
+                st.ev = 2;
+            }
+            case RETAIL_PARK -> {
+                st.disabled = 4;
+                st.parentChild = 2;
+                st.ev = 2;
+            }
+            case DRIVE_THRU -> {
+                st.disabled = 2;
+                st.parentChild = 0;
+                st.ev = 0;
+            }
+        }
+    }
+
+    private void nudgeSite(Site st, int dy) {
+        remember();
+        double base = Double.isNaN(st.y) ? (preview != null ? preview.siteLevel(st.id) : 64) : st.y;
+        st.y = base + dy;
+        st.built = false;
+        changed();
+    }
+
+    private SiteLayout siteLayout(int id) {
+        if (preview == null) {
+            return null;
+        }
+        for (SiteLayout sl : preview.sites) {
+            if (sl.site.id == id) {
+                return sl;
+            }
+        }
+        return null;
+    }
+
+    private Site siteAt(double sx, double sy) {
+        double wx = worldX(sx), wz = worldZ(sy);
+        for (int i = plan.sites.size() - 1; i >= 0; i--) {
+            if (plan.sites.get(i).contains(wx, wz)) {
+                return plan.sites.get(i);
+            }
+        }
+        return null;
+    }
+
+    /** Which corner of a site is under the mouse (bit 0: east, bit 1: south), or -1. */
+    private int cornerAt(Site st, double sx, double sy) {
+        for (int k = 0; k < 4; k++) {
+            double cx = screenX((k & 1) != 0 ? st.x1 + 1 : st.x0), cy = screenY((k & 2) != 0 ? st.z1 + 1 : st.z0);
+            if (Math.hypot(cx - sx, cy - sy) < 7) {
+                return k;
+            }
+        }
+        return -1;
     }
 
     private static void copyStyle(RoadStyle from, RoadStyle to) {
@@ -401,6 +552,7 @@ public class RoadPlannerScreen extends Screen {
         plan = RoadPlan.fromJson(history.remove(history.size() - 1));
         chainLast = null;
         selNode = selSeg = null;
+        selSite = null;
         changed();
     }
 
@@ -412,6 +564,13 @@ public class RoadPlannerScreen extends Screen {
 
     private void deleteSelection() {
         remember();
+        if (mode == Mode.SITES && selSite != null) {
+            final int id = selSite;
+            plan.sites.removeIf(st -> st.id == id);
+            selSite = null;
+            changed();
+            return;
+        }
         if (selNode != null) {
             for (Segment s : plan.segmentsAt(selNode)) {
                 plan.touch(s.a == selNode ? s.b : s.a);
@@ -436,8 +595,8 @@ public class RoadPlannerScreen extends Screen {
     }
 
     private void build() {
-        if (preview == null && plan.segments.isEmpty()) {
-            flash("Draw a road first");
+        if (preview == null && plan.segments.isEmpty() && plan.sites.isEmpty()) {
+            flash("Draw a road or a site first");
             return;
         }
         byte[] data = RoadPlans.pack(plan);
@@ -562,6 +721,10 @@ public class RoadPlannerScreen extends Screen {
             drawClick(mx, my);
             return true;
         }
+        if (mode == Mode.SITES) {
+            siteClick(mx, my);
+            return true;
+        }
         // edit: the selected road's bend handle, a point, or a road
         if (selSeg != null) {
             Segment s = plan.segment(selSeg);
@@ -586,6 +749,33 @@ public class RoadPlannerScreen extends Screen {
         selSeg = hit == null ? null : hit[0];
         rebuildPanel();
         return true;
+    }
+
+    private void siteClick(double mx, double my) {
+        Site sel = selSite == null ? null : plan.site(selSite);
+        int corner = sel == null ? -1 : cornerAt(sel, mx, my);
+        if (corner >= 0) {
+            remember();
+            siteDrag = 3;
+            siteCorner = corner;
+            return;
+        }
+        Site hit = siteAt(mx, my);
+        if (hit != null) {
+            selSite = hit.id;
+            remember();
+            siteDrag = 2;
+            grabX = worldX(mx);
+            grabZ = worldZ(my);
+            siteStart = new int[]{hit.x0, hit.z0, hit.x1, hit.z1};
+            rebuildPanel();
+            return;
+        }
+        selSite = null;
+        siteDrag = 1;
+        dragX0 = dragX1 = (int) Math.floor(worldX(mx));
+        dragZ0 = dragZ1 = (int) Math.floor(worldZ(my));
+        rebuildPanel();
     }
 
     private void drawClick(double mx, double my) {
@@ -665,6 +855,30 @@ public class RoadPlannerScreen extends Screen {
         if (panning) {
             camX -= (mx - lastMouseX) / zoom;
             camZ -= (my - lastMouseY) / zoom;
+        } else if (siteDrag == 1) {
+            dragX1 = (int) Math.floor(worldX(mx));
+            dragZ1 = (int) Math.floor(worldZ(my));
+        } else if (siteDrag >= 2 && selSite != null && plan.site(selSite) != null) {
+            Site st = plan.site(selSite);
+            if (siteDrag == 2) {
+                int ox = (int) Math.round(worldX(mx) - grabX), oz = (int) Math.round(worldZ(my) - grabZ);
+                st.x0 = siteStart[0] + ox;
+                st.z0 = siteStart[1] + oz;
+                st.x1 = siteStart[2] + ox;
+                st.z1 = siteStart[3] + oz;
+            } else {
+                int wx = (int) Math.round(worldX(mx)), wz = (int) Math.round(worldZ(my));
+                if ((siteCorner & 1) != 0) {
+                    st.x1 = Math.max(st.x0 + MIN_SITE - 1, wx - 1);
+                } else {
+                    st.x0 = Math.min(st.x1 - MIN_SITE + 1, wx);
+                }
+                if ((siteCorner & 2) != 0) {
+                    st.z1 = Math.max(st.z0 + MIN_SITE - 1, wz - 1);
+                } else {
+                    st.z0 = Math.min(st.z1 - MIN_SITE + 1, wz);
+                }
+            }
         } else if (draggingNode && selNode != null) {
             Node n = plan.node(selNode);
             if (n != null) {
@@ -697,6 +911,30 @@ public class RoadPlannerScreen extends Screen {
                 chainLast = null;                      // right-click finishes the road
                 flash("Road finished");
             }
+            return true;
+        }
+        if (siteDrag != 0) {
+            if (siteDrag == 1) {
+                int w = Math.abs(dragX1 - dragX0) + 1, d = Math.abs(dragZ1 - dragZ0) + 1;
+                if (w >= MIN_SITE && d >= MIN_SITE) {
+                    remember();
+                    Site st = plan.addSite(newSiteType, dragX0, dragZ0, dragX1, dragZ1);
+                    siteDefaults(st);
+                    selSite = st.id;
+                    changed();
+                } else if (moved) {
+                    flash("Make a site at least " + MIN_SITE + " x " + MIN_SITE + " blocks");
+                }
+            } else if (moved) {
+                Site st = selSite == null ? null : plan.site(selSite);
+                if (st != null) {
+                    st.built = false;
+                }
+                changed();
+            } else if (!history.isEmpty()) {
+                history.remove(history.size() - 1);
+            }
+            siteDrag = 0;
             return true;
         }
         if (draggingNode || draggingBend) {
@@ -749,7 +987,8 @@ public class RoadPlannerScreen extends Screen {
             chainLast = null;
             return true;
         }
-        if ((key == GLFW.GLFW_KEY_DELETE || key == GLFW.GLFW_KEY_BACKSPACE) && (selNode != null || selSeg != null)) {
+        if ((key == GLFW.GLFW_KEY_DELETE || key == GLFW.GLFW_KEY_BACKSPACE)
+                && (selNode != null || selSeg != null || (mode == Mode.SITES && selSite != null))) {
             deleteSelection();
             return true;
         }
@@ -764,6 +1003,7 @@ public class RoadPlannerScreen extends Screen {
             case GLFW.GLFW_KEY_A, GLFW.GLFW_KEY_LEFT -> camX -= step;
             case GLFW.GLFW_KEY_D, GLFW.GLFW_KEY_RIGHT -> camX += step;
             case GLFW.GLFW_KEY_E -> setMode(mode == Mode.DRAW ? Mode.EDIT : Mode.DRAW);
+            case GLFW.GLFW_KEY_Q -> setMode(mode == Mode.SITES ? Mode.DRAW : Mode.SITES);
             default -> {
                 return super.keyPressed(key, scan, mods);
             }
@@ -811,7 +1051,7 @@ public class RoadPlannerScreen extends Screen {
             }
             pending = null;
         }
-        if (previewStale && pending == null && !draggingNode && !draggingBend && map != null) {
+        if (previewStale && pending == null && !draggingNode && !draggingBend && siteDrag == 0 && map != null) {
             previewStale = false;
             tilesSinceLevel = 0;
             RoadPlan copy = plan.copy();
@@ -852,6 +1092,7 @@ public class RoadPlannerScreen extends Screen {
                 case Layout.VERGE, Layout.ISLAND, Layout.RESERVATION -> abgr(0x5E9C48, 255);
                 case Layout.BARRIER -> abgr(0xD0D0D8, 255);
                 case Layout.BLEND -> abgr(0x8A7650, 70);
+                case Layout.PLOT -> abgr(0x8E9196, 255);
                 default -> 0;
             };
             int m = l.mark[i];
@@ -867,7 +1108,14 @@ public class RoadPlannerScreen extends Screen {
         for (Layout.Fixture f : l.fixtures) {
             int x = f.x() - l.x0, z = f.z() - l.z0;
             if (x >= 0 && z >= 0 && x < l.w && z < l.h) {
-                img.setPixelRGBA(x, z, abgr(0xFFE45C, 255));
+                int c = switch (f.type()) {
+                    case TREE -> 0x2E6B2A;
+                    case DISABLED_BAY, PARENT_BAY -> 0x4A8CE0;
+                    case EV_BAY, EV_CHARGER -> 0x3CC060;
+                    case STREET_LIGHT, SIGNAL -> 0xFFE45C;
+                    default -> 0xD8D8D8;
+                };
+                img.setPixelRGBA(x, z, abgr(c, 255));
             }
         }
         previewTex.upload();
@@ -904,12 +1152,16 @@ public class RoadPlannerScreen extends Screen {
         g.fill(PANEL, 0, width, TOP, 0xF0202226);
         Node n = selNode == null ? null : plan.node(selNode);
         Segment s = selSeg == null ? null : plan.segment(selSeg);
-        String heading = n != null && mode == Mode.EDIT ? "Point " + describe(n)
+        Site site = selSite == null ? null : plan.site(selSite);
+        String heading = mode == Mode.SITES ? (site == null ? "Sites" : site.type.title + " (" + site.width() + " x " + site.depth() + ")")
+                : n != null && mode == Mode.EDIT ? "Point " + describe(n)
                 : s != null ? "Selected road (" + s.style.totalWidth() + " wide)"
                 : "New roads (" + drawStyle.totalWidth() + " wide)";
         g.drawString(font, "Road Planner", 6, 6, 0xFFFFD24A);
         g.drawString(font, heading, 6, TOP + 3, 0xFFE0E0E0);
-        String help = mode == Mode.DRAW
+        String help = mode == Mode.SITES
+                ? "Drag out a site; drag it to move, a corner to resize."
+                : mode == Mode.DRAW
                 ? (chainLast == null ? "Click to start a road. Right-drag: move map. Scroll: zoom."
                 : "Click: next point. End on a road to join it (Shift: slip road). Right-click: finish.")
                 : "Drag a point, or a road's middle dot to bend it. Del: delete. Ctrl+Z: undo.";
@@ -928,6 +1180,9 @@ public class RoadPlannerScreen extends Screen {
         }
         if (messageTicks > 0) {
             g.drawCenteredString(font, message, (PANEL + width) / 2, TOP + 30, 0xFFFFFFFF);
+        }
+        if (mode == Mode.SITES) {
+            sitePanelText(g, site);
         }
         super.render(g, mx, my, partial);
     }
@@ -957,7 +1212,74 @@ public class RoadPlannerScreen extends Screen {
         g.fill((int) x - r, (int) y - r, (int) x + r + 1, (int) y + r + 1, colour);
     }
 
+    private void rect(GuiGraphics g, double x0, double z0, double x1, double z1, int t, int colour) {
+        int a = (int) screenX(x0), b = (int) screenY(z0), c = (int) screenX(x1), d = (int) screenY(z1);
+        g.fill(a, b, c, b + t, colour);
+        g.fill(a, d - t, c, d, colour);
+        g.fill(a, b, a + t, d, colour);
+        g.fill(c - t, b, c, d, colour);
+    }
+
+    /** Site outlines, the road side picked out, handles on the selected one, and one being marked out. */
+    private void drawSites(GuiGraphics g) {
+        for (Site st : plan.sites) {
+            boolean sel = mode == Mode.SITES && selSite != null && selSite == st.id;
+            SiteLayout sl = siteLayout(st.id);
+            if (sl == null || pending != null || siteDrag >= 2) {
+                g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), 0x40707478);
+            }
+            rect(g, st.x0, st.z0, st.x1 + 1, st.z1 + 1, sel ? 2 : 1, sel ? 0xFFFFD24A : 0xA0FFFFFF);
+            int front = sl != null ? sl.frame.front() : Math.max(0, st.front);
+            double ax = front == 3 ? st.x1 + 1 : st.x0, bx = front == 1 ? st.x0 : st.x1 + 1;
+            double az = front == 0 ? st.z1 + 1 : st.z0, bz = front == 2 ? st.z0 : st.z1 + 1;
+            g.fill((int) screenX(ax) - 1, (int) screenY(az) - 1, (int) screenX(bx) + 1, (int) screenY(bz) + 1, 0xFF5AA0FF);
+            if (sel) {
+                for (int k = 0; k < 4; k++) {
+                    double cx = screenX((k & 1) != 0 ? st.x1 + 1 : st.x0), cy = screenY((k & 2) != 0 ? st.z1 + 1 : st.z0);
+                    dot(g, cx, cy, 4, 0xFF000000);
+                    dot(g, cx, cy, 3, 0xFFFFD24A);
+                }
+            }
+            if (zoom >= 1 || sel) {
+                g.drawString(font, st.type.title, (int) screenX(st.x0) + 3, (int) screenY(st.z0) + 3, sel ? 0xFFFFD24A : 0xFFE0E0E0);
+            }
+        }
+        if (siteDrag == 1) {
+            int x0 = Math.min(dragX0, dragX1), x1 = Math.max(dragX0, dragX1) + 1, z0 = Math.min(dragZ0, dragZ1), z1 = Math.max(dragZ0, dragZ1) + 1;
+            boolean ok = x1 - x0 >= MIN_SITE && z1 - z0 >= MIN_SITE;
+            g.fill((int) screenX(x0), (int) screenY(z0), (int) screenX(x1), (int) screenY(z1), ok ? 0x40FFD24A : 0x40FF5050);
+            rect(g, x0, z0, x1, z1, 1, ok ? 0xFFFFD24A : 0xFFFF5050);
+            g.drawString(font, newSiteType.title + "  " + (x1 - x0) + " x " + (z1 - z0), (int) mouseX + 8, (int) mouseY - 4, 0xFFFFD24A);
+        }
+    }
+
+    /** Along the bottom of the map: how many bays the selected site got, and any warning. */
+    private void sitePanelText(GuiGraphics g, Site st) {
+        SiteLayout sl = st == null ? null : siteLayout(st.id);
+        if (sl == null) {
+            g.drawString(font, "End a road on a site's edge to make a way in.", PANEL + 4, height - 24, 0xFFB0B0B0);
+            return;
+        }
+        int shops = countShops(sl);
+        g.drawString(font, sl.bayCount() + " parking bays" + (shops == 0 ? "" : ", " + shops + " building" + (shops == 1 ? "" : "s")),
+                PANEL + 4, height - 24, 0xFFE0E0E0);
+        if (sl.warning != null) {
+            g.drawString(font, sl.warning, PANEL + 4, height - 34, 0xFFFF9050);
+        }
+    }
+
+    private static int countShops(SiteLayout sl) {
+        int n = 0;
+        for (SiteLayout.Building b : sl.buildings) {
+            if (!b.kind().equals("canopy")) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     private void drawPlan(GuiGraphics g) {
+        drawSites(g);
         boolean showLines = preview == null || pending != null || draggingNode || draggingBend || zoom < 1.5;
         for (Segment s : plan.segments) {
             Curve c = lines.curves.get(s.id);

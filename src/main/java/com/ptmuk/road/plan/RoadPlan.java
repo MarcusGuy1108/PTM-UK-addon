@@ -8,9 +8,10 @@ import java.util.List;
 
 /**
  * A road network drawn in the Road Planner: points (nodes) joined by roads (segments). A node
- * where three or more roads meet is a junction; a node can also be made a roundabout. Kept as
- * plain data so the planner screen, the item that remembers it and the server builder all share
- * it (sent between them as JSON).
+ * where three or more roads meet is a junction; a node can also be made a roundabout. Sites
+ * (car parks, retail parks, drive-thrus) are rectangles laid out round the roads that reach
+ * them. Kept as plain data so the planner screen, the item that remembers it and the server
+ * builder all share it (sent between them as JSON).
  */
 public final class RoadPlan {
     public enum Junction {
@@ -54,8 +55,57 @@ public final class RoadPlan {
         public boolean built;
     }
 
+    public enum SiteType {
+        CAR_PARK("Car park"),
+        RETAIL_PARK("Retail park"),
+        DRIVE_THRU("Drive-thru");
+
+        public final String title;
+
+        SiteType(String title) {
+            this.title = title;
+        }
+    }
+
+    /** A rectangle of ground laid out as a car park, a retail park or a drive-thru. */
+    public static final class Site {
+        public int id;
+        public SiteType type = SiteType.CAR_PARK;
+        /** Corners in blocks, both inclusive. */
+        public int x0, z0, x1, z1;
+        /** Height of the surface, or NaN to take it from the ground. */
+        public double y = Double.NaN;
+        /** The side facing the road (0 south, 1 west, 2 north, 3 east), or -1 for the side a road reaches. */
+        public int front = -1;
+        /** Bays in rows towards the front (aisles run front to back), across it, or -1 to choose. */
+        public int rows = -1;
+        public int disabled = 2, parentChild = 2, ev = 2;
+        /** 0 no trees, 1 at the row ends, 2 also every few bays along the rows. */
+        public int trees = 1;
+        public boolean lights = true;
+        /** Retail park: how many shop units (0 = as many as fit) and how deep they are. */
+        public int units, unitDepth = 28;
+        public boolean canopy = true;
+        /** Which made-up brand names to use (cycled). */
+        public int brand;
+        public boolean built;
+
+        public int width() {
+            return x1 - x0 + 1;
+        }
+
+        public int depth() {
+            return z1 - z0 + 1;
+        }
+
+        public boolean contains(double x, double z) {
+            return x >= x0 && x < x1 + 1 && z >= z0 && z < z1 + 1;
+        }
+    }
+
     public List<Node> nodes = new ArrayList<>();
     public List<Segment> segments = new ArrayList<>();
+    public List<Site> sites = new ArrayList<>();
     public int nextId = 1;
 
     private static final Gson GSON = new GsonBuilder().serializeSpecialFloatingPointValues().create();
@@ -88,7 +138,19 @@ public final class RoadPlan {
         if (segments == null) {
             segments = new ArrayList<>();
         }
+        if (sites == null) {
+            sites = new ArrayList<>();
+        }
         nodes.removeIf(n -> n == null);
+        sites.removeIf(st -> st == null || st.type == null);
+        for (Site st : sites) {
+            int ax = Math.min(st.x0, st.x1), bx = Math.max(st.x0, st.x1), az = Math.min(st.z0, st.z1), bz = Math.max(st.z0, st.z1);
+            st.x0 = ax;
+            st.x1 = bx;
+            st.z0 = az;
+            st.z1 = bz;
+            nextId = Math.max(nextId, st.id + 1);
+        }
         segments.removeIf(s -> s == null || node(s.a) == null || node(s.b) == null || s.a == s.b);
         for (Node n : nodes) {
             if (n.junction == null) {
@@ -130,6 +192,27 @@ public final class RoadPlan {
             }
         }
         return null;
+    }
+
+    public Site site(int id) {
+        for (Site s : sites) {
+            if (s.id == id) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+    public Site addSite(SiteType type, int x0, int z0, int x1, int z1) {
+        Site s = new Site();
+        s.id = nextId++;
+        s.type = type;
+        s.x0 = Math.min(x0, x1);
+        s.x1 = Math.max(x0, x1);
+        s.z0 = Math.min(z0, z1);
+        s.z1 = Math.max(z0, z1);
+        sites.add(s);
+        return s;
     }
 
     public List<Segment> segmentsAt(int nodeId) {

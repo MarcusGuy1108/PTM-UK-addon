@@ -4,9 +4,11 @@ import com.ptmuk.road.plan.RoadPlan;
 import com.ptmuk.road.plan.RoadPlan.Junction;
 import com.ptmuk.road.plan.RoadPlan.Node;
 import com.ptmuk.road.plan.RoadPlan.Segment;
+import com.ptmuk.road.plan.RoadPlan.Site;
 import com.ptmuk.road.plan.RoadStyle;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +27,7 @@ import java.util.Map;
 public final class Layout {
     // what each column becomes
     public static final byte NONE = 0, ROAD = 1, KERB = 2, FOOTWAY = 3, VERGE = 4, ISLAND = 5, ISLAND_KERB = 6,
-            RESERVATION = 7, BARRIER = 8, PAINT = 9, DOME = 10, BLEND = 11, TACTILE = 12;
+            RESERVATION = 7, BARRIER = 8, PAINT = 9, DOME = 10, BLEND = 11, TACTILE = 12, PLOT = 13;
     // markings (PTM2 blocks); YELLOW is or-ed in for yellow paint
     public static final byte M_NONE = 0, M_LINE = 1, M_DOUBLE = 2, M_HALF = 3, M_GIVE_WAY = 4, M_STOP = 5,
             M_TRIANGLE = 6, M_ZEBRA = 7, M_HATCH = 8, M_ZIGZAG = 9, M_ARROW = 10;
@@ -35,7 +37,12 @@ public final class Layout {
     public static final double MAX_GRADE = 0.1;
     private static final double SMOOTH = 14;
 
-    public enum FixtureType { STREET_LIGHT, SIGNAL }
+    public enum FixtureType {
+        STREET_LIGHT, SIGNAL,
+        // on sites
+        TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
+        ORDER_POINT, MENU_BOARD, PICNIC_TABLE
+    }
 
     /** Something stood on the surface: x, z, the top of the surface under it and which way it faces (PTM2 rotation, 0 = south). */
     public record Fixture(FixtureType type, int x, int z, float top, int rot8, int level) {
@@ -60,6 +67,14 @@ public final class Layout {
     public final List<SignalZone> signalZones = new ArrayList<>();
     /** Centre lines, for drawing the plan: per segment id. */
     public final Map<Integer, Curve> curves = new HashMap<>();
+    /** Each site as laid out (full layouts only). */
+    public final List<SiteLayout> sites = new ArrayList<>();
+
+    /** A building on a site: its own frame (front facing out), the top of its floor and its brand. */
+    public record SiteBuilding(int siteId, String kind, SiteFrame frame, int floor, int brand) {
+    }
+
+    public final List<SiteBuilding> buildings = new ArrayList<>();
 
     // ------------------------------------------------------------------ working state
 
@@ -69,6 +84,8 @@ public final class Layout {
     private final List<Jn> jns = new ArrayList<>();
     private final Map<Integer, Jn> jnByNode = new HashMap<>();
     private final Map<Integer, Integer> nodeHeight = new HashMap<>();
+    private final Map<Integer, Integer> siteLevel = new HashMap<>();
+    private final Map<Integer, RoadStyle> siteStyles = new HashMap<>();
     private final byte[] markPrio;
 
     private final float[] bestM;
@@ -79,6 +96,8 @@ public final class Layout {
     private final int[] coreOwner;
     private final int[] resSeg;
     private final float[] resD;
+    private final int[] siteOwner;      // index into sites, or -1
+    private final int[] blendFrom;      // BLEND cells: the edge cell they slope down (or up) to
     private Distance toRoad, toCore;
 
     private static final class Seg {
@@ -143,7 +162,17 @@ public final class Layout {
             minZ = Math.min(minZ, j.node.z - r);
             maxZ = Math.max(maxZ, j.node.z + r);
         }
-        if (segs.isEmpty() && jns.isEmpty()) {
+        boolean anySites = full && !plan.sites.isEmpty();
+        if (anySites) {
+            for (Site st : plan.sites) {
+                int r = BLEND_WIDTH + 3;
+                minX = Math.min(minX, st.x0 - r);
+                maxX = Math.max(maxX, st.x1 + 1 + r);
+                minZ = Math.min(minZ, st.z0 - r);
+                maxZ = Math.max(maxZ, st.z1 + 1 + r);
+            }
+        }
+        if (segs.isEmpty() && jns.isEmpty() && !anySites) {
             minX = minZ = 0;
             maxX = maxZ = 1;
         }
@@ -171,6 +200,10 @@ public final class Layout {
         coreOwner = new int[size];
         resSeg = new int[size];
         resD = new float[size];
+        siteOwner = new int[size];
+        blendFrom = new int[size];
+        java.util.Arrays.fill(siteOwner, -1);
+        java.util.Arrays.fill(blendFrom, -1);
         java.util.Arrays.fill(bestM, Float.MAX_VALUE);
         java.util.Arrays.fill(owner, Integer.MIN_VALUE);
         java.util.Arrays.fill(coverA, -1);
@@ -178,7 +211,7 @@ public final class Layout {
         java.util.Arrays.fill(coreOwner, -1);
         java.util.Arrays.fill(resSeg, -1);
         java.util.Arrays.fill(top, Float.NaN);
-        if (segs.isEmpty() && jns.isEmpty()) {
+        if (segs.isEmpty() && jns.isEmpty() && !anySites) {
             return;
         }
         relaxHeights();
@@ -215,6 +248,7 @@ public final class Layout {
     // ------------------------------------------------------------------ the graph
 
     private void prepare() {
+        siteLevels();
         Map<Integer, List<Segment>> at = new HashMap<>();
         for (Segment s : plan.segments) {
             at.computeIfAbsent(s.a, k -> new ArrayList<>()).add(s);
@@ -397,6 +431,12 @@ public final class Layout {
         if (!Double.isNaN(n.y)) {
             return (int) Math.round(n.y);
         }
+        // a road that ends at a site meets it level
+        for (Site st : plan.sites) {
+            if (n.x >= st.x0 - 2 && n.x <= st.x1 + 2 && n.z >= st.z0 - 2 && n.z <= st.z1 + 2) {
+                return siteLevel(st.id);
+            }
+        }
         int bx = (int) Math.floor(n.x), bz = (int) Math.floor(n.z);
         double sum = 0;
         int k = 0;
@@ -417,6 +457,29 @@ public final class Layout {
 
     public int heightOf(int nodeId) {
         return nodeHeight.getOrDefault(nodeId, 64);
+    }
+
+    /** The level of a site's tarmac: as set, or the middle height of the ground under it. */
+    public int siteLevel(int siteId) {
+        return siteLevel.getOrDefault(siteId, 64);
+    }
+
+    private void siteLevels() {
+        for (Site st : plan.sites) {
+            if (!Double.isNaN(st.y)) {
+                siteLevel.put(st.id, (int) Math.round(st.y));
+                continue;
+            }
+            List<Integer> hs = new ArrayList<>();
+            int step = Math.max(1, Math.max(st.width(), st.depth()) / 12);
+            for (int x = st.x0; x <= st.x1; x += step) {
+                for (int z = st.z0; z <= st.z1; z += step) {
+                    hs.add(terrain.groundTop(x, z));
+                }
+            }
+            Collections.sort(hs);
+            siteLevel.put(st.id, hs.isEmpty() ? 64 : hs.get(hs.size() / 2));
+        }
     }
 
     // ------------------------------------------------------------------ heights along each road
@@ -716,6 +779,14 @@ public final class Layout {
 
     /** The style of the road a column belongs to (the nearest road, for kerbs and pavements). */
     public RoadStyle styleOf(int idx) {
+        if (siteOwner[idx] >= 0) {
+            Site st = sites.get(siteOwner[idx]).site;
+            return siteStyles.computeIfAbsent(st.id, k -> {
+                RoadStyle r = RoadStyle.mainRoad();
+                r.footSurface = st.type == RoadPlan.SiteType.CAR_PARK ? "ptmuk:paving_slabs" : "ptmuk:block_paving_grey";
+                return r;
+            });
+        }
         if (carriage[idx]) {
             return styleAt(idx);
         }
@@ -802,6 +873,7 @@ public final class Layout {
                 top[idx] = base + (st.kerbs ? 0.5f : 0f);
             }
         }
+        applySites();
         // the band round the outside where the ground is cut or built up to meet the road
         boolean[] foot = new boolean[size];
         for (int idx = 0; idx < size; idx++) {
@@ -813,6 +885,7 @@ public final class Layout {
                 kind[idx] = BLEND;
                 top[idx] = (float) Math.ceil(top[toFoot.nearest[idx]]);
                 blendDist[idx] = (float) toFoot.dist[idx];
+                blendFrom[idx] = toFoot.nearest[idx];
             }
         }
     }
@@ -1012,8 +1085,8 @@ public final class Layout {
         int size = w * h;
         int[][] nb = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
         for (int idx = 0; idx < size; idx++) {
-            if (kind[idx] != ROAD) {
-                continue;
+            if (kind[idx] != ROAD || siteOwner[idx] >= 0) {
+                continue;                                  // no yellow lines inside car parks
             }
             int x = idx % w, z = idx / w;
             int kerbDir = -1;
@@ -1373,6 +1446,11 @@ public final class Layout {
             if (kind[idx] == NONE) {
                 continue;
             }
+            int so = siteOwner[idx] >= 0 ? siteOwner[idx] : blendFrom[idx] >= 0 ? siteOwner[blendFrom[idx]] : -1;
+            if (so >= 0) {
+                dirty[idx] = !sites.get(so).site.built;
+                continue;
+            }
             int near = carriage[idx] ? idx : toRoad.nearest[idx];
             if (near < 0) {
                 near = idx;
@@ -1395,6 +1473,130 @@ public final class Layout {
                 }
             }
         }
+    }
+
+    // ------------------------------------------------------------------ sites
+
+    private static final Map<SiteLayout.ItemType, FixtureType> SITE_FIXTURES = Map.ofEntries(
+            Map.entry(SiteLayout.ItemType.LAMP, FixtureType.STREET_LIGHT),
+            Map.entry(SiteLayout.ItemType.TREE, FixtureType.TREE),
+            Map.entry(SiteLayout.ItemType.EV_CHARGER, FixtureType.EV_CHARGER),
+            Map.entry(SiteLayout.ItemType.PAY_MACHINE, FixtureType.PAY_MACHINE),
+            Map.entry(SiteLayout.ItemType.PARKING_SIGN, FixtureType.PARKING_SIGN),
+            Map.entry(SiteLayout.ItemType.TROLLEYS, FixtureType.TROLLEYS),
+            Map.entry(SiteLayout.ItemType.BIN, FixtureType.BIN),
+            Map.entry(SiteLayout.ItemType.BOLLARD, FixtureType.BOLLARD),
+            Map.entry(SiteLayout.ItemType.BENCH, FixtureType.BENCH),
+            Map.entry(SiteLayout.ItemType.DISABLED_BAY, FixtureType.DISABLED_BAY),
+            Map.entry(SiteLayout.ItemType.PARENT_BAY, FixtureType.PARENT_BAY),
+            Map.entry(SiteLayout.ItemType.EV_BAY, FixtureType.EV_BAY),
+            Map.entry(SiteLayout.ItemType.ORDER_POINT, FixtureType.ORDER_POINT),
+            Map.entry(SiteLayout.ItemType.MENU_BOARD, FixtureType.MENU_BOARD),
+            Map.entry(SiteLayout.ItemType.PICNIC_TABLE, FixtureType.PICNIC_TABLE));
+
+    /** A road reaching a site, in world terms: the side (0 south, 1 west, 2 north, 3 east), where on it and how wide. */
+    private record Way(int side, int x, int z, int width) {
+    }
+
+    /** Where the roads reach a site: where their centre lines cross its edge, or end just outside it. */
+    private List<Way> ways(Site st) {
+        List<Way> out = new ArrayList<>();
+        for (Seg g : segs) {
+            Curve c = g.c;
+            int width = (int) Math.ceil(g.hc * 2) + 2;
+            boolean prev = st.contains(c.x[0], c.z[0]);
+            for (int i = 1; i < c.n; i++) {
+                boolean in = st.contains(c.x[i], c.z[i]);
+                if (in != prev) {
+                    int k = in ? i : i - 1;
+                    addWay(out, st, c.x[k], c.z[k], width);
+                }
+                prev = in;
+            }
+            for (Node n : new Node[]{g.na, g.nb}) {
+                double x = n.x + 0.5, z = n.z + 0.5;
+                double dx = Math.max(Math.max(st.x0 - x, x - (st.x1 + 1)), 0), dz = Math.max(Math.max(st.z0 - z, z - (st.z1 + 1)), 0);
+                if (!st.contains(x, z) && Math.hypot(dx, dz) <= 3) {
+                    addWay(out, st, Math.max(st.x0, Math.min(st.x1 + 0.5, x)), Math.max(st.z0, Math.min(st.z1 + 0.5, z)), width);
+                }
+            }
+        }
+        out.sort((a, b) -> Integer.compare(b.width, a.width));
+        return out;
+    }
+
+    private static void addWay(List<Way> out, Site st, double x, double z, int width) {
+        double[] dist = {st.z1 + 1 - z, x - st.x0, z - st.z0, st.x1 + 1 - x};
+        int side = 0;
+        for (int k = 1; k < 4; k++) {
+            if (dist[k] < dist[side]) {
+                side = k;
+            }
+        }
+        int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
+        for (Way w : out) {
+            if (w.side == side && Math.abs(w.x - bx) + Math.abs(w.z - bz) < Math.max(w.width, width)) {
+                return;
+            }
+        }
+        out.add(new Way(side, bx, bz, width));
+    }
+
+    /** The side of a site that faces the road: as set, or the side the widest road reaches. */
+    public int siteFront(Site st) {
+        if (st.front >= 0) {
+            return st.front & 3;
+        }
+        List<Way> w = ways(st);
+        return w.isEmpty() ? 0 : w.get(0).side;
+    }
+
+    private void applySites() {
+        for (Site st : plan.sites) {
+            List<Way> ways = ways(st);
+            int front = st.front >= 0 ? st.front & 3 : ways.isEmpty() ? 0 : ways.get(0).side;
+            SiteFrame frame = new SiteFrame(st.x0, st.z0, st.x1, st.z1, front);
+            List<SiteLayout.Entrance> ins = new ArrayList<>();
+            for (Way w : ways) {
+                int side = frame.local(w.side);
+                int along = side == SiteFrame.FRONT || side == SiteFrame.BACK ? frame.u(w.x, w.z) : frame.v(w.x, w.z);
+                ins.add(new SiteLayout.Entrance(side, along, w.width));
+            }
+            SiteLayout sl = new SiteLayout(st, frame, ins);
+            int si = sites.size();
+            sites.add(sl);
+            int level = siteLevel(st.id);
+            for (int v = 0; v < sl.d; v++) {
+                for (int u = 0; u < sl.w; u++) {
+                    int i = sl.at(u, v);
+                    int idx = index(frame.x(u, v), frame.z(u, v));
+                    if (idx < 0 || carriage[idx]) {
+                        continue;
+                    }
+                    kind[idx] = sl.kind[i];
+                    top[idx] = level + sl.rise[i];
+                    mark[idx] = sl.mark[i];
+                    markRot[idx] = (byte) (2 * frame.world(sl.markDir[i]));
+                    markPrio[idx] = 1;
+                    siteOwner[idx] = si;
+                }
+            }
+            for (SiteLayout.Item it : sl.items) {
+                int x = frame.x(it.u(), it.v()), z = frame.z(it.u(), it.v());
+                int idx = index(x, z);
+                if (idx >= 0 && siteOwner[idx] == si) {
+                    fixtures.add(new Fixture(SITE_FIXTURES.get(it.type()), x, z, top[idx], 2 * frame.world(it.dir()), 0));
+                }
+            }
+            for (SiteLayout.Building b : sl.buildings) {
+                buildings.add(new SiteBuilding(st.id, b.kind(), frame.sub(b.u0(), b.v0(), b.u1(), b.v1(), b.dir()), level + 1, b.brand()));
+            }
+        }
+    }
+
+    /** The site a column belongs to, or null. */
+    public SiteLayout siteAt(int idx) {
+        return idx < 0 || siteOwner[idx] < 0 ? null : sites.get(siteOwner[idx]);
     }
 
     public boolean anythingToBuild() {
