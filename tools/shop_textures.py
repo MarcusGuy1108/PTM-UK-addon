@@ -238,6 +238,48 @@ def goods_row(kind):
                 d.rectangle([x + 3, 10, x + 5, 19], fill=_shade(c, 0.8))
                 d.ellipse([x + 3, 4, x + 5, 6], fill=GAP)
                 x += w
+        elif kind == "games":
+            w = 4
+            band = R.choice(((40, 90, 200), (40, 160, 60), (200, 30, 30), (30, 30, 30)))
+            for _ in range(R.choice((4, 5, 6))):
+                c = R.choice(PACK + [(20, 20, 30), (90, 30, 120)])
+                d.rectangle([x, 5, x + w - 2, 23], fill=c)
+                d.rectangle([x, 5, x + w - 2, 7], fill=band)
+                d.rectangle([x, 12, x + w - 2, 17], fill=_shade(c, 1.5))
+                x += w
+        elif kind == "consoles":
+            w = 13
+            c = R.choice(((240, 240, 240), (30, 30, 34)))
+            d.rectangle([x, 9, x + w - 2, 23], fill=c)
+            d.rectangle([x + 2, 12, x + w - 4, 19], fill=R.choice(((40, 90, 200), (200, 40, 60), (40, 160, 90))))
+            d.rectangle([x + 4, 14, x + 7, 17], fill=(20, 20, 20) if c[0] > 100 else (240, 240, 240))
+            x += w
+        elif kind == "medicine":
+            w = 6
+            for _ in range(R.choice((2, 3))):
+                c = R.choice(((220, 40, 60), (40, 120, 200), (60, 170, 90), (240, 160, 40), (140, 60, 180)))
+                for y0 in (15, 6):
+                    d.rectangle([x, y0, x + w - 2, y0 + 8], fill=(248, 248, 246))
+                    d.rectangle([x, y0 + 2, x + w - 2, y0 + 4], fill=c)
+                    d.point((x + 1, y0 + 6), fill=c)
+                x += w
+        elif kind == "toiletries":
+            w = 5
+            c = R.choice(((250, 200, 220), (180, 220, 250), (250, 240, 200), (200, 250, 210), (230, 230, 240)))
+            for _ in range(R.choice((3, 4))):
+                d.rounded_rectangle([x, 8, x + w - 2, 23], 1, fill=c)
+                d.rectangle([x + 1, 5, x + w - 3, 8], fill=R.choice(((240, 240, 240), (60, 60, 70), (220, 160, 40))))
+                d.rectangle([x, 14, x + w - 2, 17], fill=_shade(c, 0.7))
+                x += w
+        elif kind == "magazines":
+            w = 8
+            for _ in range(R.choice((3, 4))):
+                c = R.choice(PACK)
+                d.rectangle([x, 3, x + w - 1, 23], fill=c)
+                d.rectangle([x, 3, x + w - 1, 6], fill=(250, 250, 250) if c[0] < 200 else (20, 20, 20))
+                d.rectangle([x + 1, 9, x + w - 3, 18], fill=_shade(c, 1.4))
+                d.line([(x + w - 1, 3), (x + w - 1, 23)], fill=GAP)
+                x += w - 1
         else:
             raise ValueError(kind)
     return _speckle(img, 3)
@@ -832,4 +874,244 @@ def garment(colour, size=16):
     d = ImageDraw.Draw(img)
     for y in range(0, size, 3):
         d.line([(0, y), (size, y)], fill=_shade(colour, 0.92))
+    return img
+
+
+# ----------------------------------------------------------------- pubs, bars, clubs, cafes, gyms
+
+def pump_clips(size=32):
+    """Three hand-pull clips for made-up ales, side by side (each a third of the width)."""
+    img = _img(size, size, (240, 236, 220))
+    d = ImageDraw.Draw(img)
+    for k, (bg, band) in enumerate((((30, 60, 40), (220, 190, 80)), ((120, 30, 30), (240, 240, 230)), ((30, 40, 90), (230, 140, 40)))):
+        x0 = k * size // 3
+        d.rectangle([x0 + 1, 1, x0 + size // 3 - 2, size - 2], fill=bg)
+        d.ellipse([x0 + 2, 8, x0 + size // 3 - 3, 20], fill=band)
+        d.rectangle([x0 + 3, 24, x0 + size // 3 - 4, 26], fill=band)
+    return img
+
+
+def back_bar(size=64):
+    """The back of a bar: optics hung upside down along the top, shelves of bottles below, all
+    against a mirror."""
+    img = _img(size, size, (150, 160, 166))
+    d = ImageDraw.Draw(img)
+    for y in range(0, size, 2):
+        d.line([(0, y), (size, y)], fill=(156 + (y % 6), 166 + (y % 6), 172 + (y % 6)))
+    d.rectangle([0, 26, size, 28], fill=(90, 60, 36))                  # shelf under the optics
+    d.rectangle([0, 50, size, 52], fill=(90, 60, 36))
+    colours = ((180, 140, 60), (220, 220, 210), (60, 110, 60), (150, 40, 30), (200, 160, 90), (40, 40, 40), (210, 190, 120))
+    for i, x in enumerate(range(2, size - 4, 8)):
+        c = colours[i % len(colours)]
+        d.rectangle([x, 4, x + 5, 16], fill=c)                         # an optic: bottle upside down
+        d.rectangle([x + 1, 16, x + 4, 20], fill=c)
+        d.rectangle([x + 1, 20, x + 4, 24], fill=(200, 204, 210))
+    for row, y0 in ((0, 36), (1, 30 + 30)):
+        pass
+    for i, x in enumerate(range(1, size - 3, 5)):
+        c = colours[(i * 3) % len(colours)]
+        h = 10 + (i % 3) * 2
+        d.rectangle([x, 50 - h, x + 3, 49], fill=c)
+        d.rectangle([x + 1, 50 - h - 3, x + 2, 50 - h], fill=c)
+    for i, x in enumerate(range(2, size - 4, 6)):
+        d.rectangle([x, 56, x + 4, 63], fill=(210, 226, 232), outline=(170, 186, 196))   # glasses
+    return img
+
+
+def baize(size=64):
+    a = NP.normal(0, 1, (size, size))
+    rgb = np.array((30, 110, 50), float) + (a * 4)[..., None]
+    return Image.fromarray(np.dstack([np.clip(rgb, 0, 255).astype(np.uint8), np.full((size, size), 255, np.uint8)]), "RGBA")
+
+
+def pool_top(size=64):
+    """A pool table from above (2 x 1): baize, six pockets, cushions, balls racked and the white."""
+    w, h = size * 2, size
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 255))
+    img.paste(baize(size), (0, 0))
+    img.paste(baize(size), (size, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, w - 1, h - 1], outline=(24, 90, 40), width=5)
+    for x in (4, w // 2, w - 5):
+        for y in (4, h - 5):
+            d.ellipse([x - 4, y - 4, x + 4, y + 4], fill=(10, 10, 10))
+    d.line([(w // 4, 6), (w // 4, h - 7)], fill=(200, 220, 200))
+    balls = [(220, 40, 30), (250, 200, 40)] * 8
+    k = 0
+    for col in range(5):
+        for row in range(col + 1):
+            cx, cy = int(w * 0.68) + col * 5, h // 2 + (row - col / 2) * 5.2
+            d.ellipse([cx - 2.4, cy - 2.4, cx + 2.4, cy + 2.4], fill=(20, 20, 20) if (col, row) == (2, 1) else balls[k])
+            k += 1
+    d.ellipse([w // 4 - 3, h // 2 - 3, w // 4 + 3, h // 2 + 3], fill=(250, 250, 245))
+    return img
+
+
+def dartboard(size=64):
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c = size / 2
+    d.ellipse([1, 1, size - 2, size - 2], fill=(20, 20, 20))
+    for r, (a, b) in ((27, ((200, 30, 30), (30, 130, 50))), (25, ((20, 20, 20), (240, 228, 200))),
+                      (17, ((200, 30, 30), (30, 130, 50))), (15, ((20, 20, 20), (240, 228, 200)))):
+        for k in range(20):
+            d.pieslice([c - r, c - r, c + r, c + r], k * 18 - 99, k * 18 - 81, fill=a if k % 2 else b)
+    d.ellipse([c - 4, c - 4, c + 4, c + 4], fill=(30, 130, 50))
+    d.ellipse([c - 2, c - 2, c + 2, c + 2], fill=(200, 30, 30))
+    return img
+
+
+SYMBOLS = ((220, 30, 40), (250, 200, 30), (130, 40, 160), (40, 170, 70), (250, 140, 30))
+
+
+def _reels(d, x0, y0, w, h, shift):
+    for k in range(3):
+        rx = x0 + k * (w // 3)
+        d.rectangle([rx + 1, y0, rx + w // 3 - 2, y0 + h], fill=(250, 250, 244))
+        for j in range(3):
+            c = SYMBOLS[(k * 2 + j + shift) % len(SYMBOLS)]
+            cy = y0 + 3 + j * (h // 3) + (shift % 2)
+            d.ellipse([rx + 3, cy, rx + w // 3 - 5, cy + h // 3 - 4], fill=c)
+
+
+def fruit_machine(on, size=32):
+    """A pub fruit machine face (1 x 2): lit top box, three reels, nudge and hold buttons, coin
+    slot and payout tray. Switched on, the reels spin (an animation)."""
+    frames = 6 if on else 1
+    lower = Image.new("RGBA", (size, size * frames), (0, 0, 0, 255))
+    upper = Image.new("RGBA", (size, size * frames), (0, 0, 0, 255))
+    for f in range(frames):
+        full = _img(size, size * 2, (30, 30, 60))
+        d = ImageDraw.Draw(full)
+        top = (250, 200, 40) if on else (150, 120, 40)
+        d.rectangle([2, 2, size - 3, 16], fill=top)
+        d.rectangle([4, 5, size - 5, 13], fill=(200, 30, 60) if on else (110, 30, 40))
+        for x in range(6, size - 6, 5):
+            d.point((x, 9), fill=(255, 255, 255) if (x // 5 + f) % 2 and on else (200, 200, 200))
+        d.rectangle([3, 20, size - 4, 38], fill=(20, 20, 30))
+        _reels(d, 4, 21, size - 8, 16, f if on else 0)
+        d.rectangle([3, 42, size - 4, 46], fill=(60, 60, 120))
+        for k, c in enumerate(((240, 60, 60), (60, 200, 80), (250, 200, 40), (80, 140, 240))):
+            d.rectangle([4 + k * 7, 43, 8 + k * 7, 45], fill=c if on else _shade(c, 0.5))
+        d.rectangle([22, 49, 26, 50], fill=(10, 10, 10))
+        d.rectangle([6, 55, size - 7, 60], fill=(70, 70, 76))
+        d.rectangle([7, 56, size - 8, 57], fill=(20, 20, 24))
+        upper.paste(full.crop((0, 0, size, size)), (0, f * size))
+        lower.paste(full.crop((0, size, size, size * 2)), (0, f * size))
+    return lower, upper
+
+
+def oven_brick(size=32):
+    img = _img(size, size, (150, 70, 50))
+    d = ImageDraw.Draw(img)
+    for row, y in enumerate(range(0, size, 4)):
+        d.line([(0, y), (size, y)], fill=(200, 190, 180))
+        for x in range(-4 if row % 2 else 0, size, 8):
+            d.line([(x, y), (x, y + 3)], fill=(200, 190, 180))
+    return _speckle(img, 8)
+
+
+def doner(size=32):
+    img = _img(size, size, (150, 90, 50))
+    d = ImageDraw.Draw(img)
+    for y in range(0, size, 3):
+        d.line([(0, y), (size, y)], fill=(120, 66, 34))
+        for x in range(0, size, 5):
+            d.point((x + (y % 2) * 2, y + 1), fill=(190, 130, 80))
+    return _speckle(img, 6)
+
+
+def heater(on, size=16):
+    img = _img(size, size, (40, 40, 44))
+    d = ImageDraw.Draw(img)
+    for y in range(2, size, 3):
+        d.line([(2, y), (size - 3, y)], fill=(255, 120, 40) if on else (90, 70, 60))
+    return img
+
+
+def cakes(size=64):
+    """Cakes in a display case, seen through the glass (front, 64 x 32 used) and from above."""
+    img = _img(size, size, (236, 236, 230))
+    d = ImageDraw.Draw(img)
+    for row, y in enumerate((4, 22)):
+        for k in range(4):
+            x = 2 + k * 16
+            c = ((120, 70, 40), (250, 230, 200), (230, 150, 170), (250, 210, 90))[(k + row) % 4]
+            d.rectangle([x, y + 4, x + 12, y + 13], fill=c)
+            d.rectangle([x, y + 2, x + 12, y + 4], fill=(250, 250, 250) if row else (120, 60, 30))
+            d.ellipse([x + 5, y, x + 7, y + 2], fill=(220, 30, 40))
+            d.rectangle([x - 1, y + 14, x + 13, y + 15], fill=(200, 200, 205))
+    d.rectangle([0, 40, size, size], fill=(240, 240, 236))
+    for k in range(8):                                                 # top view: cakes in rows
+        x, y = 4 + (k % 4) * 15, 44 + (k // 4) * 10
+        d.ellipse([x, y, x + 10, y + 8], fill=((120, 70, 40), (250, 230, 200), (230, 150, 170), (250, 210, 90))[k % 4])
+    return img
+
+
+def vinyl(size=32):
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse([1, 1, size - 2, size - 2], fill=(18, 18, 20))
+    for r in range(5, size // 2 - 1, 2):
+        d.ellipse([size / 2 - r, size / 2 - r, size / 2 + r, size / 2 + r], outline=(34, 34, 38))
+    d.ellipse([size / 2 - 4, size / 2 - 4, size / 2 + 4, size / 2 + 4], fill=(200, 40, 60))
+    return img
+
+
+def mixer(size=32):
+    img = _img(size, size, (26, 26, 30))
+    d = ImageDraw.Draw(img)
+    for k in range(4):
+        x = 4 + k * 7
+        d.line([(x, 4), (x, 20)], fill=(70, 70, 76))
+        d.rectangle([x - 1, 10 + (k * 3) % 8, x + 1, 12 + (k * 3) % 8], fill=(220, 220, 220))
+        for j in range(4):
+            d.point((x + 2, 4 + j * 4), fill=((60, 220, 80), (60, 220, 80), (250, 200, 40), (240, 50, 50))[j])
+    d.line([(6, 26), (26, 26)], fill=(70, 70, 76))
+    d.rectangle([14, 24, 17, 28], fill=(220, 220, 220))
+    return img
+
+
+def dance_floor(frames=8, size=16):
+    """Light-up dance floor tiles: four squares changing colour (an animation)."""
+    cols = ((240, 40, 120), (40, 200, 240), (250, 220, 40), (120, 60, 240), (40, 230, 120), (250, 120, 30))
+    img = Image.new("RGBA", (size, size * frames), (0, 0, 0, 255))
+    d = ImageDraw.Draw(img)
+    for f in range(frames):
+        for k in range(4):
+            x, y = (k % 2) * size // 2, f * size + (k // 2) * size // 2
+            c = cols[(f + k * 2) % len(cols)]
+            d.rectangle([x, y, x + size // 2 - 1, y + size // 2 - 1], fill=_shade(c, 0.55))
+            d.rectangle([x + 1, y + 1, x + size // 2 - 2, y + size // 2 - 2], fill=c)
+    return img
+
+
+def dance_floor_off(size=16):
+    img = _img(size, size, (40, 40, 46))
+    d = ImageDraw.Draw(img)
+    d.line([(size // 2, 0), (size // 2, size)], fill=(20, 20, 24))
+    d.line([(0, size // 2), (size, size // 2)], fill=(20, 20, 24))
+    return img
+
+
+def bottle_fridge(size=32):
+    """An under-counter bottle fridge seen through its glass door: rows of bottles, lit."""
+    img = _img(size, size, (200, 220, 230))
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, size - 1, size - 1], outline=(30, 30, 34), width=2)
+    for y0 in (4, 14, 23):
+        for x in range(3, size - 4, 4):
+            c = R.choice(((60, 120, 40), (150, 80, 30), (220, 200, 120), (40, 40, 40), (200, 60, 40)))
+            d.rectangle([x, y0 + 2, x + 2, y0 + 7], fill=c)
+            d.rectangle([x + 1, y0, x + 1, y0 + 2], fill=c)
+        d.line([(2, y0 + 8), (size - 3, y0 + 8)], fill=(240, 246, 250))
+    return img
+
+
+def gym_screen(size=16):
+    img = _img(size, size, (20, 24, 30))
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 2, 13, 7], fill=(40, 160, 220))
+    for x in range(3, 13, 3):
+        d.rectangle([x, 10, x + 1, 12], fill=(220, 220, 220))
     return img

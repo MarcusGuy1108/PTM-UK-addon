@@ -117,6 +117,7 @@ public final class ModBlocks {
         garageDoor("white_garage_door", net.minecraft.world.level.material.MapColor.SNOW, SoundType.METAL);
         garageDoor("oak_garage_door", net.minecraft.world.level.material.MapColor.WOOD, SoundType.WOOD);
         garageDoor("green_garage_door", net.minecraft.world.level.material.MapColor.COLOR_GREEN, SoundType.WOOD);
+        garageDoor("red_garage_door", net.minecraft.world.level.material.MapColor.COLOR_RED, SoundType.METAL);
         for (String name : PylonCells.COUNTS.keySet()) {
             PYLONS.put(name, BLOCKS.register(name, () -> new PylonBlock(name)));
         }

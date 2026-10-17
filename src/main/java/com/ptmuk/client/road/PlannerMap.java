@@ -24,6 +24,8 @@ final class PlannerMap {
 
     final int originX, originZ, size;
     private final int[] ground;
+    /** Columns the server has sent: the client's own (possibly empty) chunks don't paint over them. */
+    private final boolean[] served;
     private final NativeImage image;
     private final DynamicTexture texture;
     private final Level level;
@@ -37,6 +39,7 @@ final class PlannerMap {
         this.originZ = centreZ - radius;
         this.fallback = fallback;
         this.ground = new int[size * size];
+        this.served = new boolean[size * size];
         java.util.Arrays.fill(ground, Integer.MIN_VALUE);
         this.image = new NativeImage(NativeImage.Format.RGBA, size, size, false);
         image.fillRect(0, 0, size, size, 0xFF1A1A1A);
@@ -60,10 +63,14 @@ final class PlannerMap {
             int prevTop = Integer.MIN_VALUE;
             for (int i = 0; i < size; i++) {
                 int x = originX + i;
-                if (!level.hasChunk(x >> 4, z >> 4)) {
+                if (served[row * size + i] || !level.hasChunk(x >> 4, z >> 4)
+                        || level.getChunk(x >> 4, z >> 4) instanceof net.minecraft.world.level.chunk.EmptyLevelChunk) {
                     continue;
                 }
                 int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+                if (top <= level.getMinBuildHeight()) {
+                    continue;                                   // nothing received for it yet
+                }
                 BlockState s = level.getBlockState(p.set(x, top, z));
                 int north = level.hasChunk(x >> 4, (z - 1) >> 4) ? level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z - 1) - 1 : top;
                 MapColor colour = s.getMapColor(level, p);
@@ -81,6 +88,42 @@ final class PlannerMap {
         }
         texture.upload();
         return true;
+    }
+
+    /** A chunk sent by the server (RoadMapTiles): drawn over whatever is there, ground heights too. */
+    boolean accept(int cx, int cz, int[] colours, short[] heights) {
+        boolean any = false;
+        for (int z = 0; z < 16; z++) {
+            for (int x = 0; x < 16; x++) {
+                int i = (cx << 4) + x - originX, j = (cz << 4) + z - originZ;
+                if (i < 0 || j < 0 || i >= size || j >= size) {
+                    continue;
+                }
+                int c = colours[z * 16 + x];
+                if (c != 0) {
+                    image.setPixelRGBA(i, j, c);
+                    served[j * size + i] = true;
+                }
+                if (heights[z * 16 + x] != com.ptmuk.road.RoadMapTiles.UNKNOWN) {
+                    ground[j * size + i] = heights[z * 16 + x];
+                }
+                any = true;
+            }
+        }
+        if (any) {
+            uploadPending = true;
+        }
+        return any;
+    }
+
+    private boolean uploadPending;
+
+    /** Upload the picture if tiles came in since the last frame. */
+    void flush() {
+        if (uploadPending) {
+            uploadPending = false;
+            texture.upload();
+        }
     }
 
     /** Ground heights as sampled so far (safe to read from another thread). */

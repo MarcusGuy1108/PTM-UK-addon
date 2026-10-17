@@ -13,7 +13,8 @@ ASSETS = ROOT / "src/main/resources/assets/ptmuk"
 DATA = ROOT / "src/main/resources/data/ptmuk"
 JAVA = ROOT / "src/main/java/com/ptmuk/building/PrefabCatalog.java"
 
-CATEGORIES = ["Houses", "Estates", "Flats", "Shops", "Commercial", "Offices", "Other"]
+CATEGORIES = ["Houses", "Estates", "Flats", "Shops", "Food & Drink", "Pubs & Bars", "Hotels", "Commercial", "Offices", "Civic",
+              "Other"]
 
 
 # ================================================================== Victorian terraced houses
@@ -738,7 +739,7 @@ def high_street_parade(ident="high_street_parade", name="Victorian High Street P
 
 def corner_pub(ident="corner_pub", name="Victorian Corner Pub"):
     W, D = 14, 15
-    b = Build(ident, name, "Shops", W, 18, D,
+    b = Build(ident, name, "Pubs & Bars", W, 18, D,
               "A corner pub: green glazed tiles, gold-lettered fascia round the corner, hanging sign, bar and fireplace inside.")
     brick, stone, tile = "ptmuk:red_brick", P.STONE, "ptmuk:green_faience"
     P.paving(b, 0, 0, W - 1, D - 1)
@@ -798,7 +799,7 @@ def corner_pub(ident="corner_pub", name="Victorian Corner Pub"):
 
 def cafe_takeaway(ident="cafe_takeaway", name="Cafe and Takeaway (Pair)"):
     W, D = 15, 13
-    b = Build(ident, name, "Shops", W, 11, D,
+    b = Build(ident, name, "Food & Drink", W, 11, D,
               "A 1950s two-shop parade with flats over: a cafe and a Chinese takeaway under a flat roof.")
     brick = "ptmuk:red_brick"
     P.paving(b, 0, 0, W - 1, D - 1)
@@ -1215,7 +1216,7 @@ def deck_access_flats(ident="deck_access_flats", name="1960s Deck-Access Flats")
 
 def church(ident="church", name="Victorian Parish Church"):
     W, D = 15, 27
-    b = Build(ident, name, "Other", W, 32, D,
+    b = Build(ident, name, "Civic", W, 32, D,
               "A small Victorian Gothic church: stone tower and spire, steep slate roof, lancet windows, pews and a churchyard.")
     stone, trim = "stone_bricks", "polished_andesite"
     P.lawn(b, 0, 0, W - 1, D - 1)
@@ -1368,6 +1369,11 @@ def all_prefabs():
 def _all_prefabs():
     import prefab_big          # bigger houses, flats and estates (built from the ones here)
     import prefab_commercial   # cinema, supermarkets, car dealership, drive-thru
+    import prefab_town         # high street takeaways, restaurants, shops and bars
+    import prefab_leisure      # pubs, inns, a nightclub, hotels
+    import prefab_civic        # big shops, retail parks and public buildings
+    import prefab_retail       # retail park terrace, out-of-town fashion store
+    import prefab_schools      # big primary and secondary schools
     return [
         victorian_terrace("victorian_terrace", "Victorian Terraced House", 1),
         victorian_terrace("victorian_terrace_row", "Victorian Terrace (Row of 4)", 4),
@@ -1394,7 +1400,9 @@ def _all_prefabs():
         deck_access_flats(),
         church(),
         petrol_station(),
-    ] + prefab_big.all_big() + prefab_commercial.all_commercial()
+    ] + (prefab_big.all_big() + prefab_commercial.all_commercial() + prefab_town.all_town()
+         + prefab_leisure.all_leisure() + prefab_civic.all_civic() + prefab_retail.all_retail()
+         + prefab_schools.all_schools())
 
 
 def write_java(builds):

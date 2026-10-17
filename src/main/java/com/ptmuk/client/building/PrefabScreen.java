@@ -33,6 +33,7 @@ public class PrefabScreen extends Screen {
     private String chosen;
     private int scroll;
     private final List<Button> tabs = new ArrayList<>();
+    private int tabRows = 1;
     private Button mirrorButton;
     private Button groundButton, folderButton, refreshButton;
     private List<SchematicFiles.FileEntry> files = List.of();
@@ -81,29 +82,38 @@ public class PrefabScreen extends Screen {
     @Override
     protected void init() {
         tabs.clear();
-        int gap = 3;
+        // one row of tabs if they fit, otherwise two
+        int gap = 3, room = Math.min(width - 16, 420);
         int[] w = new int[TABS.size()];
         int total = gap * (TABS.size() - 1);
         for (int i = 0; i < w.length; i++) {
             w[i] = font.width(TABS.get(i)) + 12;
             total += w[i];
         }
-        int room = Math.min(width - 16, Math.max(400, total));
-        double squeeze = total > room ? (room - gap * (w.length - 1)) / (double) (total - gap * (w.length - 1)) : 1;
-        int x = width / 2 - (int) Math.min(room, total) / 2;
-        for (int i = 0; i < TABS.size(); i++) {
-            String c = TABS.get(i);
-            int tw = (int) (w[i] * squeeze);
-            Button b = addRenderableWidget(Button.builder(Component.literal(c), btn -> {
-                category = c;
-                lastCategory = c;
-                scroll = 0;
-                if (CUSTOM.equals(c)) {
-                    files = SchematicFiles.list();
-                }
-            }).bounds(x, 22, tw, 18).build());
-            tabs.add(b);
-            x += tw + gap;
+        tabRows = total <= room ? 1 : 2;
+        int perRow = (TABS.size() + tabRows - 1) / tabRows;
+        for (int row = 0; row < tabRows; row++) {
+            int from = row * perRow, to = Math.min(TABS.size(), from + perRow);
+            int rowW = gap * (to - from - 1);
+            for (int i = from; i < to; i++) {
+                rowW += w[i];
+            }
+            double squeeze = rowW > room ? (room - gap * (to - from - 1)) / (double) (rowW - gap * (to - from - 1)) : 1;
+            int x = width / 2 - (int) Math.min(room, rowW) / 2;
+            for (int i = from; i < to; i++) {
+                String c = TABS.get(i);
+                int tw = (int) (w[i] * squeeze);
+                Button b = addRenderableWidget(Button.builder(Component.literal(c), btn -> {
+                    category = c;
+                    lastCategory = c;
+                    scroll = 0;
+                    if (CUSTOM.equals(c)) {
+                        files = SchematicFiles.list();
+                    }
+                }).bounds(x, 20 + row * 19, tw, 18).build());
+                tabs.add(b);
+                x += tw + gap;
+            }
         }
         int bx = left() + 210, by = height - 52;
         addRenderableWidget(Button.builder(Component.literal("Turn 90°"), b -> PrefabToolClient.send(PrefabToolMessage.Action.ROTATE, "", hand))
@@ -151,7 +161,7 @@ public class PrefabScreen extends Screen {
     }
 
     private int listTop() {
-        return 48;
+        return 46 + (tabRows - 1) * 19;
     }
 
     private int listRows() {
@@ -192,7 +202,7 @@ public class PrefabScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
-        g.drawCenteredString(font, title, width / 2, 8, 0xFFFFFF);
+        g.drawCenteredString(font, title, width / 2, 7, 0xFFFFFF);
         int x0 = left(), y0 = listTop();
         g.fill(x0 - 2, y0 - 2, x0 + 202, height - (custom() ? 38 : 10), 0x90000000);
         if (custom()) {

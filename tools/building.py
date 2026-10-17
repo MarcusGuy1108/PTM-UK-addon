@@ -466,8 +466,18 @@ def garage_green():
     return img_from(rgb)
 
 
+def garage_red():
+    """Fire engine red roller shutter: narrow slats with a darker groove between each."""
+    rgb = np.zeros((S, S, 3)) + np.array([186, 24, 28.0]) + noise(1.5)
+    for y in range(0, S, 4):
+        rgb[y] = (120, 12, 16)
+        rgb[y + 1] = (214, 52, 52)
+    return img_from(rgb)
+
+
 GARAGE_DOORS = {
     "white_garage_door": ("Garage Door (White Steel)", garage_white),
+    "red_garage_door": ("Garage Door (Fire Station Red)", garage_red),
     "oak_garage_door": ("Garage Door (Oak Boarded)", garage_oak),
     "green_garage_door": ("Garage Door (Painted Green)", garage_green),
 }

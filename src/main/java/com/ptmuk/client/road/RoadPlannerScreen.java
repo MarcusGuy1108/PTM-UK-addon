@@ -109,9 +109,11 @@ public class RoadPlannerScreen extends Screen {
     protected void init() {
         Minecraft mc = Minecraft.getInstance();
         if (map == null && mc.level != null && mc.player != null) {
-            int radius = Math.min(512, Math.max(96, mc.options.renderDistance().get() * 16 + 16));
-            map = new PlannerMap(mc.level, (int) Math.floor(mc.player.getX()), (int) Math.floor(mc.player.getZ()), radius,
-                    (int) Math.floor(mc.player.getY()));
+            // the client draws the chunks it has loaded straight away; the server sends the rest
+            int radius = MAP_RADIUS_CHUNKS * 16 + 8;
+            int px = (int) Math.floor(mc.player.getX()), pz = (int) Math.floor(mc.player.getZ());
+            map = new PlannerMap(mc.level, px, pz, radius, (int) Math.floor(mc.player.getY()));
+            com.ptmuk.network.PtmUkNetwork.CHANNEL.sendToServer(new com.ptmuk.network.RoadMapRequestMessage(px, pz, MAP_RADIUS_CHUNKS));
         }
         lines = Layout.lines(plan);
         // top bar
@@ -771,12 +773,30 @@ public class RoadPlannerScreen extends Screen {
 
     // ------------------------------------------------------------------ the preview
 
+    /** How far the map reaches, in chunks each way from where it was opened. */
+    private static final int MAP_RADIUS_CHUNKS = 24;
+    private int tilesSinceLevel;
+
+    /** A chunk of map from the server (see RoadMapTiles). */
+    public static void mapTile(com.ptmuk.network.RoadMapTileMessage msg) {
+        if (Minecraft.getInstance().screen instanceof RoadPlannerScreen s && s.map != null
+                && s.map.accept(msg.cx(), msg.cz(), msg.colours(), msg.ground())) {
+            s.tilesSinceLevel++;
+        }
+    }
+
     @Override
     public void tick() {
         if (map != null && !map.done()) {
             map.step(24);
             if (map.done()) {
                 previewStale = true;                    // the ground is all known now
+            }
+        }
+        if (map != null) {
+            map.flush();
+            if (tilesSinceLevel > 0 && pending == null && preview != null && tilesSinceLevel >= 64) {
+                previewStale = true;                    // new ground came in under the roads: level them again
             }
         }
         if (messageTicks > 0) {
@@ -793,6 +813,7 @@ public class RoadPlannerScreen extends Screen {
         }
         if (previewStale && pending == null && !draggingNode && !draggingBend && map != null) {
             previewStale = false;
+            tilesSinceLevel = 0;
             RoadPlan copy = plan.copy();
             var terrain = map.terrain();
             pending = CompletableFuture.supplyAsync(() -> Layout.of(copy, terrain));

@@ -12,7 +12,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 /**
  * The real ground in a level, looking through trees, plants and snow so roads aren't lifted
  * over a forest. Water counts as ground at its surface (a road across it gets built up on a
- * causeway). Columns in unloaded chunks report a fallback height.
+ * causeway). On the client, columns in unloaded chunks report a fallback height; the server
+ * loads the chunk.
  */
 public final class WorldTerrain implements Terrain {
     private final Level level;
@@ -43,7 +44,10 @@ public final class WorldTerrain implements Terrain {
 
     public static int scan(Level level, int x, int z, int fallback) {
         if (!level.hasChunk(x >> 4, z >> 4)) {
-            return fallback;
+            if (level.isClientSide) {
+                return fallback;
+            }
+            level.getChunk(x >> 4, z >> 4);              // the server can load it: build on the real ground
         }
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z) - 1;
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();

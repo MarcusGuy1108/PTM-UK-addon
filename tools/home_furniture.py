@@ -147,6 +147,9 @@ SHELF_GOODS = {"groceries": (("cereal", "tins"), ("jars", "pasta")),
                "household": (("detergent", "rolls"), ("sprays", "detergent")),
                "snacks": (("crisps", "biscuits"), ("chocolate", "crisps")),
                "diy": (("paint", "tools"), ("tools", "paint")),
+               "games": (("games", "consoles"), ("games", "games")),
+               "pharmacy": (("medicine", "toiletries"), ("toiletries", "medicine")),
+               "newsagent": (("magazines", "chocolate"), ("crisps", "magazines")),
                "chilled": (("milk", "yoghurt"), ("meat", "meals"))}
 
 
@@ -222,6 +225,33 @@ def make_shop_textures():
     TEX["menu_right"] = s(board.crop((128, 0, 256, 128)), Q + "menu_right")
     for name, colour in GARMENTS.items():
         TEX[f"garment_{name}"] = s(ST.garment(colour), Q + f"garment_{name}")
+    TEX.update({
+        "pump_clips": s(ST.pump_clips(), Q + "pump_clips"),
+        "back_bar": s(ST.back_bar(), Q + "back_bar"),
+        "dartboard": s(ST.dartboard(), Q + "dartboard"),
+        "oven_brick": s(ST.oven_brick(), Q + "oven_brick"),
+        "doner": s(ST.doner(), Q + "doner"),
+        "heater": s(ST.heater(False), Q + "heater"),
+        "heater_on": s(ST.heater(True), Q + "heater_on"),
+        "cakes": s(ST.cakes(), Q + "cakes"),
+        "vinyl": s(ST.vinyl(), Q + "vinyl"),
+        "mixer": s(ST.mixer(), Q + "mixer"),
+        "dance_floor": s(ST.dance_floor(), Q + "dance_floor", 4),
+        "dance_floor_off": s(ST.dance_floor_off(), Q + "dance_floor_off"),
+        "bottle_fridge": s(ST.bottle_fridge(), Q + "bottle_fridge"),
+        "gym_screen": s(ST.gym_screen(), Q + "gym_screen"),
+        "leather_red": s(HT.leather((150, 24, 30)), Q + "leather_red"),
+        "leather_black": s(HT.leather((30, 30, 32)), Q + "leather_black"),
+        "baize": s(ST.baize(), Q + "baize"),
+    })
+    top = ST.pool_top()
+    TEX["pool_left"] = s(top.crop((0, 0, 64, 64)), Q + "pool_left")
+    TEX["pool_right"] = s(top.crop((64, 0, 128, 64)), Q + "pool_right")
+    for on in (False, True):
+        lo, hi = ST.fruit_machine(on)
+        sfx = "_on" if on else ""
+        TEX["fruit_lower" + sfx] = s(lo, Q + "fruit_lower" + sfx, 3 if on else None)
+        TEX["fruit_upper" + sfx] = s(hi, Q + "fruit_upper" + sfx, 3 if on else None)
     lo, hi = HT.halves(ST.frost_doors())
     TEX["freezer_lower"], TEX["freezer_upper"] = s(lo, Q + "freezer_lower"), s(hi, Q + "freezer_upper")
     for film in ST.POSTERS:
@@ -1002,6 +1032,168 @@ def clothes_rail():
     return els, tex
 
 
+# ----------------------------------------------------------------- pubs, bars, clubs, cafes, gyms
+
+def beer_pumps():
+    """Three hand pulls on the bar, with pump clips for made-up ales, and a drip tray."""
+    els = [bx((1, 0, 6), (15, 0.6, 12), "#stainless"), bx((1.5, 0.6, 9), (14.5, 2.2, 11), "#black")]
+    for k, x in enumerate((3, 7.4, 11.8)):
+        els += [bx((x, 2.2, 9.4), (x + 1.2, 4, 10.6), "#chrome"),
+                bx((x + 0.2, 4, 9.6), (x + 1, 11, 10.4), "#walnut"),
+                bx((x - 0.4, 7.2, 9.2), (x + 1.6, 10.4, 9.6), "#pump_clips", faces=("north", "south"),
+                   uv={"north": [k * 5.33, 1, k * 5.33 + 5.33, 15], "south": [k * 5.33 + 5.33, 1, k * 5.33, 15]}),
+                bx((x + 0.2, 2.2, 7.6), (x + 1, 3, 9.4), "#chrome")]
+    return els, {"stainless": t("stainless"), "black": t("black"), "chrome": t("chrome"), "walnut": t("walnut"),
+                 "pump_clips": t("pump_clips")}
+
+
+def back_bar():
+    """The wall behind a bar: optics, shelves of bottles and glasses against a mirror."""
+    els = [bx((0, 0, 13), (16, 16, 16), "#walnut", front="#back_bar", full=("north",)),
+           bx((0, 7, 11), (16, 7.6, 13), "#walnut"), bx((0, 2.8, 11.4), (16, 3.4, 13), "#walnut")]
+    return els, {"walnut": t("walnut"), "back_bar": t("back_bar")}
+
+
+def bar_stool():
+    els = G.round_column(0.7, 0, 10.4, "#chrome")
+    els = [json.loads(json.dumps(e)) for e in els]
+    els += [bx((4.5, 0, 4.5), (11.5, 0.5, 11.5), "#chrome"),
+            bx((5.5, 3.5, 5.5), (10.5, 4, 10.5), "#chrome")]
+    els += [json.loads(json.dumps(e)) for e in G.round_column(4, 10.4, 11.8, "#leather_red", top=True, bottom=True)]
+    return els, {"chrome": t("chrome"), "leather_red": t("leather_red")}
+
+
+def pool_table(part):
+    left = part == "left"
+    top = "#pool_left" if left else "#pool_right"
+    x0, x1 = (0, 16) if left else (0, 16)
+    els = [bx((x0, 11, 1), (x1, 12.6, 15), "#walnut", faces=("north", "south", "east", "west", "down")),
+           bx((x0 + (1 if left else 0), 12.6, 2), (x1 - (0 if left else 1), 12.61, 14), top, faces=("up",),
+              uv={"up": [1 if left else 0, 1, 16 if left else 15, 15]}),
+           bx((x0, 12.6, 1), (x1, 13.4, 2), "#walnut"), bx((x0, 12.6, 14), (x1, 13.4, 15), "#walnut"),
+           bx((0, 12.6, 2), (1, 13.4, 14), "#walnut") if left else bx((15, 12.6, 2), (16, 13.4, 14), "#walnut")]
+    lx = 1.5 if left else 12.5
+    els += [bx((lx, 0, 2.5), (lx + 2, 11, 4.5), "#walnut"), bx((lx, 0, 11.5), (lx + 2, 11, 13.5), "#walnut")]
+    return els, {"walnut": t("walnut"), top[1:]: t(top[1:])}
+
+
+def dartboard():
+    els = [bx((2.5, 2.5, 15.2), (13.5, 13.5, 16), "#black", faces=("north", "east", "west", "up", "down")),
+           bx((3, 3, 15.18), (13, 13, 15.2), "#dartboard", faces=("north",), full=("north",))]
+    return els, {"black": t("black"), "dartboard": t("dartboard")}
+
+
+def fruit_machine(on):
+    lo, hi = ("#fruit_lower_on", "#fruit_upper_on") if on else ("#fruit_lower", "#fruit_upper")
+    els = [bx((1, 0, 4), (15, 16, 15), "#dark_grey", faces=("east", "west", "south", "down")),
+           bx((1, 16, 4), (15, 30, 15), "#dark_grey", faces=("east", "west", "south", "up")),
+           bx((1, 0, 3.98), (15, 16, 4), lo, faces=("north",), full=("north",), emissive=on),
+           bx((1, 16, 3.98), (15, 30, 4), hi, faces=("north",), emissive=on, uv={"north": [0, 2, 16, 16]}),
+           bx((1, 12, 2.5), (15, 13, 4), "#black")]
+    return els, {"dark_grey": t("dark_grey"), lo[1:]: t(lo[1:]), hi[1:]: t(hi[1:]), "black": t("black")}
+
+
+def barber_chair():
+    els = [json.loads(json.dumps(e)) for e in G.round_column(4, 0, 0.8, "#chrome", top=True)]
+    els += [json.loads(json.dumps(e)) for e in G.round_column(1.2, 0.8, 6, "#chrome")]
+    els += [bx((3, 6, 2.5), (13, 9, 12.5), "#leather_red"),
+            bx((3, 9, 11.5), (13, 22, 14), "#leather_red"),
+            bx((5, 22, 12), (11, 25, 13.6), "#leather_red"),
+            bx((1.6, 9, 3), (3, 11, 11.5), "#chrome"), bx((13, 9, 3), (14.4, 11, 11.5), "#chrome"),
+            bx((4, 2, 0.5), (12, 2.6, 3), "#chrome")]
+    return els, {"chrome": t("chrome"), "leather_red": t("leather_red")}
+
+
+def pizza_oven(on):
+    fire = "#flames" if on else "#coals"
+    els = [bx((0, 0, 1), (16, 7, 16), "#oven_brick"),
+           bx((1, 7, 2), (15, 13, 15), "#oven_brick"),
+           bx((3, 13, 4), (13, 16, 13), "#oven_brick"),
+           bx((5, 7.5, 1.6), (11, 11.5, 2), "#black", faces=("north",)),
+           bx((5.4, 7.6, 1.98), (10.6, 11, 2), fire, faces=("north",), full=("north",), emissive=on),
+           bx((6.5, 16, 8), (9.5, 16, 11), "#black", faces=("up",)),
+           bx((0, 7, 0.4), (16, 7.6, 2), "#marble")]
+    return els, {"oven_brick": t("oven_brick"), "black": t("black"), fire[1:]: t(fire[1:]), "marble": t("marble")}
+
+
+def doner_spit(on):
+    heat = "#heater_on" if on else "#heater"
+    els = [bx((3, 0, 3), (13, 1, 13), "#stainless"),
+           bx((7.6, 1, 7.6), (8.4, 15, 8.4), "#stainless"),
+           bx((5, 1.5, 5), (11, 4, 11), "#doner"), bx((5.5, 4, 5.5), (10.5, 9, 10.5), "#doner"),
+           bx((6, 9, 6), (10, 13, 10), "#doner"),
+           bx((3, 1, 12), (13, 14, 13.4), "#stainless", faces=("east", "west", "up", "south")),
+           bx((3.5, 2, 11.98), (12.5, 13, 12), heat, faces=("north",), full=("north",), emissive=on)]
+    return els, {"stainless": t("stainless"), "doner": t("doner"), heat[1:]: t(heat[1:])}
+
+
+def coffee_machine():
+    els = [bx((1.5, 0, 6), (14.5, 9, 14), "#stainless"),
+           bx((1.5, 9, 6), (14.5, 10, 14), "#black"),
+           bx((2.5, 10, 7), (5, 12, 9.5), "#ceramic"), bx((6, 10, 7), (8.5, 12, 9.5), "#ceramic"),
+           bx((1.5, 0, 3.5), (14.5, 0.6, 6), "#black")]
+    for x in (3.5, 9.5):
+        els += [bx((x, 5.5, 4.6), (x + 3, 7, 6), "#chrome"), bx((x + 1, 0.6, 4.4), (x + 2.2, 2.4, 5.6), "#ceramic")]
+    els.append(bx((12.6, 3, 5), (13.4, 7, 6), "#chrome"))
+    return els, {"stainless": t("stainless"), "black": t("black"), "ceramic": t("ceramic"), "chrome": t("chrome")}
+
+
+def cake_display():
+    els = [bx((0, 0, 1), (16, 8, 15), "#white_gloss"),
+           bx((0, 8, 1), (16, 8.4, 15), "#marble"),
+           bx((0.5, 8.4, 1.5), (15.5, 14, 14.5), "#cakes", faces=("north", "up"),
+              uv={"north": [0, 0, 16, 5.6], "up": [0, 10, 16, 16]}, emissive=True),
+           bx((0.4, 8.4, 1.4), (15.6, 14.2, 14.6), "#glass", faces=("north", "east", "west", "up"))]
+    return els, {"white_gloss": t("white_gloss"), "marble": t("marble"), "cakes": t("cakes"), "glass": t("glass")}
+
+
+def dj_decks():
+    els = [bx((0, 0, 4), (16, 2.4, 13), "#black")]
+    for x in (0.6, 10.2):
+        els += [bx((x, 2.4, 5), (x + 5.2, 2.5, 12), "#vinyl", faces=("up",), full=("up",)),
+                bx((x + 4.4, 2.4, 10.4), (x + 5, 3.4, 11.8), "#chrome")]
+    els.append(bx((6.2, 2.4, 5), (9.8, 2.6, 12), "#mixer", faces=("up",), full=("up",), emissive=True))
+    return els, {"black": t("black"), "vinyl": t("vinyl"), "chrome": t("chrome"), "mixer": t("mixer")}
+
+
+def dance_floor(on):
+    tex = "#dance_floor" if on else "#dance_floor_off"
+    els = [bx((0, 0, 0), (16, 16, 16), "#black", faces=("north", "east", "south", "west", "down")),
+           bx((0, 15.99, 0), (16, 16, 16), tex, faces=("up",), full=("up",), emissive=on)]
+    return els, {"black": t("black"), tex[1:]: t(tex[1:])}
+
+
+def treadmill(part):
+    left = part == "left"
+    els = [bx((0 if left else 0, 0, 3), (16, 2, 13), "#dark_grey"),
+           bx((0, 2, 4), (16, 2.2, 12), "#belt", faces=("up",), full=("up",))]
+    tex = {"dark_grey": t("dark_grey"), "belt": t("belt")}
+    if left:
+        els += [bx((1, 2, 3), (2, 16, 4), "#dark_grey"), bx((1, 2, 12), (2, 16, 13), "#dark_grey"),
+                bx((0, 15, 3), (3, 16, 13), "#dark_grey"),
+                bx((0.5, 16, 5), (3.5, 20, 11), "#black", rot=("z", 22.5, (2, 16, 8))),
+                bx((3.51, 16.5, 5.5), (3.52, 19.5, 10.5), "#gym_screen", faces=("east",), full=("east",), emissive=True,
+                   rot=("z", 22.5, (2, 16, 8)))]
+        tex.update({"black": t("black"), "gym_screen": t("gym_screen")})
+    return els, tex
+
+
+def weight_bench():
+    els = legs(3, 2, 13, 14, 6, 1.2, "#chrome")
+    els += [bx((4, 6, 2), (12, 8, 14), "#leather_black"),
+            bx((2, 6, 13), (3, 18, 14), "#chrome"), bx((13, 6, 13), (14, 18, 14), "#chrome"),
+            bx((-2, 17, 13.1), (18, 17.8, 13.9), "#chrome")]
+    for x in (-1.6, 15.6):
+        els.append(bx((x, 13.5, 11.5), (x + 2, 21.5, 15.5), "#black"))
+    return els, {"chrome": t("chrome"), "leather_black": t("leather_black"), "black": t("black")}
+
+
+def bottle_fridge():
+    els = [bx((0, 0, 1), (16, 14, 16), "#black", faces=("east", "west", "south", "up", "down")),
+           bx((0, 0, 0.98), (16, 14, 1), "#bottle_fridge", faces=("north",), full=("north",), emissive=True)]
+    return els, {"black": t("black"), "bottle_fridge": t("bottle_fridge")}
+
+
 # ----------------------------------------------------------------- the list
 
 class F:
@@ -1099,7 +1291,7 @@ def _home():
         F("computer", "Computer", computer, "tabletop", (1.5, 0, 3, 14.5, 11.5, 12), light=4, effect="click",
           group="bedroom", sound="METAL"),
     ]
-    for kind in ("groceries", "drinks", "household", "snacks", "diy"):
+    for kind in ("groceries", "drinks", "household", "snacks", "diy", "games", "pharmacy", "newsagent"):
         nice = "DIY" if kind == "diy" else kind.capitalize()
         out.append(F(f"shelves_{kind}", f"Supermarket Shelves ({nice})",
                      (lambda k=kind: lambda: shelving(k))(), "tall", (0, 0, 1, 16, 16, 15), rows=3, group="shop",
@@ -1150,6 +1342,31 @@ def _home():
           sound="METAL"),
         F("ticket_machine", "Ticket Machine", ticket_machine, "tall", (2, 0, 5, 14, 16, 14), group="cinema",
           sound="METAL"),
+    ]
+    out += [
+        F("beer_pumps", "Beer Pumps", beer_pumps, "tabletop", (1, 0, 6, 15, 11, 12), group="shop", sound="METAL"),
+        F("back_bar", "Back Bar Shelves", back_bar, shape=(0, 0, 11, 16, 16, 16), rows=2, group="shop", sound="GLASS"),
+        F("bar_stool", "Bar Stool", bar_stool, shape=(4, 0, 4, 12, 11.8, 12), seat=11.8, group="shop", sound="METAL"),
+        F("pool_table", "Pool Table", pool_table, "wide", (0, 0, 1, 16, 13.4, 15), group="shop"),
+        F("dartboard", "Dartboard", dartboard, shape=(2.5, 2.5, 15, 13.5, 13.5, 16), group="shop"),
+        F("fruit_machine", "Fruit Machine", fruit_machine, "tall", (1, 0, 2.5, 15, 16, 15), light=6, effect="click",
+          group="shop", sound="METAL"),
+        F("barber_chair", "Barber's Chair", barber_chair, shape=(2, 0, 1, 14, 11, 14), seat=9, group="shop",
+          sound="METAL"),
+        F("pizza_oven", "Pizza Oven", pizza_oven, shape=(0, 0, 0.4, 16, 16, 16), light=11, effect="fire", oven=True,
+          group="shop", sound="STONE"),
+        F("doner_spit", "Doner Kebab Grill", doner_spit, "tabletop", (3, 0, 3, 13, 15, 13.4), light=5, effect="click",
+          group="shop", sound="METAL"),
+        F("coffee_machine", "Coffee Machine", coffee_machine, "tabletop", (1.5, 0, 3.5, 14.5, 12, 14), toggle=True,
+          run=80, effect="kettle", group="shop", sound="METAL"),
+        F("cake_display", "Cake Display Counter", cake_display, shape=(0, 0, 1, 16, 14.2, 15), surface="counter",
+          group="shop", sound="GLASS", translucent=True),
+        F("dj_decks", "DJ Decks", dj_decks, "tabletop", (0, 0, 4, 16, 3.4, 13), group="shop", sound="METAL"),
+        F("dance_floor", "Light-Up Dance Floor", dance_floor, light=12, effect="click", group="shop", sound="GLASS"),
+        F("treadmill", "Treadmill", treadmill, "wide", (0, 0, 3, 16, 2.2, 13), group="shop", sound="METAL"),
+        F("weight_bench", "Weight Bench", weight_bench, shape=(2, 0, 2, 14, 8, 14), seat=8, group="shop", sound="METAL"),
+        F("bottle_fridge", "Bottle Fridge", bottle_fridge, shape=(0, 0, 1, 16, 14, 16), rows=2, surface="counter",
+          group="shop", sound="GLASS"),
     ]
     for film, title in ST.POSTERS.items():
         out.append(F(f"film_poster_{film}", f"Film Poster ({title})", (lambda f=film: lambda: film_poster(f))(), "tall",

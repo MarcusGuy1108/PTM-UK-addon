@@ -284,7 +284,7 @@ def car_dealership(ident="car_dealership", name="Car Dealership with Workshop"):
 
 def drive_thru(ident="drive_thru", name="Drive-Thru Restaurant"):
     W, D = 32, 34
-    b = Build(ident, name, "Commercial", W, 9, D,
+    b = Build(ident, name, "Food & Drink", W, 9, D,
               "A drive-thru burger restaurant: a lane round the building with an order point and menu board, a "
               "pay window, a dining room and a kitchen with fryers. The name, BUN & GONE, is made up.")
     P.paving(b, 0, 0, W - 1, D - 1, "ptmuk:tarmac")
