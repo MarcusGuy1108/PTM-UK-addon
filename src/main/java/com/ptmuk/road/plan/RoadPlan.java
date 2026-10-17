@@ -103,9 +103,51 @@ public final class RoadPlan {
         }
     }
 
+    /**
+     * A real map (an OpenStreetMap export) laid over the plan: which file, the point of it that
+     * sits at block x, z, the scale, how far its buildings are nudged to line up with the roads,
+     * and which ids its roads were given (so they can be taken out again).
+     */
+    public static final class MapImport {
+        /** Our main road's 6-block lanes against a real 3.3 m lane: 1.8 blocks a metre. */
+        public static final double SCALE = 6 / 3.3;
+
+        public String file;
+        public double lat0, lon0;
+        public int x, z;
+        public double scale = SCALE;
+        public int nudgeX, nudgeZ;
+        public int firstId, lastId;
+        public boolean guides = true;
+
+        private double perLat() {
+            double p = Math.toRadians(lat0);
+            return 111132.92 - 559.82 * Math.cos(2 * p) + 1.175 * Math.cos(4 * p);
+        }
+
+        private double perLon() {
+            double p = Math.toRadians(lat0);
+            return 111412.84 * Math.cos(p) - 93.5 * Math.cos(3 * p);
+        }
+
+        /** Where a real place lands, in blocks (north stays north). */
+        public double x(double lon) {
+            return x + (lon - lon0) * perLon() * scale;
+        }
+
+        public double z(double lat) {
+            return z - (lat - lat0) * perLat() * scale;
+        }
+
+        public boolean owns(int id) {
+            return id >= firstId && id <= lastId;
+        }
+    }
+
     public List<Node> nodes = new ArrayList<>();
     public List<Segment> segments = new ArrayList<>();
     public List<Site> sites = new ArrayList<>();
+    public MapImport map;
     public int nextId = 1;
 
     private static final Gson GSON = new GsonBuilder().serializeSpecialFloatingPointValues().create();

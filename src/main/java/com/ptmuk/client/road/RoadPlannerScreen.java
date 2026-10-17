@@ -7,6 +7,7 @@ import com.mojang.math.Axis;
 import com.ptmuk.PtmUk;
 import com.ptmuk.network.PtmUkNetwork;
 import com.ptmuk.network.RoadPlannerMessage;
+import com.ptmuk.road.OsmMap;
 import com.ptmuk.road.RoadPlannerItem;
 import com.ptmuk.road.RoadPlans;
 import com.ptmuk.road.layout.Curve;
@@ -41,7 +42,8 @@ import org.lwjgl.glfw.GLFW;
  * Select a point to drag it or change its junction (give way, stop, mini roundabout,
  * roundabout, traffic lights), select a road to bend it or change its lanes, pavements and
  * markings. Sites: drag out a car park, retail park or drive-thru; roads that reach its edge
- * become its ways in. The map shows exactly what will be built; Build sends it to the server.
+ * become its ways in. Map: bring in a real place's roads and buildings from an OpenStreetMap
+ * export, and measure. The map shows exactly what will be built; Build sends it to the server.
  */
 public class RoadPlannerScreen extends Screen {
     private static final ResourceLocation PREVIEW = PtmUk.id("road_planner/preview");
@@ -51,7 +53,9 @@ public class RoadPlannerScreen extends Screen {
     private static RoadStyle lastStyle = RoadStyle.mainRoad();
     private static double lastZoom = 2;
 
-    private enum Mode { DRAW, EDIT, SITES }
+    private enum Mode { DRAW, EDIT, SITES, MAP }
+
+    private static final ResourceLocation OUTLINES = PtmUk.id("road_planner/outlines");
 
     /** The smallest site that can be marked out. */
     private static final int MIN_SITE = 12;
@@ -88,6 +92,15 @@ public class RoadPlannerScreen extends Screen {
     private int dragX0, dragZ0, dragX1, dragZ1;
     private double grabX, grabZ;
     private int[] siteStart;
+
+    // a real map: the files to pick from, one being read (and what to do with it), its buildings drawn over the map
+    private List<String> mapFiles;
+    private CompletableFuture<OsmMap> mapJob;
+    private Consumer<OsmMap> mapThen;
+    private OsmMap osm;
+    private List<OsmMap.Outline> outlines;
+    private DynamicTexture outlineTex;
+    private double[] measureA, measureB;
 
     public static void open(InteractionHand hand) {
         Minecraft.getInstance().setScreen(new RoadPlannerScreen(hand));
@@ -134,9 +147,13 @@ public class RoadPlannerScreen extends Screen {
         lines = Layout.lines(plan);
         // top bar
         int x = PANEL + 4;
-        drawButton = addRenderableWidget(Button.builder(Component.literal("Draw"), b -> setMode(Mode.DRAW)).bounds(x, 3, 36, 16).build());
-        editButton = addRenderableWidget(Button.builder(Component.literal("Edit"), b -> setMode(Mode.EDIT)).bounds(x + 38, 3, 36, 16).build());
-        sitesButton = addRenderableWidget(Button.builder(Component.literal("Sites"), b -> setMode(Mode.SITES)).bounds(x + 76, 3, 38, 16).build());
+        drawButton = addRenderableWidget(Button.builder(Component.literal("Draw"), b -> setMode(Mode.DRAW)).bounds(x, 3, 28, 16).build());
+        editButton = addRenderableWidget(Button.builder(Component.literal("Edit"), b -> setMode(Mode.EDIT)).bounds(x + 29, 3, 26, 16).build());
+        sitesButton = addRenderableWidget(Button.builder(Component.literal("Sites"), b -> setMode(Mode.SITES)).bounds(x + 56, 3, 30, 16).build());
+        mapButton = addRenderableWidget(Button.builder(Component.literal("Map"), b -> setMode(Mode.MAP)).bounds(x + 87, 3, 24, 16).build());
+        if (plan.map != null && outlines == null) {
+            readMap(plan.map.file, m -> showOutlines());
+        }
         int right = width - 3;
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(right - 36, 3, 36, 16).build());
         addRenderableWidget(Button.builder(Component.literal("Build"), b -> build()).bounds(right - 76, 3, 38, 16).build());
@@ -166,7 +183,7 @@ public class RoadPlannerScreen extends Screen {
         rebuildPanel();
     }
 
-    private Button drawButton, editButton, sitesButton;
+    private Button drawButton, editButton, sitesButton, mapButton;
 
     /** The left panel: the selected point's junction, or the selected (or next) road's style. */
     private void rebuildPanel() {
@@ -178,10 +195,15 @@ public class RoadPlannerScreen extends Screen {
             drawButton.active = mode != Mode.DRAW;
             editButton.active = mode != Mode.EDIT;
             sitesButton.active = mode != Mode.SITES;
+            mapButton.active = mode != Mode.MAP;
         }
         int y = TOP + 14;
         if (mode == Mode.SITES) {
             sitePanel(y);
+            return;
+        }
+        if (mode == Mode.MAP) {
+            mapPanel(y);
             return;
         }
         Node n = selNode == null ? null : plan.node(selNode);
@@ -295,6 +317,132 @@ public class RoadPlannerScreen extends Screen {
                 flash("New roads will be " + st.name);
             });
         }
+    }
+
+    /** The left panel in Map mode: the maps to choose from, or the chosen one's scale, nudge and guides. */
+    private void mapPanel(int y) {
+        RoadPlan.MapImport mi = plan.map;
+        if (mi == null) {
+            if (mapFiles == null) {
+                mapFiles = MapFiles.list();
+            }
+            for (int i = 0; i < mapFiles.size() && i < 8; i++) {
+                String f = mapFiles.get(i);
+                button(y, () -> f, b -> importMap(f));
+                y += ROW;
+            }
+            halfButtons(y, "Open folder", b -> net.minecraft.Util.getPlatform().openFile(MapFiles.folder().toFile()),
+                    "Refresh", b -> mapFiles = MapFiles.list());
+            return;
+        }
+        halfButtons(y, () -> "Scale " + String.format(java.util.Locale.ROOT, "%.1f", mi.scale) + " -", b -> rescale(mi.scale - 0.1),
+                () -> "Scale +", b -> rescale(mi.scale + 0.1));
+        y += ROW;
+        halfButtons(y, "Nudge west", b -> nudge(-1, 0), "Nudge east", b -> nudge(1, 0));
+        y += ROW;
+        halfButtons(y, "Nudge north", b -> nudge(0, -1), "Nudge south", b -> nudge(0, 1));
+        y += ROW;
+        button(y, () -> "Guides in world: " + (mi.guides ? "on" : "off"), b -> mi.guides = !mi.guides);
+        y += ROW;
+        button(y, () -> "Remove map", b -> {
+            remember();
+            removeMapRoads();
+            plan.map = null;
+            showOutlines();
+            changed();
+        });
+    }
+
+    /** Read a map file in the background, then carry on with it on the game thread (see tick). */
+    private void readMap(String file, Consumer<OsmMap> then) {
+        mapJob = MapFiles.get(file);
+        mapThen = then;
+    }
+
+    /** A real map's roads into the plan, its middle at the middle of the map view. */
+    private void importMap(String file) {
+        flash("Reading " + file + "...");
+        readMap(file, m -> {
+            remember();
+            RoadPlan.MapImport mi = new RoadPlan.MapImport();
+            mi.file = file;
+            mi.lat0 = m.midLat();
+            mi.lon0 = m.midLon();
+            mi.x = (int) Math.floor(camX);
+            mi.z = (int) Math.floor(camZ);
+            plan.map = mi;
+            layMapRoads(m);
+        });
+    }
+
+    private void layMapRoads(OsmMap m) {
+        osm = m;
+        RoadPlan.MapImport mi = plan.map;
+        List<OsmMap.Outline> b = m.buildings(mi);
+        // only what the planner's map reaches: the rest can't be seen or levelled yet
+        double x0 = map == null ? mi.x - 400 : map.originX, z0 = map == null ? mi.z - 400 : map.originZ;
+        double size = map == null ? 800 : map.size;
+        int roads = m.roads(plan, mi, b, x0, z0, x0 + size, z0 + size);
+        showOutlines();
+        changed();
+        flash(roads + " roads and " + b.size() + " buildings from " + mi.file);
+    }
+
+    /** Take out the map's roads that haven't been built (and points left with no roads). */
+    private void removeMapRoads() {
+        RoadPlan.MapImport mi = plan.map;
+        plan.segments.removeIf(sg -> mi.owns(sg.id) && !sg.built);
+        plan.nodes.removeIf(n -> mi.owns(n.id) && !n.built && plan.segmentsAt(n.id).isEmpty());
+    }
+
+    private void rescale(double scale) {
+        RoadPlan.MapImport mi = plan.map;
+        double to = Math.max(1, Math.min(3, Math.round(scale * 10) / 10.0));
+        readMap(mi.file, m -> {
+            remember();
+            removeMapRoads();
+            mi.scale = to;
+            layMapRoads(m);
+        });
+    }
+
+    private void nudge(int dx, int dz) {
+        plan.map.nudgeX += dx;
+        plan.map.nudgeZ += dz;
+        showOutlines();
+    }
+
+    /** The map's buildings, nudged, drawn into a picture laid over the planner's map. */
+    private void showOutlines() {
+        RoadPlan.MapImport mi = plan.map;
+        outlines = mi == null || osm == null ? null : osm.buildings(mi);
+        if (outlines == null || map == null) {
+            return;
+        }
+        if (outlineTex == null) {
+            outlineTex = new DynamicTexture(new NativeImage(NativeImage.Format.RGBA, map.size, map.size, true));
+            Minecraft.getInstance().getTextureManager().register(OUTLINES, outlineTex);
+        }
+        NativeImage img = outlineTex.getPixels();
+        if (img == null) {
+            return;
+        }
+        img.fillRect(0, 0, map.size, map.size, 0);
+        int colour = abgr(0xFF8C1A, 255);
+        for (OsmMap.Outline o : outlines) {
+            for (int i = 0; i + 1 < o.x().length; i++) {
+                double ax = o.x()[i] + mi.nudgeX - map.originX, az = o.z()[i] + mi.nudgeZ - map.originZ;
+                double bx = o.x()[i + 1] + mi.nudgeX - map.originX, bz = o.z()[i + 1] + mi.nudgeZ - map.originZ;
+                int steps = (int) Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(bz - az))) + 1;
+                for (int k = 0; k <= steps; k++) {
+                    int px = (int) Math.floor(ax + (bx - ax) * k / steps), pz = (int) Math.floor(az + (bz - az) * k / steps);
+                    if (px >= 0 && pz >= 0 && px < map.size && pz < map.size) {
+                        img.setPixelRGBA(px, pz, colour);
+                    }
+                }
+            }
+        }
+        outlineTex.upload();
     }
 
     /** The left panel in Sites mode: what a new site will be, or the selected site's options. */
@@ -553,6 +701,7 @@ public class RoadPlannerScreen extends Screen {
         chainLast = null;
         selNode = selSeg = null;
         selSite = null;
+        showOutlines();
         changed();
     }
 
@@ -622,6 +771,7 @@ public class RoadPlannerScreen extends Screen {
             map.close();
         }
         Minecraft.getInstance().getTextureManager().release(PREVIEW);
+        Minecraft.getInstance().getTextureManager().release(OUTLINES);
         lastZoom = zoom;
         super.removed();
     }
@@ -723,6 +873,16 @@ public class RoadPlannerScreen extends Screen {
         }
         if (mode == Mode.SITES) {
             siteClick(mx, my);
+            return true;
+        }
+        if (mode == Mode.MAP) {
+            double[] p = {worldX(mx), worldZ(my)};
+            if (measureA == null || measureB != null) {
+                measureA = p;
+                measureB = null;
+            } else {
+                measureB = p;
+            }
             return true;
         }
         // edit: the selected road's bend handle, a point, or a road
@@ -1004,6 +1164,7 @@ public class RoadPlannerScreen extends Screen {
             case GLFW.GLFW_KEY_D, GLFW.GLFW_KEY_RIGHT -> camX += step;
             case GLFW.GLFW_KEY_E -> setMode(mode == Mode.DRAW ? Mode.EDIT : Mode.DRAW);
             case GLFW.GLFW_KEY_Q -> setMode(mode == Mode.SITES ? Mode.DRAW : Mode.SITES);
+            case GLFW.GLFW_KEY_M -> setMode(mode == Mode.MAP ? Mode.DRAW : Mode.MAP);
             default -> {
                 return super.keyPressed(key, scan, mods);
             }
@@ -1041,6 +1202,18 @@ public class RoadPlannerScreen extends Screen {
         }
         if (messageTicks > 0) {
             messageTicks--;
+        }
+        if (mapJob != null && mapJob.isDone()) {
+            try {
+                OsmMap m = mapJob.join();
+                osm = m;
+                mapThen.accept(m);
+            } catch (RuntimeException e) {
+                Throwable why = e.getCause() == null ? e : e.getCause();
+                flash("Couldn't read the map: " + why.getMessage());
+            }
+            mapJob = null;
+            rebuildPanel();
         }
         if (pending != null && pending.isDone()) {
             try {
@@ -1144,7 +1317,17 @@ public class RoadPlannerScreen extends Screen {
             ps.popPose();
             RenderSystem.disableBlend();
         }
+        if (outlines != null && outlineTex != null && map != null) {
+            RenderSystem.enableBlend();
+            ps.pushPose();
+            ps.translate(screenX(map.originX), screenY(map.originZ), 0);
+            ps.scale((float) zoom, (float) zoom, 1);
+            g.blit(OUTLINES, 0, 0, 0, 0, map.size, map.size, map.size, map.size);
+            ps.popPose();
+            RenderSystem.disableBlend();
+        }
         drawPlan(g);
+        drawMeasure(g);
         drawPlayer(g);
         g.disableScissor();
         // panel and bars
@@ -1153,13 +1336,16 @@ public class RoadPlannerScreen extends Screen {
         Node n = selNode == null ? null : plan.node(selNode);
         Segment s = selSeg == null ? null : plan.segment(selSeg);
         Site site = selSite == null ? null : plan.site(selSite);
-        String heading = mode == Mode.SITES ? (site == null ? "Sites" : site.type.title + " (" + site.width() + " x " + site.depth() + ")")
+        String heading = mode == Mode.MAP ? (plan.map == null ? "Real maps (.osm)" : "Map: " + plan.map.file)
+                : mode == Mode.SITES ? (site == null ? "Sites" : site.type.title + " (" + site.width() + " x " + site.depth() + ")")
                 : n != null && mode == Mode.EDIT ? "Point " + describe(n)
                 : s != null ? "Selected road (" + s.style.totalWidth() + " wide)"
                 : "New roads (" + drawStyle.totalWidth() + " wide)";
         g.drawString(font, "Road Planner", 6, 6, 0xFFFFD24A);
         g.drawString(font, heading, 6, TOP + 3, 0xFFE0E0E0);
-        String help = mode == Mode.SITES
+        String help = mode == Mode.MAP
+                ? (plan.map == null ? "Move the map to where its middle goes, then pick a file." : "Click two points to measure.")
+                : mode == Mode.SITES
                 ? "Drag out a site; drag it to move, a corner to resize."
                 : mode == Mode.DRAW
                 ? (chainLast == null ? "Click to start a road. Right-drag: move map. Scroll: zoom."
@@ -1183,6 +1369,17 @@ public class RoadPlannerScreen extends Screen {
         }
         if (mode == Mode.SITES) {
             sitePanelText(g, site);
+        }
+        if (mode == Mode.MAP && plan.map == null && mapFiles != null && mapFiles.isEmpty()) {
+            List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.literal(
+                    "Export an area from openstreetmap.org (Export button) and put the .osm file in the game folder's osm_maps folder."),
+                    PANEL - 10);
+            for (int i = 0; i < lines.size(); i++) {
+                g.drawString(font, lines.get(i), 6, TOP + 30 + ROW + i * 10, 0xFFB0B0B0);
+            }
+        }
+        if (mapJob != null) {
+            g.drawString(font, "Reading the map...", PANEL + 6, TOP + 26, 0xFFFFD24A);
         }
         super.render(g, mx, my, partial);
     }
@@ -1253,6 +1450,20 @@ public class RoadPlannerScreen extends Screen {
         }
     }
 
+    /** The measuring line, in blocks and in real metres at the map's scale. */
+    private void drawMeasure(GuiGraphics g) {
+        if (mode != Mode.MAP || measureA == null) {
+            return;
+        }
+        double bx = measureB != null ? measureB[0] : worldX(mouseX), bz = measureB != null ? measureB[1] : worldZ(mouseY);
+        line(g, screenX(measureA[0]), screenY(measureA[1]), screenX(bx), screenY(bz), 1, 0xFF50E0FF);
+        dot(g, screenX(measureA[0]), screenY(measureA[1]), 2, 0xFF50E0FF);
+        double blocks = Math.hypot(bx - measureA[0], bz - measureA[1]);
+        double scale = plan.map != null ? plan.map.scale : RoadPlan.MapImport.SCALE;
+        String text = String.format(java.util.Locale.ROOT, "%.0f blocks = %.1f m", blocks, blocks / scale);
+        g.drawString(font, text, (int) screenX(bx) + 6, (int) screenY(bz) - 4, 0xFF50E0FF);
+    }
+
     /** Along the bottom of the map: how many bays the selected site got, and any warning. */
     private void sitePanelText(GuiGraphics g, Site st) {
         SiteLayout sl = st == null ? null : siteLayout(st.id);
@@ -1319,6 +1530,9 @@ public class RoadPlannerScreen extends Screen {
                 default -> 0xFFFFA040;
             };
             boolean sel = selNode != null && selNode == n.id;
+            if (j == null && !sel && zoom < 1.5 && plan.segmentsAt(n.id).size() == 2) {
+                continue;                                  // plain bends crowd the map zoomed out (a real map has hundreds)
+            }
             dot(g, x, y, sel ? 4 : 3, 0xFF000000);
             dot(g, x, y, sel ? 3 : 2, sel ? 0xFFFFD24A : colour);
             double r = lines.roundaboutRadius(n.id);

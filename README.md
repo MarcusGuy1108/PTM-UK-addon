@@ -124,6 +124,21 @@ Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 r
 
 Roads are levelled into the ground: hills are cut through and dips built up with a smooth gradient (no steeper than 1 in 10, in half-block steps), junctions are flat, and the ground either side is sloped to meet the road. Trees in the way are cleared. Set PTM2 to left-hand traffic in its settings so its AI cars use the left lane.
 
+### Real maps (OpenStreetMap import)
+
+Build a real place without measuring: the Road Planner's **Map** mode (the Map button, or M) brings in a real area's roads and buildings from OpenStreetMap.
+
+1. On [openstreetmap.org](https://www.openstreetmap.org), find the area, press **Export**, and save the `.osm` file (the Export button handles a town centre or neighbourhood at a time).
+2. Put it in the `osm_maps` folder in your game folder (the planner's **Open folder** button opens it).
+3. Open the planner, move the map so its middle is where the middle of the real area should go, choose **Map** and click the file.
+
+- **Scale:** 1.8 blocks to a metre, so a real 3.3 m lane is one of the planner's 6-block lanes and real roads come out the size of your roads. Buildings and distances use the same scale, so everything lines up. Change it with Scale - and +.
+- **Roads** come in as ordinary planner roads you can edit, in the nearest UK style (main road, wide main road, residential, one-way, each side of a dual carriageway, slip roads) with the lane count from the map. Roundabouts, mini roundabouts and traffic lights become those junctions. Pavements are widened or narrowed to meet the building fronts. Only what the planner's map reaches is brought in (about 380 blocks each way); move along and import again for more.
+- **Buildings** show as orange outlines on the planner map, and in the world (at their real size and height from their number of floors) while you hold the planner, to build over. **Guides in world** turns that off. If the buildings sit a little off the roads in the map data, **Nudge** them into line.
+- **Measure:** in Map mode click two points to see the distance in blocks and in real metres, to check against Google Maps.
+
+Map data © OpenStreetMap contributors (ODbL). The import never goes online: it only reads the file you saved.
+
 ### Site planners: car parks, retail parks and drive-thrus
 
 The Road Planner's **Sites** mode (the Sites button, or Q) lays out whole sites. Drag out a rectangle on the map, pick what it is in the panel, and it's laid out to fit, shown on the map with everything else. Drag a site to move it or a corner to resize it. End a road on a site's edge and that becomes its way in (any number of them); the side the widest road reaches is the road side, or set it yourself. **Build** builds the sites with the roads, and **Undo build** takes them away again.
