@@ -50,11 +50,47 @@ public enum HomeFurnitureType {
     BEDSIDE_TABLE_OAK("bedside_table_oak", Kind.BASIC, Group.BEDROOM, new double[]{1.5, 0, 2.5, 14.5, 8, 15.5}, 0f, 1, 0, false, Surface.LOW, 0, Effect.NONE, false, SoundType.WOOD),
     DESK("desk", Kind.BASIC, Group.BEDROOM, new double[]{0, 0, 1, 16, 12, 15}, 0f, 1, 0, false, Surface.TABLE, 0, Effect.NONE, false, SoundType.WOOD),
     OFFICE_CHAIR("office_chair", Kind.BASIC, Group.BEDROOM, new double[]{2.2, 0, 2.2, 13.8, 10, 13.8}, 8.6f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
-    COMPUTER("computer", Kind.TABLETOP, Group.BEDROOM, new double[]{1.5, 0, 3, 14.5, 11.5, 12}, 0f, 0, 4, true, Surface.FLOOR, 0, Effect.CLICK, false, SoundType.METAL);
+    COMPUTER("computer", Kind.TABLETOP, Group.BEDROOM, new double[]{1.5, 0, 3, 14.5, 11.5, 12}, 0f, 0, 4, true, Surface.FLOOR, 0, Effect.CLICK, false, SoundType.METAL),
+    SHELVES_GROCERIES("shelves_groceries", Kind.TALL, Group.SHOP, new double[]{0, 0, 1, 16, 16, 15}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    SHELVES_DRINKS("shelves_drinks", Kind.TALL, Group.SHOP, new double[]{0, 0, 1, 16, 16, 15}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    SHELVES_HOUSEHOLD("shelves_household", Kind.TALL, Group.SHOP, new double[]{0, 0, 1, 16, 16, 15}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    SHELVES_SNACKS("shelves_snacks", Kind.TALL, Group.SHOP, new double[]{0, 0, 1, 16, 16, 15}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    SHELVES_DIY("shelves_diy", Kind.TALL, Group.SHOP, new double[]{0, 0, 1, 16, 16, 15}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    CHILLER_CABINET("chiller_cabinet", Kind.TALL, Group.SHOP, new double[]{0, 0, 1.6, 16, 16, 16}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    UPRIGHT_FREEZER("upright_freezer", Kind.TALL, Group.SHOP, new double[]{0, 0, 1.2, 16, 16, 16}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    FREEZER_ISLAND("freezer_island", Kind.BASIC, Group.SHOP, new double[]{0, 0, 1, 16, 13.5, 15}, 0f, 3, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    PRODUCE_STAND("produce_stand", Kind.BASIC, Group.SHOP, new double[]{0, 0, 1, 16, 12, 15}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.WOOD),
+    CHECKOUT("checkout", Kind.WIDE, Group.SHOP, new double[]{0, 0, 2, 16, 12, 14}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    SELF_CHECKOUT("self_checkout", Kind.TALL, Group.SHOP, new double[]{2, 0, 4, 14, 16, 14}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    SHOPPING_TROLLEY("shopping_trolley", Kind.BASIC, Group.SHOP, new double[]{4, 0, 1.5, 12, 15, 15}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    PALLET_RACKING("pallet_racking", Kind.TALL, Group.SHOP, new double[]{0, 0, 1, 16, 16, 15}, 0f, 6, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    CASH_MACHINE("cash_machine", Kind.BASIC, Group.SHOP, new double[]{0, 0, 0, 16, 16, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    CINEMA_SEAT_RED("cinema_seat_red", Kind.BASIC, Group.CINEMA, new double[]{0, 0, 1.5, 16, 10, 15.5}, 6.5f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.WOOL),
+    CINEMA_SEAT_BLUE("cinema_seat_blue", Kind.BASIC, Group.CINEMA, new double[]{0, 0, 1.5, 16, 10, 15.5}, 6.5f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.WOOL),
+    POPCORN_MACHINE("popcorn_machine", Kind.TABLETOP, Group.CINEMA, new double[]{3, 0, 4, 13, 15.2, 12}, 0f, 0, 9, true, Surface.FLOOR, 0, Effect.CLICK, false, SoundType.GLASS),
+    PICK_AND_MIX("pick_and_mix", Kind.BASIC, Group.CINEMA, new double[]{0, 0, 3.6, 16, 12.6, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.WOOD),
+    DRINKS_DISPENSER("drinks_dispenser", Kind.TABLETOP, Group.CINEMA, new double[]{2, 0, 2.6, 14, 14, 14}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    TILL("till", Kind.TABLETOP, Group.SHOP, new double[]{3, 0, 5, 13, 10.5, 13}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    CLOTHES_RAIL("clothes_rail", Kind.BASIC, Group.SHOP, new double[]{0, 0, 3, 16, 15, 13}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.WOOL),
+    PLANT_BENCH("plant_bench", Kind.BASIC, Group.SHOP, new double[]{0, 0, 0.5, 16, 13, 15.5}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.GRASS),
+    TOOL_CHEST("tool_chest", Kind.BASIC, Group.SHOP, new double[]{0, 0, 1.8, 16, 14.6, 15.2}, 0f, 3, 0, false, Surface.COUNTER, 0, Effect.NONE, false, SoundType.METAL),
+    TYRE_STACK("tyre_stack", Kind.BASIC, Group.SHOP, new double[]{1.5, 0, 1.5, 14.5, 13.7, 14.5}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.WOOL),
+    OIL_DRUM("oil_drum", Kind.BASIC, Group.SHOP, new double[]{1.8, 0, 1.8, 14.2, 14.5, 14.2}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    CAR_LIFT("car_lift", Kind.TALL, Group.SHOP, new double[]{5, 0, 6, 11, 16, 12}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    FRYER("fryer", Kind.BASIC, Group.SHOP, new double[]{0, 0, 1, 16, 14, 16}, 0f, 0, 6, true, Surface.COUNTER, 0, Effect.CLICK, false, SoundType.METAL),
+    MENU_BOARD("menu_board", Kind.WIDE, Group.SHOP, new double[]{0, 0, 13.6, 16, 16, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.GLASS),
+    DRIVE_THRU_SPEAKER("drive_thru_speaker", Kind.TALL, Group.SHOP, new double[]{2, 0, 6, 14, 16, 10}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    PROJECTOR("projector", Kind.TABLETOP, Group.CINEMA, new double[]{3, 0, 1.5, 13, 6.2, 14}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    TICKET_MACHINE("ticket_machine", Kind.TALL, Group.CINEMA, new double[]{2, 0, 5, 14, 16, 14}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.METAL),
+    FILM_POSTER_NIGHT_BUS("film_poster_night_bus", Kind.TALL, Group.CINEMA, new double[]{0.5, 0, 14.5, 15.5, 16, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.GLASS),
+    FILM_POSTER_CUBE_QUEST("film_poster_cube_quest", Kind.TALL, Group.CINEMA, new double[]{0.5, 0, 14.5, 15.5, 16, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.GLASS),
+    FILM_POSTER_ORBIT_NINE("film_poster_orbit_nine", Kind.TALL, Group.CINEMA, new double[]{0.5, 0, 14.5, 15.5, 16, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.GLASS),
+    FILM_POSTER_LAST_JUNCTION("film_poster_last_junction", Kind.TALL, Group.CINEMA, new double[]{0.5, 0, 14.5, 15.5, 16, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.GLASS),
+    FILM_POSTER_RAIN_MOORS("film_poster_rain_moors", Kind.TALL, Group.CINEMA, new double[]{0.5, 0, 14.5, 15.5, 16, 16}, 0f, 0, 0, false, Surface.FLOOR, 0, Effect.NONE, false, SoundType.GLASS);
 
     public enum Kind { BASIC, TABLETOP, SOFA, TABLE, TALL, WIDE }
 
-    public enum Group { LIVING, KITCHEN, BATHROOM, BEDROOM }
+    public enum Group { LIVING, KITCHEN, BATHROOM, BEDROOM, SHOP, CINEMA }
 
     /** The top of the furniture in pixels, for tabletop items standing on it. */
     public enum Surface {

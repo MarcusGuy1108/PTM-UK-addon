@@ -75,7 +75,7 @@ In the **UK Street Furniture** tab:
 
 The **Prefab Tool** (in the **UK Buildings** tab, creative mode only) places ready-made British buildings to fill gaps in a town:
 
-- **Sneak + right-click** to open the catalogue: pick a building from Houses, Estates, Flats, Shops, Offices or Other, with a picture and its size.
+- **Sneak + right-click** to open the catalogue: pick a building from Houses, Estates, Flats, Shops, Commercial, Offices or Other, with a picture and its size.
 - **Right-click** to place it where you're looking. Its front faces you, and the middle of its front edge goes on the block you're aiming at. An outline shows where it will go, with the front edge in green.
 - **R** (or **Turn 90°** in the catalogue) turns it. **Mirrored** flips it left to right.
 - **Undo last placed** puts back what was there before (the last 8 placements).
@@ -88,11 +88,12 @@ They are built a little bigger than real life, like most Minecraft builds, so th
 - **Houses:** Victorian terraced house (stock brick or red brick) and a terrace of four, Edwardian and 1930s semi-detached pairs, a terrace of four post-war council houses, a new-build detached house with garage, a 1960s bungalow, a Georgian townhouse. Bigger houses: a double-fronted Victorian villa, an Edwardian Arts & Crafts house, an executive detached house with double garage, a 1930s mock-Tudor detached house, a Georgian country house with portico, wings and formal gardens, and a thatched cottage. The biggest is a red-brick **country mansion** (60 x 64): four bedrooms (two en-suite), a family bathroom, drawing, dining and family rooms, a study, a big kitchen and a boot room, round a block-paved courtyard with a fountain, room to park and a car care corner with a lift and workbench; a separate four-bay coach house garage with a workshop, joined to the house by a covered walkway; and behind it a terrace, a swimming pool sunk into the ground with a pool house, lawns, a greenhouse and vegetable beds.
 - **Estates:** whole streets with roads, pavements, kerbs and street lights, opening onto your road at the front: a 1930s semi-detached cul-de-sac (ten homes), a Victorian terraced street (fourteen homes), a post-war council estate round a green with a playground, flats and lock-up garages, a new-build cul-de-sac (eight detached homes), and a tower block estate with maisonettes, car park and playground.
 - **Shops:** a corner shop with a flat above, a Victorian high street parade of three shops, a corner pub, a cafe and takeaway pair, a Portland stone bank, a modern convenience store.
+- **Commercial:** a **multiplex cinema** (56 x 64) with a car park, a glass foyer with box office, ticket machines, popcorn, drinks and pick and mix, and a corridor to four stadium-seated screens with a projector over each; a **supermarket superstore** and a **discount supermarket** (48 x 58) with car parks, trolleys, cash machines, checkouts and self-checkouts, aisles of shelves, chillers, freezers and fruit and veg; a **car dealership** with a forecourt of display bays, a glass showroom with sales desks and a service workshop with car lifts; and a **drive-thru restaurant** with an order point, menu boards, a dining room and a kitchen with fryers. The cinema, supermarket, dealership and restaurant names (CUBEPLEX, FRESHWAYS, SAVEMORE, ROADSTAR MOTORS, BUN & GONE) are all made up.
 - **Offices:** a modern glass office block, a 1960s concrete office block, a 1990s brick office.
 - **Flats:** 16- and 24-storey council tower blocks, a 12-storey 1960s slab block, a 24-storey modern residential tower, a 7-storey courtyard apartment block, a 1930s mansion block, a modern apartment block, 1960s deck-access flats and a maisonette block.
 - **Other:** a Victorian parish church, a petrol station with a canopy over two pump islands, EV chargers, a kiosk shop, a price sign, an air and water machine and a working car wash.
 
-All the shop, pub and office names are made up. Change them in game: right-click a shop sign.
+All the shop, pub and office names are made up. Change them in game: right-click a shop sign. Shop signs stacked on top of each other join into one taller sign with bigger writing (up to 8 high and 24 wide); the bottom left-hand board holds the text.
 
 Every building is checked when the prefabs are generated: no gaps beside windows or doors, every staircase climbable (Minecraft needs three blocks of headroom over each step, not two, or you bump your head stepping up), and every room reachable on foot from the street. Garages open with their up-and-over doors (click any panel) or a door from the house.
 
@@ -135,6 +136,16 @@ What they do:
 - **Tabletop things** (TV, lamps, kettle, toaster, microwave, computer, plant) sit down onto whatever they're placed on: a TV on its unit, a kettle on the worktop, a lamp on a bedside table.
 
 The prefab houses, flats, shops and offices are furnished with these.
+
+### Shop and commercial fittings
+
+In the **UK Shop & Commercial Fittings** tab, for fitting out shops, cinemas, garages and restaurants anywhere:
+
+- **Supermarket:** double-sided shelving two blocks high (groceries, drinks, household, snacks, DIY), a chiller cabinet, an upright freezer, a chest freezer, a fruit and veg stand, a two-block checkout with belt, scanner, till, card reader and lane light, a self-checkout, a shopping trolley, a till, a cash machine (set it into a wall), pallet racking, a clothes rail and a garden centre plant bench. Shelves, chillers, freezers and racking store items.
+- **Cinema:** red and blue cinema seats (sit in them), a popcorn machine (switch it on), pick and mix, a drinks dispenser, a ticket machine, a projector and lit poster cases for five made-up films.
+- **Garage and fast food:** a car lift post, a tool chest (stores items), a stack of tyres, an oil drum, a deep fat fryer (switch it on to lower the baskets), a two-block lit menu board and a drive-thru order point.
+
+All the packaging, films and menus are made up; no real brands.
 
 ### Building blocks
 

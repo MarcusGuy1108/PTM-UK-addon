@@ -13,10 +13,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
-/** One board of a shop fascia. The left-hand board of a row carries the text for the whole row. */
+/** One board of a shop fascia. Boards side by side make a row, and rows stacked on top of each other
+ * make one taller sign; the bottom left-hand board carries the text for all of it. */
 public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMessage.Editable {
     /** Longest row of boards treated as one sign. */
     public static final int MAX_SPAN = 24;
+    /** Most rows stacked into one sign. */
+    public static final int MAX_ROWS = 8;
     private static final int MAX_TEXT = 40;
 
     public String text = "";
@@ -39,12 +42,18 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         return s.getBlock() instanceof ShopSignBlock && s.getValue(ShopSignBlock.FACING) == facing;
     }
 
-    /** The left-hand board of the row {@code pos} is in. */
+    /** The bottom left-hand board of the sign {@code pos} is part of. */
     public static BlockPos anchor(BlockGetter level, BlockPos pos, Direction facing) {
         Direction back = along(facing).getOpposite();
         BlockPos p = pos;
-        for (int i = 0; i < MAX_SPAN && sameRow(level, p.relative(back), facing); i++) {
-            p = p.relative(back);
+        for (int i = 0; i < MAX_SPAN + MAX_ROWS; i++) {
+            if (sameRow(level, p.below(), facing)) {
+                p = p.below();
+            } else if (sameRow(level, p.relative(back), facing)) {
+                p = p.relative(back);
+            } else {
+                break;
+            }
         }
         return p;
     }
@@ -63,12 +72,31 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         return n;
     }
 
+    /** How many rows of boards are stacked from this (anchor) board up. */
+    public int rows() {
+        if (level == null) {
+            return 1;
+        }
+        Direction facing = getBlockState().getValue(ShopSignBlock.FACING);
+        int n = 1;
+        while (n < MAX_ROWS && sameRow(level, worldPosition.above(n), facing)) {
+            n++;
+        }
+        return n;
+    }
+
+    /** Another board of the same sign directly above or below (so no moulding between them). */
+    public boolean joined(Direction dir) {
+        return level != null && sameRow(level, worldPosition.relative(dir), getBlockState().getValue(ShopSignBlock.FACING));
+    }
+
     public boolean isAnchor() {
         if (level == null) {
             return true;
         }
         Direction facing = getBlockState().getValue(ShopSignBlock.FACING);
-        return !sameRow(level, worldPosition.relative(along(facing).getOpposite()), facing);
+        return !sameRow(level, worldPosition.relative(along(facing).getOpposite()), facing)
+                && !sameRow(level, worldPosition.below(), facing);
     }
 
     public void write(CompoundTag tag) {
@@ -117,7 +145,7 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
-    /** Text goes to this (anchor) board; the colours go to every board in the row. */
+    /** Text goes to this (anchor) board; the colours go to every board of the sign. */
     @Override
     public void applyEdit(CompoundTag tag) {
         if (level == null) {
@@ -126,14 +154,17 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         read(tag);
         sync();
         Direction dir = along(getBlockState().getValue(ShopSignBlock.FACING));
-        for (int i = 1; i < span(); i++) {
-            if (level.getBlockEntity(worldPosition.relative(dir, i)) instanceof ShopSignBlockEntity other) {
-                other.board = board;
-                other.ink = ink;
-                other.lit = lit;
-                other.text = "";
-                other.sub = "";
-                other.sync();
+        int span = span(), rows = rows();
+        for (int r = 0; r < rows; r++) {
+            for (int i = 0; i < span; i++) {
+                if ((r > 0 || i > 0) && level.getBlockEntity(worldPosition.relative(dir, i).above(r)) instanceof ShopSignBlockEntity other) {
+                    other.board = board;
+                    other.ink = ink;
+                    other.lit = lit;
+                    other.text = "";
+                    other.sub = "";
+                    other.sync();
+                }
             }
         }
     }
@@ -147,6 +178,6 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
 
     @Override
     public AABB getRenderBoundingBox() {
-        return new AABB(worldPosition).inflate(MAX_SPAN, 1, MAX_SPAN);
+        return new AABB(worldPosition).inflate(MAX_SPAN, MAX_ROWS, MAX_SPAN);
     }
 }

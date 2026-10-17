@@ -1,0 +1,34 @@
+{
+ "variants": {
+  "lit=false,facing=north": {
+   "model": "ptmuk:block/home/pick_and_mix"
+  },
+  "lit=false,facing=east": {
+   "model": "ptmuk:block/home/pick_and_mix",
+   "y": 90
+  },
+  "lit=false,facing=south": {
+   "model": "ptmuk:block/home/pick_and_mix",
+   "y": 180
+  },
+  "lit=false,facing=west": {
+   "model": "ptmuk:block/home/pick_and_mix",
+   "y": 270
+  },
+  "lit=true,facing=north": {
+   "model": "ptmuk:block/home/pick_and_mix"
+  },
+  "lit=true,facing=east": {
+   "model": "ptmuk:block/home/pick_and_mix",
+   "y": 90
+  },
+  "lit=true,facing=south": {
+   "model": "ptmuk:block/home/pick_and_mix",
+   "y": 180
+  },
+  "lit=true,facing=west": {
+   "model": "ptmuk:block/home/pick_and_mix",
+   "y": 270
+  }
+ }
+}

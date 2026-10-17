@@ -1,0 +1,26 @@
+{
+ "type": "minecraft:block",
+ "pools": [
+  {
+   "rolls": 1,
+   "entries": [
+    {
+     "type": "minecraft:item",
+     "name": "ptmuk:shelves_groceries"
+    }
+   ],
+   "conditions": [
+    {
+     "condition": "minecraft:survives_explosion"
+    },
+    {
+     "condition": "minecraft:block_state_property",
+     "block": "ptmuk:shelves_groceries",
+     "properties": {
+      "half": "lower"
+     }
+    }
+   ]
+  }
+ ]
+}

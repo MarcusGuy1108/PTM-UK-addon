@@ -1,0 +1,64 @@
+{
+ "variants": {
+  "half=lower,lit=false,facing=north": {
+   "model": "ptmuk:block/home/film_poster_cube_quest"
+  },
+  "half=lower,lit=false,facing=east": {
+   "model": "ptmuk:block/home/film_poster_cube_quest",
+   "y": 90
+  },
+  "half=lower,lit=false,facing=south": {
+   "model": "ptmuk:block/home/film_poster_cube_quest",
+   "y": 180
+  },
+  "half=lower,lit=false,facing=west": {
+   "model": "ptmuk:block/home/film_poster_cube_quest",
+   "y": 270
+  },
+  "half=upper,lit=false,facing=north": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper"
+  },
+  "half=upper,lit=false,facing=east": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper",
+   "y": 90
+  },
+  "half=upper,lit=false,facing=south": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper",
+   "y": 180
+  },
+  "half=upper,lit=false,facing=west": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper",
+   "y": 270
+  },
+  "half=lower,lit=true,facing=north": {
+   "model": "ptmuk:block/home/film_poster_cube_quest"
+  },
+  "half=lower,lit=true,facing=east": {
+   "model": "ptmuk:block/home/film_poster_cube_quest",
+   "y": 90
+  },
+  "half=lower,lit=true,facing=south": {
+   "model": "ptmuk:block/home/film_poster_cube_quest",
+   "y": 180
+  },
+  "half=lower,lit=true,facing=west": {
+   "model": "ptmuk:block/home/film_poster_cube_quest",
+   "y": 270
+  },
+  "half=upper,lit=true,facing=north": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper"
+  },
+  "half=upper,lit=true,facing=east": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper",
+   "y": 90
+  },
+  "half=upper,lit=true,facing=south": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper",
+   "y": 180
+  },
+  "half=upper,lit=true,facing=west": {
+   "model": "ptmuk:block/home/film_poster_cube_quest_upper",
+   "y": 270
+  }
+ }
+}

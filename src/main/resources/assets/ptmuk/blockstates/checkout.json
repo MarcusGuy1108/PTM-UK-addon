@@ -1,0 +1,64 @@
+{
+ "variants": {
+  "lit=false,part=left,facing=north": {
+   "model": "ptmuk:block/home/checkout_left"
+  },
+  "lit=false,part=left,facing=east": {
+   "model": "ptmuk:block/home/checkout_left",
+   "y": 90
+  },
+  "lit=false,part=left,facing=south": {
+   "model": "ptmuk:block/home/checkout_left",
+   "y": 180
+  },
+  "lit=false,part=left,facing=west": {
+   "model": "ptmuk:block/home/checkout_left",
+   "y": 270
+  },
+  "lit=true,part=left,facing=north": {
+   "model": "ptmuk:block/home/checkout_left"
+  },
+  "lit=true,part=left,facing=east": {
+   "model": "ptmuk:block/home/checkout_left",
+   "y": 90
+  },
+  "lit=true,part=left,facing=south": {
+   "model": "ptmuk:block/home/checkout_left",
+   "y": 180
+  },
+  "lit=true,part=left,facing=west": {
+   "model": "ptmuk:block/home/checkout_left",
+   "y": 270
+  },
+  "lit=false,part=right,facing=north": {
+   "model": "ptmuk:block/home/checkout_right"
+  },
+  "lit=false,part=right,facing=east": {
+   "model": "ptmuk:block/home/checkout_right",
+   "y": 90
+  },
+  "lit=false,part=right,facing=south": {
+   "model": "ptmuk:block/home/checkout_right",
+   "y": 180
+  },
+  "lit=false,part=right,facing=west": {
+   "model": "ptmuk:block/home/checkout_right",
+   "y": 270
+  },
+  "lit=true,part=right,facing=north": {
+   "model": "ptmuk:block/home/checkout_right"
+  },
+  "lit=true,part=right,facing=east": {
+   "model": "ptmuk:block/home/checkout_right",
+   "y": 90
+  },
+  "lit=true,part=right,facing=south": {
+   "model": "ptmuk:block/home/checkout_right",
+   "y": 180
+  },
+  "lit=true,part=right,facing=west": {
+   "model": "ptmuk:block/home/checkout_right",
+   "y": 270
+  }
+ }
+}

@@ -32,6 +32,9 @@ public final class ModCreativeTabs {
     public static final RegistryObject<CreativeModeTab> HOME = tab("home", BUILDING,
             () -> new ItemStack(com.ptmuk.home.HomeBlocks.BLOCKS.get(com.ptmuk.home.HomeFurnitureType.SOFA_GREY).get()),
             com.ptmuk.home.HomeBlocks.ITEMS);
+    public static final RegistryObject<CreativeModeTab> SHOP_FITTINGS = tab("shop_fittings", HOME,
+            () -> new ItemStack(com.ptmuk.home.HomeBlocks.BLOCKS.get(com.ptmuk.home.HomeFurnitureType.SHOPPING_TROLLEY).get()),
+            com.ptmuk.home.HomeBlocks.SHOP_ITEMS);
 
     private static RegistryObject<CreativeModeTab> tab(String name, RegistryObject<CreativeModeTab> after,
                                                        java.util.function.Supplier<ItemStack> icon,

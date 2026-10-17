@@ -13,7 +13,7 @@ ASSETS = ROOT / "src/main/resources/assets/ptmuk"
 DATA = ROOT / "src/main/resources/data/ptmuk"
 JAVA = ROOT / "src/main/java/com/ptmuk/building/PrefabCatalog.java"
 
-CATEGORIES = ["Houses", "Estates", "Flats", "Shops", "Offices", "Other"]
+CATEGORIES = ["Houses", "Estates", "Flats", "Shops", "Commercial", "Offices", "Other"]
 
 
 # ================================================================== Victorian terraced houses
@@ -1367,6 +1367,7 @@ def all_prefabs():
 
 def _all_prefabs():
     import prefab_big          # bigger houses, flats and estates (built from the ones here)
+    import prefab_commercial   # cinema, supermarkets, car dealership, drive-thru
     return [
         victorian_terrace("victorian_terrace", "Victorian Terraced House", 1),
         victorian_terrace("victorian_terrace_row", "Victorian Terrace (Row of 4)", 4),
@@ -1393,7 +1394,7 @@ def _all_prefabs():
         deck_access_flats(),
         church(),
         petrol_station(),
-    ] + prefab_big.all_big()
+    ] + prefab_big.all_big() + prefab_commercial.all_commercial()
 
 
 def write_java(builds):

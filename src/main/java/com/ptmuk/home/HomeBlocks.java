@@ -18,18 +18,21 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
-/** Registers the home furniture blocks, their items (UK Home Furniture tab), the storage and oven
- * block entities and the seat entity. */
+/** Registers the home furniture blocks, their items (UK Home Furniture tab, and the shop and cinema
+ * fittings in a tab of their own), the storage and oven block entities and the seat entity. */
 public final class HomeBlocks {
     public static final Map<HomeFurnitureType, RegistryObject<Block>> BLOCKS = new EnumMap<>(HomeFurnitureType.class);
     public static final List<RegistryObject<Item>> ITEMS = new ArrayList<>();
+    /** Shop and cinema fittings, in a tab of their own. */
+    public static final List<RegistryObject<Item>> SHOP_ITEMS = new ArrayList<>();
     public static final DeferredRegister<EntityType<?>> ENTITIES = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, PtmUk.MOD_ID);
 
     static {
         for (HomeFurnitureType type : HomeFurnitureType.values()) {
             RegistryObject<Block> block = ModBlocks.BLOCKS.register(type.id, () -> create(type));
             BLOCKS.put(type, block);
-            ITEMS.add(ModItems.ITEMS.register(type.id, () -> new BlockItem(block.get(), new Item.Properties())));
+            boolean shop = type.group == HomeFurnitureType.Group.SHOP || type.group == HomeFurnitureType.Group.CINEMA;
+            (shop ? SHOP_ITEMS : ITEMS).add(ModItems.ITEMS.register(type.id, () -> new BlockItem(block.get(), new Item.Properties())));
         }
     }
 

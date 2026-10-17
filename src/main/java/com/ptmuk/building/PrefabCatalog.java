@@ -8,7 +8,7 @@ public final class PrefabCatalog {
     public record Entry(String id, String name, String category, int width, int height, int depth, int sink, String description) {
     }
 
-    public static final List<String> CATEGORIES = List.of("Houses", "Estates", "Flats", "Shops", "Offices", "Other");
+    public static final List<String> CATEGORIES = List.of("Houses", "Estates", "Flats", "Shops", "Commercial", "Offices", "Other");
 
     public static final List<Entry> ENTRIES = List.of(
             new Entry("victorian_terrace", "Victorian Terraced House", "Houses", 7, 15, 19, 0, "1 Victorian terraced house: bay window, slate roof, rear outrigger and yard."),
@@ -51,7 +51,12 @@ public final class PrefabCatalog {
             new Entry("estate_victorian_street", "Victorian Terraced Street", "Estates", 48, 15, 43, 0, "A Victorian street of fourteen terraced houses facing each other: London stock brick on one side, red brick on the other, bay windows, railings, back yards and street lights. The street runs straight through."),
             new Entry("estate_council", "Post-war Council Estate", "Estates", 85, 15, 75, 0, "A 1950s council estate: sixteen houses in four terraces round a green with a playground, a loop road with street lights, a block of deck-access flats and rows of lock-up garages at the back."),
             new Entry("estate_newbuild", "New-Build Estate (Cul-de-sac)", "Estates", 52, 15, 79, 0, "Eight 2020s detached new-builds in mixed brick and render round a cul-de-sac with a block-paved turning head, pavements, street lights and young trees."),
-            new Entry("estate_tower_block", "Council Tower Block Estate", "Estates", 56, 69, 56, 0, "A 1960s council estate: a 16-storey tower block between two maisonette blocks, with a car park, a playground, lock-up garages, paths, trees and street lights."));
+            new Entry("estate_tower_block", "Council Tower Block Estate", "Estates", 56, 69, 56, 0, "A 1960s council estate: a 16-storey tower block between two maisonette blocks, with a car park, a playground, lock-up garages, paths, trees and street lights."),
+            new Entry("multiplex_cinema", "Multiplex Cinema (4 Screens)", "Commercial", 56, 20, 64, 0, "An out-of-town multiplex: car park, glass foyer with box office, concessions and pick and mix, a corridor to four stadium-seated screens with a projector over each. The name, CUBEPLEX, is made up."),
+            new Entry("superstore", "Supermarket Superstore", "Commercial", 48, 12, 58, 0, "A big out-of-town supermarket: car park with a trolley bay, glass entrance, checkouts and self-checkouts, aisles of shelves, chillers, freezers and fruit and veg. The brand, FRESHWAYS, is made up."),
+            new Entry("discount_supermarket", "Discount Supermarket", "Commercial", 48, 12, 58, 0, "A no-frills discount supermarket with a big car park, checkouts, self-checkouts and long aisles. The brand, SAVEMORE, is made up."),
+            new Entry("car_dealership", "Car Dealership with Workshop", "Commercial", 42, 13, 40, 0, "A main dealer: a forecourt of display bays, a double-height glass showroom with sales desks, and a service workshop with lifts, tool chests and up-and-over doors. The name, ROADSTAR MOTORS, is made up."),
+            new Entry("drive_thru", "Drive-Thru Restaurant", "Commercial", 32, 9, 34, 0, "A drive-thru burger restaurant: a lane round the building with an order point and menu board, a pay window, a dining room and a kitchen with fryers. The name, BUN & GONE, is made up."));
 
     public static Entry get(String id) {
         for (Entry e : ENTRIES) {

@@ -36,33 +36,47 @@ public class ShopSignRenderer implements BlockEntityRenderer<ShopSignBlockEntity
         pose.pushPose();
         pose.translate(0.5, 0, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(-facing.toYRot()));
-        drawBoard(pose, buffers, sign.board, glow, -0.5f, 0.5f);
+        drawBoard(pose, buffers, sign.board, glow, -0.5f, 0.5f, !sign.joined(Direction.DOWN), !sign.joined(Direction.UP));
         if (sign.isAnchor() && !(sign.text.isBlank() && sign.sub.isBlank())) {
             int span = sign.span();
-            drawText(pose, buffers, sign.text, sign.sub, sign.ink, glow, -0.5f, -0.5f + span);
+            drawText(pose, buffers, sign.text, sign.sub, sign.ink, glow, -0.5f, -0.5f + span, sign.rows());
         }
         pose.popPose();
     }
 
     /** The painted face with a darker moulding along the top and bottom edges. */
     public static void drawBoard(PoseStack pose, MultiBufferSource buffers, int argb, int light, float x0, float x1) {
-        rect(pose, buffers, x0, 0.06f, x1, 0.94f, FRONT, argb, light);
-        int edge = darker(argb, 0.62f);
-        rect(pose, buffers, x0, 0.0f, x1, 0.06f, FRONT, edge, light);
-        rect(pose, buffers, x0, 0.94f, x1, 1.0f, FRONT, edge, light);
+        drawBoard(pose, buffers, argb, light, x0, x1, true, true);
     }
 
-    private void drawText(PoseStack pose, MultiBufferSource buffers, String text, String sub, int ink, int light, float x0, float x1) {
+    /** The painted face; the mouldings only on edges not joined to another board of the same sign. */
+    public static void drawBoard(PoseStack pose, MultiBufferSource buffers, int argb, int light, float x0, float x1,
+                                 boolean bottom, boolean top) {
+        float y0 = bottom ? 0.06f : 0f, y1 = top ? 0.94f : 1f;
+        rect(pose, buffers, x0, y0, x1, y1, FRONT, argb, light);
+        int edge = darker(argb, 0.62f);
+        if (bottom) {
+            rect(pose, buffers, x0, 0.0f, x1, 0.06f, FRONT, edge, light);
+        }
+        if (top) {
+            rect(pose, buffers, x0, 0.94f, x1, 1.0f, FRONT, edge, light);
+        }
+    }
+
+    /** The name (and the line under it) across a sign {@code rows} boards high. */
+    private void drawText(PoseStack pose, MultiBufferSource buffers, String text, String sub, int ink, int light, float x0, float x1,
+                          int rows) {
         float maxW = (x1 - x0) * 0.94f - 0.08f;
         float cx = (x0 + x1) / 2;
         boolean two = !sub.isBlank();
         if (!text.isBlank()) {
             float h = two ? 0.44f : 0.56f;
             float y = two ? 0.42f : 0.22f;
-            line(pose, buffers, text, cx, y, h, maxW, ink, light);
+            line(pose, buffers, text, cx, y * rows, h * rows, maxW, ink, light);
         }
         if (two) {
-            line(pose, buffers, sub, cx, text.isBlank() ? 0.36f : 0.12f, text.isBlank() ? 0.3f : 0.2f, maxW, ink, light);
+            line(pose, buffers, sub, cx, (text.isBlank() ? 0.36f : 0.12f) * rows, (text.isBlank() ? 0.3f : 0.2f) * rows, maxW,
+                    ink, light);
         }
     }
 
