@@ -27,6 +27,8 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
     public int board = 0xFF1C2E4A;
     public int ink = 0xFFFFFFFF;
     public boolean lit = true;
+    /** A picture on the sign: "" none, "builtin:name" one of the mod's made-up logos, "file:name.png" your own. */
+    public String logo = "";
 
     public ShopSignBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.SHOP_SIGN.get(), pos, state);
@@ -105,6 +107,7 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         tag.putInt("board", board);
         tag.putInt("ink", ink);
         tag.putBoolean("lit", lit);
+        tag.putString("logo", logo);
     }
 
     public void read(CompoundTag tag) {
@@ -117,6 +120,10 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
             ink = tag.getInt("ink") | 0xFF000000;
         }
         lit = !tag.contains("lit") || tag.getBoolean("lit");
+        logo = tag.getString("logo");
+        if (logo.length() > 80) {
+            logo = "";
+        }
     }
 
     private static String clip(String s) {
@@ -154,15 +161,22 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         read(tag);
         sync();
         Direction dir = along(getBlockState().getValue(ShopSignBlock.FACING));
+        boolean showBoard = !tag.getBoolean("noBoard");
         int span = span(), rows = rows();
         for (int r = 0; r < rows; r++) {
             for (int i = 0; i < span; i++) {
-                if ((r > 0 || i > 0) && level.getBlockEntity(worldPosition.relative(dir, i).above(r)) instanceof ShopSignBlockEntity other) {
+                BlockPos p = worldPosition.relative(dir, i).above(r);
+                BlockState s = level.getBlockState(p);
+                if (s.getBlock() instanceof ShopSignBlock && s.getValue(ShopSignBlock.BOARD) != showBoard) {
+                    level.setBlock(p, s.setValue(ShopSignBlock.BOARD, showBoard), 3);
+                }
+                if ((r > 0 || i > 0) && level.getBlockEntity(p) instanceof ShopSignBlockEntity other) {
                     other.board = board;
                     other.ink = ink;
                     other.lit = lit;
                     other.text = "";
                     other.sub = "";
+                    other.logo = "";
                     other.sync();
                 }
             }

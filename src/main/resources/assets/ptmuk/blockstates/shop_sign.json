@@ -1,18 +1,33 @@
 {
  "variants": {
-  "facing=south": {
+  "board=true,facing=south": {
    "model": "ptmuk:block/building/shop_sign"
   },
-  "facing=west": {
+  "board=true,facing=west": {
    "model": "ptmuk:block/building/shop_sign",
    "y": 90
   },
-  "facing=north": {
+  "board=true,facing=north": {
    "model": "ptmuk:block/building/shop_sign",
    "y": 180
   },
-  "facing=east": {
+  "board=true,facing=east": {
    "model": "ptmuk:block/building/shop_sign",
+   "y": 270
+  },
+  "board=false,facing=south": {
+   "model": "ptmuk:block/building/shop_sign_bare"
+  },
+  "board=false,facing=west": {
+   "model": "ptmuk:block/building/shop_sign_bare",
+   "y": 90
+  },
+  "board=false,facing=north": {
+   "model": "ptmuk:block/building/shop_sign_bare",
+   "y": 180
+  },
+  "board=false,facing=east": {
+   "model": "ptmuk:block/building/shop_sign_bare",
    "y": 270
   }
  }

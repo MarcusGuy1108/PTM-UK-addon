@@ -568,9 +568,12 @@ def generate_shop_sign(mid):
             f: {"texture": "#board", "uv": uv} for f, uv in (("north", [0, 0, 16, 16]), ("south", [0, 0, 16, 16]),
                                                            ("east", [0, 0, 3, 16]), ("west", [13, 0, 16, 16]),
                                                            ("up", [0, 0, 16, 3]), ("down", [0, 13, 16, 16]))}}]})
+    # board=false: no board at all, just the picture or lettering on the wall
+    G.write_json(G.ASSETS / "models/block/building/shop_sign_bare.json", {"textures": {"particle": tex}, "elements": []})
     G.write_json(G.ASSETS / "blockstates/shop_sign.json", {"variants": {
-        f"facing={f}": ({"model": f"{mid}:block/building/shop_sign", "y": y} if y else {"model": f"{mid}:block/building/shop_sign"})
-        for f, y in (("south", 0), ("west", 90), ("north", 180), ("east", 270))}})
+        f"board={str(board).lower()},facing={f}": dict({"model": f"{mid}:block/building/shop_sign" + ("" if board else "_bare")},
+                                                       **({"y": y} if y else {}))
+        for board in (True, False) for f, y in (("south", 0), ("west", 90), ("north", 180), ("east", 270))}})
     G.write_json(G.ASSETS / "models/item/shop_sign.json", {"parent": f"{mid}:block/building/shop_sign"})
 
 

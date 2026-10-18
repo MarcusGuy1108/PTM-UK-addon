@@ -30,6 +30,10 @@ import net.minecraftforge.fml.DistExecutor;
  * is drawn centred across the whole row. Right-click any board to edit it.
  */
 public class ShopSignBlock extends HorizontalDirectionalBlock implements EntityBlock {
+    /** False: no painted board, just the lettering or picture straight on the wall. */
+    public static final net.minecraft.world.level.block.state.properties.BooleanProperty BOARD =
+            net.minecraft.world.level.block.state.properties.BooleanProperty.create("board");
+
     private static final VoxelShape[] SHAPES = {
             Block.box(0, 0, 0, 16, 16, 3),    // facing south: board against the wall to the north
             Block.box(13, 0, 0, 16, 16, 16),  // facing west
@@ -38,12 +42,12 @@ public class ShopSignBlock extends HorizontalDirectionalBlock implements EntityB
 
     public ShopSignBlock() {
         super(BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(1.0F).sound(SoundType.WOOD).noOcclusion());
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(BOARD, true));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, BOARD);
     }
 
     @Override

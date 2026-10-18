@@ -36,10 +36,24 @@ public class ShopSignRenderer implements BlockEntityRenderer<ShopSignBlockEntity
         pose.pushPose();
         pose.translate(0.5, 0, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(-facing.toYRot()));
-        drawBoard(pose, buffers, sign.board, glow, -0.5f, 0.5f, !sign.joined(Direction.DOWN), !sign.joined(Direction.UP));
-        if (sign.isAnchor() && !(sign.text.isBlank() && sign.sub.isBlank())) {
-            int span = sign.span();
-            drawText(pose, buffers, sign.text, sign.sub, sign.ink, glow, -0.5f, -0.5f + span, sign.rows());
+        if (sign.getBlockState().getValue(ShopSignBlock.BOARD)) {
+            drawBoard(pose, buffers, sign.board, glow, -0.5f, 0.5f, !sign.joined(Direction.DOWN), !sign.joined(Direction.UP));
+        }
+        if (sign.isAnchor()) {
+            int span = sign.span(), rows = sign.rows();
+            float x0 = -0.5f, x1 = -0.5f + span;
+            boolean words = !(sign.text.isBlank() && sign.sub.isBlank());
+            CustomImages.Image img = CustomImages.get(sign.logo);
+            if (img != null) {
+                // the picture fills the sign, or sits at the left of the name
+                float pad = 0.06f * rows;
+                float right = words ? Math.min(x1 - pad, x0 + pad + (rows - 2 * pad) * img.width() / (float) Math.max(1, img.height())) : x1 - pad;
+                Draw.image(pose, buffers, img, x0 + pad, pad, right, rows - pad, FRONT + 0.003f, glow);
+                x0 = right;
+            }
+            if (words) {
+                drawText(pose, buffers, sign.text, sign.sub, sign.ink, glow, x0, x1, rows);
+            }
         }
         pose.popPose();
     }
