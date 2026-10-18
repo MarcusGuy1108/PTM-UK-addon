@@ -290,6 +290,9 @@ def generate(gmod):
     road_planner_icon().save(G.ASSETS / "textures/item/road_planner.png")
     G.write_json(G.ASSETS / "models/item/road_planner.json", {"parent": "minecraft:item/generated",
                                                               "textures": {"layer0": f"{mid}:item/road_planner"}})
+    interior_designer_icon().save(G.ASSETS / "textures/item/interior_designer.png")
+    G.write_json(G.ASSETS / "models/item/interior_designer.json", {"parent": "minecraft:item/generated",
+                                                                   "textures": {"layer0": f"{mid}:item/interior_designer"}})
 
 
 # ---------------------------------------------------------------- framed windows (glass panes)
@@ -559,6 +562,23 @@ def road_planner_icon():
     return img
 
 
+def interior_designer_icon():
+    """A paint swatch card fanned behind a little armchair."""
+    n = 32
+    img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for i, c in enumerate([(200, 70, 60), (230, 180, 60), (90, 150, 110), (70, 110, 170)]):
+        x = 4 + i * 5
+        d.rectangle((x, 3 + i, x + 6, 20 + i), fill=c + (255,), outline=(60, 50, 40, 255))
+    d.rectangle((9, 17, 27, 23), fill=(120, 130, 150, 255), outline=(50, 55, 70, 255))      # back
+    d.rectangle((7, 21, 29, 27), fill=(150, 160, 180, 255), outline=(50, 55, 70, 255))      # seat and arms
+    d.rectangle((7, 19, 10, 27), fill=(130, 140, 160, 255), outline=(50, 55, 70, 255))
+    d.rectangle((26, 19, 29, 27), fill=(130, 140, 160, 255), outline=(50, 55, 70, 255))
+    d.line([(9, 28), (9, 29)], fill=(70, 50, 30, 255))
+    d.line([(27, 28), (27, 29)], fill=(70, 50, 30, 255))
+    return img
+
+
 def generate_shop_sign(mid):
     tex = G.save(shop_sign_board(), "building/shop_sign_board")
     G.write_json(G.ASSETS / "models/block/building/shop_sign.json", {
@@ -602,6 +622,7 @@ def lang(gmod):
         out[f"block.{gmod.MOD_ID}.{n}"] = title
     out[f"item.{gmod.MOD_ID}.prefab_tool"] = "Prefab Tool (British Buildings)"
     out[f"item.{gmod.MOD_ID}.road_planner"] = "Road Planner"
+    out[f"item.{gmod.MOD_ID}.interior_designer"] = "Interior Designer"
     out["key.ptmuk.prefab_rotate"] = "Turn prefab building"
     out["key.categories.ptmuk"] = "PTM UK Addon"
     out["itemGroup.ptmuk.building"] = "UK Buildings"

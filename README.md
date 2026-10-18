@@ -198,6 +198,17 @@ In the **UK Shop & Commercial Fittings** tab, for fitting out shops, cinemas, ga
 
 All the packaging, films and menus are made up; no real brands.
 
+### Interior Designer
+
+Fit out an empty room in one click. Take the **Interior Designer** (UK Buildings tab, creative mode), right-click the floor of a room, and pick what the room is:
+
+- **Shops:** convenience store, newsagent, pharmacy, game shop (shelving round the walls, back-to-back aisles across the middle, chillers and freezers along the back of a convenience store, and a counter with a till by the door, with room behind it for the staff) and clothes shop (rails round the walls and across the floor, a till counter at the back).
+- **Eating and drinking:** cafe (a back counter with a coffee machine, cake displays and a till, and tables for two), restaurant (tables for four), takeaway (fryers and a pizza oven at the back, a serving counter in front of them, stools for waiting) and pub or bar (a back bar, a bar with beer pumps and stools, fruit machines and tables).
+- **Work:** office (rows of desks with computers and chairs, bookcases, plants).
+- **Home:** living room (a sofa, coffee table, TV facing it, floor lamp, bookcases, radiators under the windows), bedroom (a bed with bedside tables, wardrobes and drawers), kitchen (fitted units round the walls with a sink under the window, oven, washing machine, fridge freezer, kettle, microwave and toaster, and a table) and bathroom (a bath, toilet, basin and towel rail).
+
+The room is everything you can walk to from where you clicked, indoors, up to its walls and doors (up to 40 x 40). An open doorway onto the street ends it too, and the door to the street counts as the front. Doorways are kept clear, tall things stay out of the windows, and furniture already in the room is cleared out first, so you can try another kind of room. Right-click the air and press **Undo last room** to put the room back as it was (the last five rooms).
+
 ### Building blocks
 
 In the **UK Buildings** tab, each material as a full block, a slab and stairs:

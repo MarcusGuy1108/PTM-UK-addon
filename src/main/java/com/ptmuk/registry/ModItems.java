@@ -28,6 +28,7 @@ public final class ModItems {
     public static final List<RegistryObject<Item>> BUILDING_ITEMS = new ArrayList<>();
     public static final RegistryObject<Item> PREFAB_TOOL;
     public static final RegistryObject<Item> ROAD_PLANNER;
+    public static final RegistryObject<Item> INTERIOR_DESIGNER;
     /** Tower name -> the item that builds it. */
     public static final Map<String, RegistryObject<Item>> PYLON_BUILDERS = new LinkedHashMap<>();
     public static final RegistryObject<Item> CABLE_TOOL;
@@ -94,6 +95,8 @@ public final class ModItems {
         BUILDING_ITEMS.add(PREFAB_TOOL);
         ROAD_PLANNER = ITEMS.register("road_planner", com.ptmuk.road.RoadPlannerItem::new);
         BUILDING_ITEMS.add(ROAD_PLANNER);
+        INTERIOR_DESIGNER = ITEMS.register("interior_designer", com.ptmuk.home.InteriorDesignerItem::new);
+        BUILDING_ITEMS.add(INTERIOR_DESIGNER);
         register(ModBlocks.BUILDING, BUILDING_ITEMS);
         BUILDING_ITEMS.add(item("shop_sign", ModBlocks.SHOP_SIGN));
     }
