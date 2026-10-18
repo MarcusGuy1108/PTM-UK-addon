@@ -57,7 +57,13 @@ public enum FurnitureType {
     BUS_LANE_MARKING("bus_lane_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
     DISABLED_BAY_MARKING("disabled_bay_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
     PARENT_CHILD_BAY_MARKING("parent_child_bay_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
-    EV_BAY_MARKING("ev_bay_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE);
+    EV_BAY_MARKING("ev_bay_marking", 0, 0, 0, 16, 0.5, 16, 0, SoundType.STONE),
+    // town centre: lanterns for the top of a heritage lamp post, planters, a tower clock
+    HERITAGE_LANTERN("heritage_lantern", 4, 0, 4, 12, 13, 12, 15, SoundType.GLASS),
+    HERITAGE_LANTERN_CLUSTER("heritage_lantern_cluster", 4, 0, 4, 12, 16, 12, 15, SoundType.GLASS),
+    BRICK_PLANTER("brick_planter", 0, 0, 0, 16, 14, 16, 0, SoundType.STONE),
+    FLOWER_TROUGH("flower_trough", 0.5, 0, 3.5, 15.5, 6.5, 12.5, 0, SoundType.METAL),
+    TOWER_CLOCK("tower_clock", 0, 0, 14.5, 16, 16, 16, 0, SoundType.STONE);
 
     private final String id;
     public final double[] box;

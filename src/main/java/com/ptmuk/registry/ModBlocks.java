@@ -88,6 +88,7 @@ public final class ModBlocks {
         fence("palisade_fence", SoundType.METAL);
         fence("black_railings", SoundType.METAL);
         fence("pedestrian_guardrail", SoundType.METAL);
+        fence("black_guardrail", SoundType.METAL);
         fence("close_board_fence", SoundType.WOOD);
         fence("heras_fence", SoundType.METAL);
         fence("armco_barrier", SoundType.METAL);

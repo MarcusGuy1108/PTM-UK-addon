@@ -1382,7 +1382,7 @@ def petrol_station(ident="petrol_station", name="Petrol Station"):
 NOT_ENLARGED = {"multiplex_cinema", "superstore", "discount_supermarket", "car_dealership", "drive_thru",
                 "petrol_station", "diy_store", "retail_park", "retail_park_terrace", "fashion_superstore",
                 "bus_garage", "large_primary_school", "secondary_school", "leisure_centre", "country_mansion",
-                "georgian_country_house"}
+                "georgian_country_house", "clock_tower"}
 
 
 def all_prefabs():

@@ -9,7 +9,9 @@ public enum PoleType {
     /** 76 mm sign pole, galvanised. */
     SIGN_GALVANISED("sign_pole_galvanised", 1.25),
     /** 76 mm sign pole, painted black. */
-    SIGN_BLACK("sign_pole_black", 1.25);
+    SIGN_BLACK("sign_pole_black", 1.25),
+    /** Victorian-style cast iron lamp post, black, with a fluted base (a lantern goes on top). */
+    HERITAGE_BLACK("heritage_post_black", 1.6);
 
     private final String id;
     public final double radius;

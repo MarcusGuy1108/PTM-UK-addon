@@ -129,6 +129,39 @@ def make_textures():
     for name, colour in BIN_COLOURS.items():
         TEX[f"bin_{name}"] = s(H.plastic(colour), p + f"bin_{name}")
         TEX[f"bin_front_{name}"] = s(H.bin_front(colour, BIN_LABELS[name]), p + f"bin_front_{name}")
+    TEX["heritage_globe"] = s(heritage_globe(), p + "heritage_globe")
+    TEX["clock_dial"] = s(clock_dial(), p + "clock_dial")
+
+
+def heritage_globe(size=16):
+    """Frosted opal glass, lit: warm white, a little brighter in the middle."""
+    y, x = np.mgrid[0:size, 0:size] / (size - 1) - 0.5
+    r = np.sqrt(x * x + y * y)
+    rgb = np.stack([255 - 30 * r, 250 - 34 * r, 236 - 40 * r], -1) + np.random.default_rng(7).normal(0, 1.2, (size, size, 1))
+    return Image.fromarray(np.clip(rgb, 0, 255).astype("uint8"), "RGB")
+
+
+def clock_dial(size=128):
+    """A Victorian tower clock: white dial, black Roman numerals and minute ring, black hands at ten past ten."""
+    p = H.Panel(size, size, (0, 0, 0, 0))
+    c = size / 2
+    p.ellipse(1, 1, size - 1, size - 1, (24, 24, 26))
+    p.ellipse(5, 5, size - 5, size - 5, (238, 236, 226))
+    p.ellipse(9, 9, size - 9, size - 9, None, outline=(30, 30, 32), width=1.2)
+    for m in range(60):
+        a = math.radians(m * 6)
+        r0 = c - 12 if m % 5 else c - 15
+        p.line([(c + math.sin(a) * r0, c - math.cos(a) * r0), (c + math.sin(a) * (c - 9), c - math.cos(a) * (c - 9))],
+               (30, 30, 32), 1.6 if m % 5 == 0 else 0.8)
+    numerals = ["XII", "I", "II", "III", "IIII", "V", "VI", "VII", "VIII", "IX", "X", "XI"]
+    for h, n in enumerate(numerals):
+        a = math.radians(h * 30)
+        p.text(c + math.sin(a) * (c - 25), c - math.cos(a) * (c - 25), n, 11, (26, 26, 28), H.SERIF)
+    for ang, length, width in ((-60, 0.45, 4), (60, 0.72, 2.6)):   # hour hand at ten, minute hand at two
+        a = math.radians(ang)
+        p.line([(c, c), (c + math.sin(a) * c * length, c - math.cos(a) * c * length)], (20, 20, 22), width)
+    p.ellipse(c - 4, c - 4, c + 4, c + 4, (20, 20, 22))
+    return p.done()
 
 
 def shelter_glass(size=64):
@@ -493,6 +526,89 @@ def street_light(kind):
 
 
 
+# ----------------------------------------------------------------- town centre: heritage lamps, planters, clock
+
+def globe(cx, y0, cz, r, h):
+    """An opal globe lantern (lit) with a black collar under it and a little finial on top."""
+    els = cyl(cx, cz, r * 0.55, y0, y0 + 1.2, "#black", top=True, bottom=True)
+    g = cyl(cx, cz, r * 0.8, y0 + 1.2, y0 + 2, "#globe", top=True, bottom=True) + cyl(cx, cz, r, y0 + 2, y0 + h - 1.2, "#globe") + \
+        cyl(cx, cz, r * 0.75, y0 + h - 1.2, y0 + h, "#globe", top=True)
+    for el in g:
+        el["shade"] = False
+        el["forge_data"] = {"block_light": 15, "sky_light": 15}
+    return els + g + cyl(cx, cz, 0.6, y0 + h, y0 + h + 1.2, "#black", top=True)
+
+
+def heritage_lantern(cluster):
+    """Goes on top of a heritage lamp post: one big globe, or a cluster of four on scrolled arms
+    round a taller one in the middle."""
+    tex = {"black": t("black"), "globe": t("heritage_globe")}
+    if not cluster:
+        return cyl(8, 8, 2.2, 0, 1.5, "#black", top=True) + globe(8, 1.5, 8, 4.2, 10), tex, {}
+    els = cyl(8, 8, 1.4, 0, 9, "#black", top=True) + cyl(8, 8, 2.0, 3.0, 4.2, "#black", top=True, bottom=True)
+    els += globe(8, 9, 8, 3.6, 8.5)
+    for dx, dz in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        x, z = 8 + dx * 9.5, 8 + dz * 9.5
+        if dx:
+            els.append(box((min(8, x), 3.2, 7.5), (max(8, x), 4.2, 8.5), "#black"))
+        else:
+            els.append(box((7.5, 3.2, min(8, z)), (8.5, 4.2, max(8, z)), "#black"))
+        els += cyl(x, z, 0.6, 4.2, 5.2, "#black") + globe(x, 5.2, z, 3.0, 7)
+    return els, tex, {}
+
+
+def cross(x, z, y0, h, w, tex):
+    """Two crossed planes, like a flower or a tuft of grass."""
+    out = [box((x - w / 2, y0, z), (x + w / 2, y0 + h, z), tex, faces=("north", "south"), rotation=("y", a, (x, y0, z)))
+           for a in (45, -45)]
+    for el in out:
+        for f in el["faces"].values():
+            f["uv"] = [0, 0, 16, 16]                      # the whole flower, squeezed into the plane
+    return out
+
+
+FLOWERS = ("minecraft:block/poppy", "minecraft:block/dandelion", "minecraft:block/allium", "minecraft:block/cornflower",
+           "minecraft:block/oxeye_daisy", "minecraft:block/pink_tulip")
+
+
+def brick_planter():
+    """A raised brick planter with a stone coping, shrubs and flowers: a block wide, line them up for a long bed."""
+    els = [box((0, 0, 0), (16, 13, 16), "#brick"),
+           box((-0.4, 13, -0.4), (16.4, 14.2, 16.4), "#stone"),
+           box((0.8, 14.2, 0.8), (15.2, 14.5, 15.2), "#soil", faces=("up",)),
+           box((1.5, 14.2, 1.5), (8.5, 21, 8.5), "#leaves"), box((7.5, 14.2, 7), (14.5, 22.5, 14.5), "#leaves"),
+           box((2, 14.2, 9), (7.5, 19, 14.5), "#flowering")]
+    for i, (x, z) in enumerate(((11.5, 3.5), (4, 12), (13, 10))):
+        els += cross(x, z, 14.4, 6, 4, "#f%d" % i)
+    tex = {"brick": "ptmuk:block/building/red_brick", "stone": "ptmuk:block/building/portland_stone",
+           "soil": "minecraft:block/rooted_dirt", "leaves": "minecraft:block/azalea_leaves",
+           "flowering": "minecraft:block/flowering_azalea_leaves"}
+    tex.update({"f%d" % i: FLOWERS[i] for i in range(3)})
+    return els, tex, {"cutout": True}
+
+
+def flower_trough():
+    """A black cast iron trough of bedding flowers, for railings, steps and the foot of lamp posts."""
+    els = [box((1, 0, 4), (15, 1, 12), "#black"), box((0.6, 1, 3.6), (15.4, 6, 12.4), "#black"),
+           box((0.4, 6, 3.4), (15.6, 6.6, 12.6), "#black"),
+           box((1.2, 5.8, 4.2), (14.8, 6.2, 11.8), "#soil", faces=("up",))]
+    for i in range(6):
+        els += cross(2.5 + i * 2.2, 6.5 + (i % 2) * 3, 6, 4.5, 3, "#f%d" % i)
+    tex = {"black": t("cast_iron"), "soil": "minecraft:block/rooted_dirt"}
+    tex.update({"f%d" % i: FLOWERS[i] for i in range(6)})
+    return els, tex, {"cutout": True}
+
+
+def tower_clock():
+    """A clock face three blocks across in a stone surround, for the side of a clock tower: put it
+    on the wall where the middle of the dial goes."""
+    dial = box((-15, -15, 15.2), (31, 31, 15.3), "#dial", faces=("north",), full_front_uv=True)
+    dial["faces"]["north"]["uv"] = [0, 0, 16, 16]
+    els = [box((-16, -16, 15.4), (32, 32, 16), "#stone", faces=("north", "up", "down", "east", "west")), dial,
+           box((-16, 31.2, 14.6), (32, 32, 15.4), "#stone"), box((-16, -16, 14.6), (32, -15.2, 15.4), "#stone")]
+    return els, {"stone": "ptmuk:block/building/portland_stone", "dial": t("clock_dial")}, {"cutout": True}
+
+
 # ----------------------------------------------------------------- cameras, roadworks, motorway
 
 def gatso_camera():
@@ -658,6 +774,11 @@ FURNITURE = {
     "disabled_bay_marking": (lambda: bay_marking("disabled_bay_marking"), "Disabled Bay Road Marking"),
     "parent_child_bay_marking": (lambda: bay_marking("parent_child_bay_marking"), "Parent & Child Bay Road Marking"),
     "ev_bay_marking": (lambda: bay_marking("ev_bay_marking"), "Electric Vehicle Bay Road Marking"),
+    "heritage_lantern": (lambda: heritage_lantern(False), "Heritage Globe Lantern"),
+    "heritage_lantern_cluster": (lambda: heritage_lantern(True), "Heritage Lantern Cluster (5 Globes)"),
+    "brick_planter": (brick_planter, "Brick Planter"),
+    "flower_trough": (flower_trough, "Flower Trough"),
+    "tower_clock": (tower_clock, "Tower Clock (3 Blocks Across)"),
 }
 
 
@@ -756,12 +877,14 @@ def fence_parts(kind):
             side += [box((7.75, 0, z), (8.25, 15.6, z + 0.5), "#black"),
                      box((7.8, 15.6, z + 0.05), (8.2, 16.4, z + 0.45), "#black", rotation=("y", 45, (8, 16, z + 0.25)))]
         return post, side, {"black": t("black")}
-    if kind == "pedestrian_guardrail":
+    if kind in ("pedestrian_guardrail", "black_guardrail"):
         post = [box((7.1, 0, 7.1), (8.9, 16, 8.9), "#galv")]
         side = [box((7.4, 14.8, 0), (8.6, 16, 8), "#galv"), box((7.5, 2, 0), (8.5, 2.8, 8), "#galv")]
         for z in (0.5, 1.8, 3.1, 4.4, 5.7):
             side.append(box((7.85, 2.8, z), (8.15, 14.8, z + 0.4), "#galv"))
-        return post, side, {"galv": t("galv")}
+        if kind == "black_guardrail":                    # town centre style: black, with a ball on each post
+            post.append(box((7.4, 16, 7.4), (8.6, 17.2, 8.6), "#galv"))
+        return post, side, {"galv": t("black" if kind == "black_guardrail" else "galv")}
     if kind == "close_board_fence":
         post = [box((6.8, 0, 6.8), (9.2, 28, 9.2), "#concrete")]
         side = [box((7.3, 0, 0), (8.7, 2.5, 8), "#concrete"),
@@ -783,6 +906,7 @@ FENCES = {
     "palisade_fence": "Palisade Fence",
     "black_railings": "Black Railings",
     "pedestrian_guardrail": "Pedestrian Guardrail",
+    "black_guardrail": "Pedestrian Guardrail (Black)",
     "close_board_fence": "Close Board Fence",
     "heras_fence": "Heras Temporary Fencing",
     "armco_barrier": "Armco Crash Barrier",

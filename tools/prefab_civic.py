@@ -689,6 +689,75 @@ def village_hall(ident="village_hall", name="Village Hall"):
     return b
 
 
+def clock_tower(ident="clock_tower", name="Victorian Clock Tower"):
+    """A red brick and Portland stone clock tower for a town centre square: an arched door in a
+    stone base, a statue in a niche, a clock on every side and a slate spire with a weathervane."""
+    W = D = 9                                        # the tower is 7 x 7; the clocks hang on the ring round it
+    STONE = "ptmuk:portland_stone"
+    b = Build(ident, name, "Civic", W, 30, D,
+              "A Victorian clock tower like those in many town centre squares: red brick with Portland stone bands and "
+              "quoins, an arched door in a stone base, a statue in a niche, a clock on all four sides and a slate spire "
+              "with a weathervane.")
+    b.fill(0, 0, 0, W - 1, 0, D - 1, "ptmuk:block_paving_red")
+    b.fill(1, 0, 1, 7, 0, 7, STONE)
+    # base: a stone plinth storey with an arched doorway on the front
+    b.walls(1, 1, 1, 7, 4, 7, STONE)
+    b.fill(1, 1, 1, 7, 1, 7, STONE)
+    b.fill(2, 1, 2, 6, 1, 6, "polished_andesite")      # the floor inside
+    b.door(4, 2, 1, "dark_oak", facing="front", hinge="left")
+    b.set(4, 1, 0, stairs(STONE, "back"))                # a step up to the door
+    b.set(3, 4, 1, stairs(STONE, "right", "top"))        # the arch over it
+    b.set(5, 4, 1, stairs(STONE, "left", "top"))
+    for u, v in ((1, 1), (7, 1), (1, 7), (7, 7)):
+        b.set(u, 5, v, STONE)
+    # the shaft: brick with stone quoins and bands
+    b.walls(1, 5, 1, 7, 18, 7, RED_BRICK)
+    for y in range(5, 19):
+        if y % 2:
+            for u, v in ((1, 1), (7, 1), (1, 7), (7, 7)):
+                b.set(u, y, v, STONE)
+    for y in (5, 12):
+        b.walls(1, y, 1, 7, y, 7, STONE)
+    b.fill(2, 5, 2, 6, 5, 6, "polished_andesite")      # an upper floor over the room below
+    # a statue in a niche over the door, under a little pediment
+    b.set(4, 7, 1, STONE)
+    b.set(4, 8, 1, "quartz_pillar")
+    b.set(4, 9, 1, B("skeleton_skull", rotation=0))         # facing out over the square
+    b.set(4, 10, 1, AIR)
+    b.set(3, 11, 1, stairs(STONE, "right"))
+    b.set(5, 11, 1, stairs(STONE, "left"))
+    b.set(4, 11, 1, STONE)
+    # clock stage: a stone band, a clock on each face, a cornice
+    b.walls(1, 13, 1, 7, 13, 7, STONE)
+    b.set(4, 16, 0, B("ptmuk:tower_clock", facing="south"))
+    b.set(4, 16, 8, B("ptmuk:tower_clock", facing="north"))
+    b.set(0, 16, 4, B("ptmuk:tower_clock", facing="west"))
+    b.set(8, 16, 4, B("ptmuk:tower_clock", facing="east"))
+    b.walls(1, 19, 1, 7, 19, 7, STONE)
+    for u in range(0, W):
+        b.set(u, 19, 0, stairs(STONE, "back", "top"))
+        b.set(u, 19, D - 1, stairs(STONE, "front", "top"))
+    for v in range(1, D - 1):
+        b.set(0, 19, v, stairs(STONE, "right", "top"))
+        b.set(W - 1, 19, v, stairs(STONE, "left", "top"))
+    for u, v in ((0, 0), (8, 0), (0, 8), (8, 8)):      # pinnacles on the corners
+        b.set(u, 20, v, STONE)
+        b.set(u, 21, v, slab(STONE))
+    # a slate spire and a weathervane
+    top = b.hipped_roof(1, 7, 1, 7, 20, "ptmuk:roof_slate", ridge_slab=False)
+    b.set(4, top - 1, 4, "ptmuk:roof_slate")
+    for y in range(top, top + 3):
+        b.set(4, y, 4, B("iron_bars", north=False, south=False, east=False, west=False, waterlogged=False))
+    b.set(4, top + 3, 4, B("lightning_rod", facing="up", powered=False, waterlogged=False))
+    b.fill(2, 2, 2, 6, 4, 6, AIR)                        # the room in the base (the shaft above is sealed)
+    b.set(2, 2, 6, B("barrel", facing="up", open=False))
+    b.set(3, 2, 6, B("grindstone", face="floor", facing="south"))      # the clock's winding gear
+    b.set(2, 2, 2, B("lantern", hanging=False, waterlogged=False))
+    b.fill(2, 6, 2, 6, 18, 6, AIR)
+    b.light_grid(2, 2, 6, 6, 4, step=4, level=12)
+    return b
+
+
 def all_civic():
     return [department_store(), fashion_store(), diy_store(), retail_park(), gym(), library(), police_station(),
-            fire_station(), gp_surgery(), primary_school(), leisure_centre(), bus_garage(), village_hall()]
+            fire_station(), gp_surgery(), primary_school(), leisure_centre(), bus_garage(), village_hall(), clock_tower()]

@@ -64,6 +64,7 @@ POLES = {
     "signal_pole_grey": (1.85, "galvanised", True, "dome", "UK Traffic Signal Pole (Galvanised)"),
     "sign_pole_galvanised": (1.25, "galvanised", False, "plastic", "UK Sign Pole (Galvanised)"),
     "sign_pole_black": (1.25, "black", False, "plastic", "UK Sign Pole (Black)"),
+    "heritage_post_black": (1.6, "black", "heritage", "finial", "Heritage Lamp Post (Black, put a lantern on top)"),
 }
 ACCESSORIES = {
     "no_left_turn_sign": "sign",
@@ -891,11 +892,23 @@ def write_pole(name, radius, surface, collar, cap, tex):
     for base in (False, True):
         for top in (False, True):
             els = list(body)
-            if base and collar:
+            if base and collar == "heritage":
+                # a Victorian cast iron base: a square-shouldered plinth stepping in to the column
+                els += round_column(radius + 2.6, 0, 1.2, "#pole", top=True)
+                els += round_column(radius + 2.1, 1.2, 6.5, "#pole", top=True)
+                els += round_column(radius + 1.4, 6.5, 8.0, "#pole", top=True)
+                els += round_column(radius + 0.8, 8.0, 11.5, "#pole", top=True)
+                els += round_column(radius + 1.2, 11.5, 12.3, "#pole", top=True, bottom=True)
+            elif base and collar:
                 els += round_column(radius + 0.55, 0, 3.6, "#pole", top=True)
                 els += round_column(radius + 0.3, 3.6, 4.0, "#pole", top=True)
+            if not base and not top and collar == "heritage":
+                els += round_column(radius + 0.5, 7.4, 8.6, "#pole", top=True, bottom=True)    # a band halfway up each length
             if top:
-                if cap == "dome":
+                if cap == "finial":
+                    els += round_column(radius + 0.7, 14.6, 15.6, "#pole", top=True, bottom=True)
+                    els += round_column(radius * 0.6, 15.6, 16.6, "#pole", top=True)
+                elif cap == "dome":
                     els += round_column(radius + 0.12, 15.2, 16.0, "#pole", top=True)
                     els += round_column(radius * 0.7, 16.0, 16.35, "#pole", top=True)
                 else:
