@@ -81,4 +81,33 @@ public final class UkSiteGameTests {
         helper.assertTrue(small.warning != null && small.buildings.isEmpty(), "a tiny drive-thru should fall back to a car park");
         helper.succeed();
     }
+
+    @GameTest(template = "empty5x4x5")
+    public static void paradeFillsTheFrontageWithShops(GameTestHelper helper) {
+        SiteLayout sl = lay(RoadPlan.SiteType.PARADE, 64, 30);
+        helper.assertTrue(sl.buildings.size() >= 5, "a 64-wide parade should have at least 5 shops, had " + sl.buildings.size());
+        int lo = Integer.MAX_VALUE, hi = Integer.MIN_VALUE, total = 0;
+        java.util.Set<Integer> seen = new java.util.HashSet<>();
+        for (SiteLayout.Building b : sl.buildings) {
+            helper.assertTrue(b.kind().equals("prefab") && b.v0() == 0, "shops stand at the front of the site");
+            for (int u = b.u0(); u <= b.u1(); u++) {
+                helper.assertTrue(seen.add(u), "two shops overlap at " + u);
+            }
+            var e = com.ptmuk.building.PrefabCatalog.get(SiteLayout.PARADE_UNITS.get(b.brand()));
+            helper.assertTrue(e != null && b.u1() - b.u0() + 1 == e.width() && b.v1() - b.v0() + 1 == e.depth(), "a shop's plot isn't its size");
+            lo = Math.min(lo, b.u0());
+            hi = Math.max(hi, b.u1());
+            total += e.width();
+        }
+        helper.assertTrue(lo >= 0 && hi < 64 && hi - lo + 1 == total, "the shops should be side by side within the site");
+        helper.assertTrue(64 - total < 9, "room for another shop was left over: " + (64 - total));
+        RoadPlan other = new RoadPlan();
+        RoadPlan.Site st = other.addSite(RoadPlan.SiteType.PARADE, 0, 0, 63, 29);
+        st.brand = 3;
+        RoadPlan.Node a = other.addNode(32, 60), b = other.addNode(32, 28);
+        other.addSegment(a.id, b.id, RoadStyle.mainRoad());
+        SiteLayout mix = Layout.of(other, Terrain.flat(64)).sites.get(0);
+        helper.assertTrue(mix.buildings.get(0).brand() != sl.buildings.get(0).brand(), "shuffling should change the shops");
+        helper.succeed();
+    }
 }

@@ -58,7 +58,8 @@ public final class RoadPlan {
     public enum SiteType {
         CAR_PARK("Car park"),
         RETAIL_PARK("Retail park"),
-        DRIVE_THRU("Drive-thru");
+        DRIVE_THRU("Drive-thru"),
+        PARADE("Shop parade");
 
         public final String title;
 

@@ -209,6 +209,15 @@ public final class RoadBuilder {
             public ServerLevel level() {
                 return job.level;
             }
+
+            @Override
+            public void remember(BlockPos pos) {
+                if (job.touched.add(pos.asLong())) {
+                    BlockEntity be = job.level.getBlockEntity(pos);
+                    job.saved.add(new Saved(pos, job.level.getBlockState(pos), be == null ? null : be.saveWithFullMetadata()));
+                    Clearable.tryClear(be);
+                }
+            }
         };
     }
 

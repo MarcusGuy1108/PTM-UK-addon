@@ -63,7 +63,9 @@ public enum FurnitureType {
     HERITAGE_LANTERN_CLUSTER("heritage_lantern_cluster", 4, 0, 4, 12, 16, 12, 15, SoundType.GLASS),
     BRICK_PLANTER("brick_planter", 0, 0, 0, 16, 14, 16, 0, SoundType.STONE),
     FLOWER_TROUGH("flower_trough", 0.5, 0, 3.5, 15.5, 6.5, 12.5, 0, SoundType.METAL),
-    TOWER_CLOCK("tower_clock", 0, 0, 14.5, 16, 16, 16, 0, SoundType.STONE);
+    TOWER_CLOCK("tower_clock", 0, 0, 14.5, 16, 16, 16, 0, SoundType.STONE),
+    SHOP_AWNING_GREEN("shop_awning_green", 0, 9, 0, 16, 16, 16, 0, SoundType.WOOL),
+    SHOP_AWNING_RED("shop_awning_red", 0, 9, 0, 16, 16, 16, 0, SoundType.WOOL);
 
     private final String id;
     public final double[] box;

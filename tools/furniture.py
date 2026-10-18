@@ -130,7 +130,31 @@ def make_textures():
         TEX[f"bin_{name}"] = s(H.plastic(colour), p + f"bin_{name}")
         TEX[f"bin_front_{name}"] = s(H.bin_front(colour, BIN_LABELS[name]), p + f"bin_front_{name}")
     TEX["heritage_globe"] = s(heritage_globe(), p + "heritage_globe")
+    for name, colour in AWNINGS.items():
+        TEX[f"awning_{name}"] = s(awning_stripes(colour), p + f"awning_{name}")
     TEX["clock_dial"] = s(clock_dial(), p + "clock_dial")
+
+
+AWNINGS = {"green": (34, 96, 60), "red": (168, 32, 36)}
+
+
+def awning_stripes(colour, size=32):
+    """Canvas in wide stripes of the colour and cream, running out from the wall."""
+    rng = np.random.default_rng(11)
+    x = np.arange(size)
+    stripe = ((x // 4) % 2 == 0)[None, :, None]
+    rgb = np.where(stripe, np.array(colour, float), np.array([236, 230, 212.0]))
+    rgb = np.broadcast_to(rgb, (size, size, 3)) + rng.normal(0, 3, (size, size, 1))
+    return Image.fromarray(np.clip(rgb, 0, 255).astype("uint8"), "RGB")
+
+
+def shop_awning(colour):
+    """A striped canvas awning on black arms, sloping out a block from the wall above a shop window:
+    put it against the wall just over the window."""
+    canvas = box((0, 15.2, -1.3), (16, 15.6, 16), "#canvas", rotation=("x", -22.5, (8, 15.6, 16)))
+    valance = box((0, 6.6, -0.2), (16, 9.2, 0.2), "#canvas", faces=("north", "south", "east", "west", "down"))
+    arms = [box((1, 9.2, 0.2), (1.6, 9.8, 16), "#black"), box((14.4, 9.2, 0.2), (15, 9.8, 16), "#black")]
+    return [canvas, valance] + arms, {"canvas": t("awning_" + colour), "black": t("black")}, {}
 
 
 def heritage_globe(size=16):
@@ -779,6 +803,8 @@ FURNITURE = {
     "brick_planter": (brick_planter, "Brick Planter"),
     "flower_trough": (flower_trough, "Flower Trough"),
     "tower_clock": (tower_clock, "Tower Clock (3 Blocks Across)"),
+    "shop_awning_green": (lambda: shop_awning("green"), "Shop Awning (Green Stripes)"),
+    "shop_awning_red": (lambda: shop_awning("red"), "Shop Awning (Red Stripes)"),
 }
 
 

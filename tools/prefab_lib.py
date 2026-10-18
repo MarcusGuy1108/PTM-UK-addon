@@ -107,6 +107,7 @@ class Build:
         self.sink = sink
         self.cells = {}
         self.roof_cells = set()          # stairs and slabs laid as roofing, not to be walked on
+        self.keep = set()                # cells left out of the structure: placing it leaves the world's blocks there
         self._roofing = False
 
     # basic placing
@@ -320,10 +321,13 @@ class Build:
                 palette.append(("compound", entry))
             return index[k]
 
-        # every cell of the box is written (air included), so placing a prefab clears what was there
+        # every cell of the box is written (air included), so placing a prefab clears what was there,
+        # except the ones it keeps (a shopfront leaves the pavement in front of it alone)
         for u in range(W):
             for y in range(-self.sink, H):
                 for v in range(D):
+                    if (u, y, v) in self.keep:
+                        continue
                     block = self.get(u, y, v)
                     x, z = u, D - 1 - v
                     entry = {"pos": ("list", ("int", [x, y + self.sink, z])), "state": ("int", state_index(block))}

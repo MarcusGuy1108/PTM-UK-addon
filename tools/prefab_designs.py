@@ -13,7 +13,7 @@ ASSETS = ROOT / "src/main/resources/assets/ptmuk"
 DATA = ROOT / "src/main/resources/data/ptmuk"
 JAVA = ROOT / "src/main/java/com/ptmuk/building/PrefabCatalog.java"
 
-CATEGORIES = ["Houses", "Estates", "Flats", "Shops", "Food & Drink", "Pubs & Bars", "Hotels", "Commercial", "Offices", "Civic",
+CATEGORIES = ["Houses", "Estates", "Flats", "Shops", "Shopfronts", "Food & Drink", "Pubs & Bars", "Hotels", "Commercial", "Offices", "Civic",
               "Other"]
 
 
@@ -1388,7 +1388,7 @@ NOT_ENLARGED = {"multiplex_cinema", "superstore", "discount_supermarket", "car_d
 def all_prefabs():
     import prefab_furnish
     import prefab_stretch
-    builds = [b if b.ident in NOT_ENLARGED or b.category == "Estates" else prefab_stretch.enlarge(b)
+    builds = [b if b.ident in NOT_ENLARGED or b.category in ("Estates", "Shopfronts") else prefab_stretch.enlarge(b)
               for b in _all_prefabs()]
     for b in builds:
         b.fill_ground()
@@ -1405,6 +1405,7 @@ def _all_prefabs():
     import prefab_civic        # big shops, retail parks and public buildings
     import prefab_retail       # retail park terrace, out-of-town fashion store
     import prefab_schools      # big primary and secondary schools
+    import prefab_shopfronts   # shopfronts to fit into an old building's wall
     return [
         victorian_terrace("victorian_terrace", "Victorian Terraced House", 1),
         victorian_terrace("victorian_terrace_row", "Victorian Terrace (Row of 4)", 4),
@@ -1432,7 +1433,7 @@ def _all_prefabs():
         church(),
         petrol_station(),
     ] + (prefab_big.all_big() + prefab_commercial.all_commercial() + prefab_town.all_town()
-         + prefab_leisure.all_leisure() + prefab_civic.all_civic() + prefab_retail.all_retail()
+         + prefab_leisure.all_leisure() + prefab_civic.all_civic() + prefab_retail.all_retail() + prefab_shopfronts.all_shopfronts()
          + prefab_schools.all_schools())
 
 

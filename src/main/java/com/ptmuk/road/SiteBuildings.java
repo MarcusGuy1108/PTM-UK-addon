@@ -28,6 +28,9 @@ final class SiteBuildings {
         /** Blocks whose shape depends on their neighbours (glazing): fixed once everything is placed. */
         void join(BlockPos pos);
 
+        /** Note what's at pos before something else changes it (a whole prefab placed in one go), for undo. */
+        void remember(BlockPos pos);
+
         ServerLevel level();
     }
 
@@ -49,9 +52,34 @@ final class SiteBuildings {
             case "unit" -> s.unit(SiteLayout.RETAIL_BRANDS.get(b.brand()));
             case "canopy" -> s.canopy(b.brand());
             case "drive_thru" -> s.driveThru(SiteLayout.DRIVE_THRU_BRANDS.get(b.brand()));
+            case "prefab" -> s.prefab(SiteLayout.PARADE_UNITS.get(b.brand()));
             default -> {
             }
         }
+    }
+
+    /** A prefab from the catalogue (a high street unit) on the plot, its front to the site's front. */
+    private void prefab(String id) {
+        ServerLevel level = out.level();
+        java.util.Optional<net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> t =
+                level.getStructureManager().get(com.ptmuk.PtmUk.id("prefab/" + id));
+        if (t.isEmpty()) {
+            return;
+        }
+        // prefabs are made with their fronts to the south
+        net.minecraft.world.level.block.Rotation rot = switch (f.front()) {
+            case 1 -> net.minecraft.world.level.block.Rotation.CLOCKWISE_90;
+            case 2 -> net.minecraft.world.level.block.Rotation.CLOCKWISE_180;
+            case 3 -> net.minecraft.world.level.block.Rotation.COUNTERCLOCKWISE_90;
+            default -> net.minecraft.world.level.block.Rotation.NONE;
+        };
+        var settings = new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings()
+                .setRotation(rot).setIgnoreEntities(true).setKnownShape(false);
+        var zero = t.get().getBoundingBox(settings, BlockPos.ZERO);
+        BlockPos origin = new BlockPos(f.x0() - zero.minX(), y0 - zero.minY(), f.z0() - zero.minZ());
+        var box = t.get().getBoundingBox(settings, origin);
+        BlockPos.betweenClosedStream(box).forEach(p -> out.remember(p.immutable()));
+        t.get().placeInWorld(level, origin, origin, settings, net.minecraft.util.RandomSource.create(), 2);
     }
 
     // ------------------------------------------------------------------ helpers

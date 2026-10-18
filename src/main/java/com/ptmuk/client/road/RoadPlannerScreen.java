@@ -628,6 +628,16 @@ public class RoadPlannerScreen extends Screen {
         y += ROW;
         button(y, () -> "Road side: " + sideName(st.front), b -> edit.accept(() -> st.front = st.front >= 3 ? -1 : st.front + 1));
         y += ROW;
+        if (st.type == SiteType.PARADE) {
+            button(y, () -> "Shuffle shops", b -> edit.accept(() -> st.brand = (st.brand + 1) % SiteLayout.PARADE_UNITS.size()));
+            y += ROW;
+            button(y, () -> "Height: " + (Double.isNaN(st.y) ? "from ground" : (int) st.y), b -> edit.accept(() -> st.y = Double.NaN));
+            y += ROW;
+            halfButtons(y, "Raise", b -> nudgeSite(st, 1), "Lower", b -> nudgeSite(st, -1));
+            y += ROW;
+            button(y, () -> "Delete site", b -> deleteSelection());
+            return;
+        }
         button(y, () -> "Bays: " + (st.rows == 0 ? "facing the road" : st.rows == 1 ? "along the road" : "most that fit"),
                 b -> edit.accept(() -> st.rows = st.rows >= 1 ? -1 : st.rows + 1));
         y += ROW;
@@ -1802,11 +1812,21 @@ public class RoadPlannerScreen extends Screen {
             return;
         }
         int shops = countShops(sl);
-        g.drawString(font, sl.bayCount() + " parking bays" + (shops == 0 ? "" : ", " + shops + " building" + (shops == 1 ? "" : "s")),
-                PANEL + 4, height - 24, 0xFFE0E0E0);
+        String what = st.type == SiteType.PARADE ? shops + " shop" + (shops == 1 ? "" : "s") + paradeNames(sl)
+                : sl.bayCount() + " parking bays" + (shops == 0 ? "" : ", " + shops + " building" + (shops == 1 ? "" : "s"));
+        g.drawString(font, font.plainSubstrByWidth(what, width - PANEL - 150), PANEL + 4, height - 24, 0xFFE0E0E0);   // clear of the x/z readout
         if (sl.warning != null) {
             g.drawString(font, sl.warning, PANEL + 4, height - 34, 0xFFFF9050);
         }
+    }
+
+    private static String paradeNames(SiteLayout sl) {
+        StringBuilder s = new StringBuilder(":");
+        for (SiteLayout.Building b : sl.buildings) {
+            com.ptmuk.building.PrefabCatalog.Entry e = com.ptmuk.building.PrefabCatalog.get(SiteLayout.PARADE_UNITS.get(b.brand()));
+            s.append(s.length() > 1 ? ", " : " ").append(e == null ? "?" : e.name().toLowerCase());
+        }
+        return s.toString();
     }
 
     private static int countShops(SiteLayout sl) {
