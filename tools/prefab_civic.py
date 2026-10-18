@@ -526,7 +526,13 @@ def primary_school(ident="primary_school", name="Victorian Primary School"):
             b.set(8, 0, v, "white_concrete")
     for k in range(8):
         b.set(20 + k, 0, 29, ("red_concrete", "yellow_concrete", "blue_concrete", "lime_concrete")[k % 4])
-    b.door(17, 1, v1, "dark_oak", facing="front", hinge="left")
+    # the back door opens off the stage, a step up from the playground
+    b.set(17, 1, v1, b.get(16, 1, v1))
+    b.door(17, 2, v1, "dark_oak", facing="front", hinge="left")
+    b.set(17, 1, v1 + 1, stairs("stone_brick", "back"))
+    b.set(15, 2, v1 - 3, B("lectern", facing="south", has_book=False, powered=False))
+    for u in (13, 22):
+        b.set(u, 2, v1 - 1, B("potted_azalea_bush"))
     return b
 
 
@@ -569,6 +575,9 @@ def leisure_centre(ident="leisure_centre", name="Leisure Centre with Swimming Po
             b.set(u, -SINK, v, "blue_concrete")
     for v in range(pv0, pv1 + 1, 2):
         b.set(pu1, -1, v, B("quartz_stairs", facing="west", half="bottom", shape="straight", waterlogged=True))
+    for v in (pv0 + 2, pv0 + 8, pv1 - 2):                  # poolside benches and a lifeguard's chair
+        b.set(pu1 + 2, 1, v, B("ptmuk:bench_wood", facing="west"))
+    b.set(pu0 - 2, 1, (pv0 + pv1) // 2, stairs("spruce", "left"))
     # the sports hall: court lines on a wooden floor, a gym at the front
     b.fill(26, 0, 22, W - 2, 0, v1 - 1, "oak_planks")
     for u in range(27, W - 2):
@@ -672,6 +681,9 @@ def village_hall(ident="village_hall", name="Village Hall"):
             if u not in (7, 8):
                 fit(b, "dining_chair", u, 1, v, "back")
     b.fill(1, 1, 13, W - 2, 1, 15, slab("oak", "top"))
+    b.set(W // 2, 2, 14, B("lectern", facing="south", has_book=False, powered=False))
+    for u in (1, W - 2):
+        b.set(u, 2, 15, B("potted_azalea_bush"))
     P.kitchen_run(b, 2, 6, 1, D - 3, "front", finish="white")
     b.light_grid(1, 4, W - 2, D - 3, 4, step=3, level=13)
     return b

@@ -251,7 +251,8 @@ def country_pub(ident="country_pub", name="Thatched Country Pub"):
     # inside: the bar along the back, a fire, darts, tables
     bar_counter(b, 6, 12, 8, "front", pumps=(7, 9, 11), tills=(10,))
     for u in range(6, 13):
-        fit(b, "back_bar", u, 1, 10, "front")
+        if u != 10:                                         # the back door
+            fit(b, "back_bar", u, 1, 10, "front")
     for u in (7, 9, 11):
         fit(b, "bar_stool", u, 1, 7, "back")
     fit(b, "fireplace", 3, 1, 7, "right")
@@ -528,7 +529,7 @@ def guest_house():
         dining(b, u.x0, u.x1, 3, 5, chair="oak")
         fit(b, "fireplace", u.x0, 1, u.core_v - 1, "right")
         P.armchair(b, u.x0 + 1, 1, u.core_v - 2, "back", "spruce")
-        P.kitchen_run(b, u.x0, u.x0 + 2, 1, u.back - 1, "front")
+        P.kitchen_run(b, u.x0 + 1, u.x0 + 3, 1, u.back - 1, "front")     # clear of the back door at x0
 
     def rooms(b, u, y):
         guest_room(b, u.x0, u.core_u - 1, 1, u.core_v - 1, y)

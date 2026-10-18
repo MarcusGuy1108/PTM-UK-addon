@@ -433,6 +433,15 @@ def garage_door(b, u0, u1, v, y0, y1, outside="front", kind="white_garage_door")
             b.set(u, y, v, B(f"ptmuk:{kind}", facing=DIRS[outside], open=False, powered=False, top=(y == y1)))
 
 
+def garage_kit(b, u0, u1, v, y=1, facing="front"):
+    """Along a garage's back wall: a workbench, a tool chest and shelves of tins."""
+    import prefab_furnish as PF
+    from prefab_lib import DIRS
+    kit = [B("crafting_table"), PF.home("tool_chest", facing=DIRS[facing], lit=False), B("barrel", facing="up", open=False)]
+    for i, u in enumerate(range(u0, u1 + 1)):
+        b.set(u, y, v, kit[i % len(kit)])
+
+
 def lock_up_garages(b, u0, v0, n, facing="front", material="ptmuk:red_brick"):
     """A row of n council lock-up garages, 3 wide and 6 deep each, doors towards `facing`
     (front or back), flat roof."""

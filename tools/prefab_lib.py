@@ -182,6 +182,16 @@ class Build:
         for half, dy in (("lower", 0), ("upper", 1)):
             self.set(u, y + dy, v, B(name, facing=DIRS[facing], half=half, hinge=hinge, open=False, powered=False))
 
+    def fill_ground(self, block="grass_block"):
+        """Holes in the ground layer would open onto whatever is under the plot: grass them over
+        (not in buildings with a basement or pool, whose stairs and pools go down through it)."""
+        if self.sink:
+            return
+        for u in range(self.W):
+            for v in range(self.D):
+                if self.get(u, 0, v).name == "minecraft:air":
+                    self.set(u, 0, v, block)
+
     def frame_doors(self):
         """A window right beside a door leaves a slit (the door hangs at the edge of its block, the
         glass runs down the middle of the next one), so a window touching a door along the wall

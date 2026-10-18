@@ -106,11 +106,15 @@ def teaching_block(b, u0, u1, v0, v1, storeys, wall, kinds, room_w=9, entrance=T
                     b.fill(u, y, door_v, r1, y + 2, door_v, "air")
                     for x in range(u + 1, r1, 2):
                         b.fill(x, y, out_v, x, y + 2, out_v, wall)
-                    b.door(middle, 1, v0, "birch", facing="back", hinge="left")
-                    b.door(middle + 1, 1, v0, "birch", facing="back", hinge="right")
+                    dl = max(u + 1, min(middle, r1 - 2))      # both doors inside the hall, clear of its walls
+                    b.door(dl, 1, v0, "birch", facing="back", hinge="left")
+                    b.door(dl + 1, 1, v0, "birch", facing="back", hinge="right")
                     bar_counter(b, u + 1, u + 4, sv1 - 2, "front", tills=(), finish="white")
                     fit(b, "computer", u + 2, 2, sv1 - 2, "front", level="counter")
-                    P.sofa(b, r1 - 2, r1 - 1, 1, sv0, "front", "warped")
+                    if dl >= u + 3:                                         # clear of the doors
+                        P.sofa(b, u + 1, u + 2, 1, sv0, "front", "warped")
+                    elif dl + 1 <= r1 - 3:
+                        P.sofa(b, r1 - 2, r1 - 1, 1, sv0, "front", "warped")
                     b.light_grid(u, sv0, r1, sv1, y + 2, step=3, level=14)
                 else:
                     b.door(u + 1, y, door_v, "birch", facing="front" if strip == 0 else "back", hinge="left")
@@ -150,6 +154,9 @@ def large_primary(ident="large_primary_school", name="Large Modern Primary Schoo
     b.door(36, 1, 46, "birch", facing="back", hinge="left")
     b.door(37, 1, 46, "birch", facing="back", hinge="right")
     b.fill(23, 1, 58, 50, 1, 61, slab("oak", "top"))
+    b.set(36, 2, 59, B("lectern", facing="south", has_book=False, powered=False))
+    for u in (23, 50):
+        b.set(u, 2, 61, B("potted_azalea_bush"))
     for u in range(25, 49, 2):
         for v in range(49, 56, 2):
             if u not in (36, 37):

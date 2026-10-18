@@ -4,7 +4,9 @@
   you can see and walk into the house through the side of a bay window), and loose panes that
   connect to nothing;
 * staircases you can't use: a step with a ceiling or wall over it, a top step with no floor to
-  step onto, or a bottom step you can't get to.
+  step onto, or a bottom step you can't get to;
+* doors and gates you can't get through (something in the way on one side);
+* rooms left empty (no furniture at all), corridors and stairwells aside.
 
 Run it with no arguments for a summary of every prefab, or name prefabs to list each problem.
 It exits with status 1 if anything is found, so the asset generator can refuse to write broken
@@ -212,7 +214,7 @@ def _standable(g, u, y, v):
 def stair_problems(g):
     """Walking up, you step onto the next stair while still half over the last one, which lifts your head
     a third of a block above it: every step but the top needs three clear blocks over it, not two."""
-    out = []
+    out, no_way, bottoms = [], {}, set()
     for run, (du, dv), name in staircases(g):
         perp = [(dv, du), (-dv, -du)]
         for k, (u, y, v) in enumerate(run):
@@ -229,7 +231,21 @@ def stair_problems(g):
         u, y, v = run[0]
         entries = [(u - du, y, v - dv)] + [(u + a, y, v + c) for a, c in perp]
         if not any(_standable(g, *e) and g.clear(e[0], e[1] + 2, e[2]) for e in entries):
-            out.append(((u, y, v), f"no way onto the bottom of a {len(run)}-step stair", name))
+            no_way[(u, y, v)] = (len(run), name, perp)
+        else:
+            bottoms.add((u, y, v))
+    # a wide flight: a bottom step beside one you can get onto is reached from it
+    spread = True
+    while spread:
+        spread = False
+        for (u, y, v), (n, name, perp) in list(no_way.items()):
+            if any((u + a, y, v + c) in bottoms and g.get(u + a, y, v + c).props.get("facing") == g.get(u, y, v).props.get("facing")
+                   for a, c in perp):
+                bottoms.add((u, y, v))
+                del no_way[(u, y, v)]
+                spread = True
+    for (u, y, v), (n, name, perp) in no_way.items():
+        out.append(((u, y, v), f"no way onto the bottom of a {n}-step stair", name))
     return out
 
 
@@ -330,20 +346,116 @@ def reach_problems(g, out_cells):
                     n = g.get(u + du, y + dy, v + dv)
                     if n is not None and (is_pane(n) or n.name.endswith("_door")):
                         lit = True
-        attic = under_roof and not lit and min(c[1] for c in group) > 2      # lofts are upstairs, garages aren't
-        if len(group) >= 4 and not attic:
-            us = [c[0] for c in group]
-            ys = [c[1] for c in group]
-            vs = [c[2] for c in group]
+        # lofts are upstairs, garages aren't; a gable window may light a little one
+        attic = under_roof and (not lit or len(group) < 9) and min(c[1] for c in group) > 2
+        us = [c[0] for c in group]
+        ys = [c[1] for c in group]
+        vs = [c[2] for c in group]
+        ledge = min(us) == max(us) or min(vs) == max(vs)          # a counter or wall top, not a room
+        if len(group) >= 4 and not attic and not ledge:
             out.append(((min(us), min(ys), min(vs)), f"room of {len(group)} can't be reached: u {min(us)}-{max(us)}, "
                         f"level {min(ys)}-{max(ys)}, v {min(vs)}-{max(vs)}", ""))
+    return out
+
+
+# ------------------------------------------------------------------ doors and empty rooms
+
+def door_problems(g):
+    """Every door and gate needs somewhere to stand on both sides (a step up or down is fine)."""
+    out = []
+    for (u, y, v), blk in g.cells.items():
+        n = blk.name
+        if not (n.endswith("_door") and blk.props.get("half") == "lower" or n.endswith("_fence_gate")):
+            continue
+        f = blk.props.get("facing")
+        if f not in DELTA:
+            continue
+        du, dv = DELTA[f]
+        for k in (1, -1):
+            cu, cv = u + du * k, v + dv * k
+            if not g.b.inside(cu, y, cv):
+                continue                                     # the edge of the plot: the street
+            ok = _feet_ok(g, cu, y, cv) or _feet_ok(g, cu, y - 1, cv) or (
+                _low_step(g.get(cu, y, cv)) and _walk_clear(g, cu, y + 1, cv) and _walk_clear(g, cu, y + 2, cv))
+            if not ok:
+                out.append(((u, y, v), f"{n.split(':')[1]} blocked on one side by {g.get(cu, y, cv).name if g.get(cu, y, cv) else 'nothing to stand on'}", n))
+                break
+    return out
+
+
+_NOT_FURNITURE = ("_door", "_window", "_glazing", "_pane", "_bars", "_slab", "light", "torch", "shop_sign", "_garage_door",
+                  "kerb", "paving", "tarmac", "_leaves", "_log")
+_FURNITURE_VANILLA = ("barrel", "bookshelf", "crafting_table", "furnace", "smoker", "loom", "chest", "lectern", "cauldron",
+                      "_bed", "flower_pot", "potted_", "anvil", "jukebox", "note_block", "cartography_table", "_fence",
+                      "_stairs", "brewing_stand", "composter", "grindstone", "stonecutter", "bell", "campfire",
+                      "_carpet", "armor_stand", "end_rod", "candle")
+
+
+def _furniture(blk):
+    if blk is None:
+        return False
+    n = blk.name
+    if n.endswith(_NOT_FURNITURE) or n in ("minecraft:air", "minecraft:light"):
+        return False
+    if n.startswith("ptmuk:"):
+        return not _ptmuk_full(n)
+    return any(w in n for w in _FURNITURE_VANILLA)
+
+
+def empty_rooms(g, out_cells):
+    """Rooms (floor areas closed off by walls and doors) with nothing in them."""
+    stand, seen = walkable(g)
+    inside = {p for p in stand if p not in out_cells and g.get(*p) is not None
+              and not g.get(*p).name.endswith(("_door", "_fence_gate")) and _floor(g.get(p[0], p[1] - 1, p[2]))}
+    out, done = [], set()
+    for p in sorted(inside):
+        if p in done:
+            continue
+        room, todo = [], [p]
+        done.add(p)
+        while todo:
+            u, y, v = todo.pop()
+            room.append((u, y, v))
+            for du, dv in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                n = (u + du, y, v + dv)
+                if n in inside and n not in done:
+                    done.add(n)
+                    todo.append(n)
+        us, vs = [c[0] for c in room], [c[2] for c in room]
+        if len(room) < 9 or max(us) - min(us) < 2 or max(vs) - min(vs) < 2:
+            continue                                         # a corridor, landing or cupboard
+        if any(g.get(u, y - 1, v).name.endswith("_stairs") for (u, y, v) in room):
+            continue
+        cells = set(room)
+        found = False
+        for (u, y, v) in room:
+            for du, dv in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+                for dy in (0, 1, 2):
+                    if (u + du, y, v + dv) in cells and dy == 0 and (du, dv) != (0, 0):
+                        continue
+                    if _furniture(g.get(u + du, y + dy, v + dv)):
+                        found = True
+                        break
+                if found:
+                    break
+            if found:
+                break
+        if not found:
+            out.append(((min(us), room[0][1], min(vs)), f"empty room of {len(room)}: u {min(us)}-{max(us)}, level {room[0][1]}, "
+                        f"v {min(vs)}-{max(vs)}", ""))
     return out
 
 
 def check(build):
     g = Grid(build)
     out_cells = outside(g)
-    return pane_problems(g, out_cells), stair_problems(g) + reach_problems(g, out_cells)
+    return pane_problems(g, out_cells), stair_problems(g) + reach_problems(g, out_cells) + door_problems(g)
+
+
+def audit(build):
+    """The softer checks: rooms with nothing in them."""
+    g = Grid(build)
+    return empty_rooms(g, outside(g))
 
 
 def main(names):
@@ -353,11 +465,12 @@ def main(names):
         if names and b.ident not in names:
             continue
         panes, stairs_ = check(b)
+        empty = audit(b)
         if panes or stairs_:
             bad += 1
-        print(f"{b.ident:28s} panes {len(panes):4d}   stairs {len(stairs_):3d}")
+        print(f"{b.ident:28s} panes {len(panes):4d}   stairs/doors {len(stairs_):3d}   empty rooms {len(empty):3d}")
         if names:
-            for (pos, msg, blk) in panes + stairs_:
+            for (pos, msg, blk) in panes + stairs_ + empty:
                 print(f"    {pos}  {msg}  [{blk}]")
     return 1 if bad else 0
 

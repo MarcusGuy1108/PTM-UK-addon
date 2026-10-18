@@ -417,6 +417,7 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     b.walls(10, 1, 5, 14, 3, 13, brick)
     P.garage_door(b, 11, 13, 5, 1, 2)
     b.door(9, 1, 10, "spruce", facing="right", hinge="left")        # from the hall into the garage
+    P.garage_kit(b, 11, 13, 12)
     b.fill(10, 1, 10, 10, 2, 10, AIR)
     b.gable_roof_side(10, 14, 4, 13, 4, roof)
     P.close_gable_front(b, 5, 11, 13, 4, brick)
@@ -858,6 +859,16 @@ def bank(ident="bank", name="Portland Stone Bank"):
         for v in range(3, 13):
             if (u + v) % 2 == 0 and b.get(u, 0, v).name == "minecraft:polished_diorite":
                 b.set(u, 0, v, "polished_andesite")
+    # cashiers' tills on the counter, desks behind, benches to wait on
+    import prefab_furnish as PF
+    for u in (4, 8):
+        b.set(u, 2, 9, PF.home("till", facing="south", lit=False, level="counter"))
+    for u in (3, 6, 9):
+        b.set(u, 1, 12, PF.home("desk", facing="south", lit=False))
+        b.set(u, 1, 11, PF.home("office_chair", facing="north", lit=False))
+    for u in (2, 10):
+        b.set(u, 1, 4, B("ptmuk:bench_wood", facing="east" if u == 2 else "west"))
+    b.set(1, 1, 3, PF.home("houseplant", facing="south", lit=False))
     P.ceiling_lights(b, 1, 3, 11, 12, 12, step=3)
     return b
 
@@ -969,7 +980,8 @@ def sixties_office(ident="sixties_office", name="1960s Concrete Office Block"):
     b.fill(W - 1, 1, 2, W - 1, 4, 12, "polished_andesite")
     b.fill(0, 1, 12, W - 1, 4, 12, "polished_andesite")
     for u in range(0, W, 3):
-        b.fill(u, 1, 1, u, 4, 1, "light_gray_concrete")
+        if u not in (8, 9):                                 # clear of the doors
+            b.fill(u, 1, 1, u, 4, 1, "light_gray_concrete")
     b.fill(0, 4, 1, W - 1, 4, 2, "light_gray_concrete")
     b.door(8, 1, 2, "birch", facing="back", hinge="left")
     b.door(9, 1, 2, "birch", facing="back", hinge="right")
@@ -1029,6 +1041,7 @@ def brick_office(ident="brick_office", name="1990s Brick Office"):
     P.stair_core(b, 10, 6, floors[:-1], material="stone_brick")
     b.fill(9, 1, 6, 9, 2, 6, AIR)                 # ground floor, off the entrance landing
     b.fill(9, 5, 11, 9, 6, 11, AIR)               # first floor, off the half landing
+    b.fill(10, 5, 6, 11, 7, 7, "stone_bricks")    # the dead space under the upper flight
     b.fill(9, 9, 6, 9, 10, 6, AIR)                # second floor
     for (u, y, v) in ((11, 3, 6), (10, 7, 11), (11, 11, 6)):
         b.set(u, y, v, light(12))
@@ -1190,6 +1203,13 @@ def deck_access_flats(ident="deck_access_flats", name="1960s Deck-Access Flats")
             b.set(u + 1, y + 3, 7, light(11))
         for u in range(8, W - 5, 4):                   # party walls between the flats
             b.fill(u, y + 1, 4, u, y + 3, 10, brick)
+        # each flat: a kitchen along the front beside the door, a table, a sofa and a bed at the back
+        for x0, x1, door in ((4, 7, 5), (9, 11, 9), (13, 15, 13), (17, 20, 17)):
+            P.kitchen_run(b, door + 1, x1, y + 1, 4, "back")
+            P.table(b, x0 + 1, y + 1, 7)
+            b.set(x0 + 2, y + 1, 7, stairs("oak", "right"))
+            P.sofa(b, x0, x0 + 1, y + 1, 10, "back", "spruce")
+            P.bed(b, x1, y + 1, 10, ("light_blue", "white", "lime", "pink")[x0 % 4], "back")
     # stair towers at each end: dog-leg stairs that land at the front on every floor, beside the deck
     for a in (0, W - 4):
         b.walls(a, 1, 1, a + 3, top + 1, 6, conc)
@@ -1357,10 +1377,21 @@ def petrol_station(ident="petrol_station", name="Petrol Station"):
 
 # ================================================================== catalogue
 
+# left at their size: big sheds, campuses and grounds that are already real size (and the estates,
+# whose houses are enlarged before they're laid out along their roads)
+NOT_ENLARGED = {"multiplex_cinema", "superstore", "discount_supermarket", "car_dealership", "drive_thru",
+                "petrol_station", "diy_store", "retail_park", "retail_park_terrace", "fashion_superstore",
+                "bus_garage", "large_primary_school", "secondary_school", "leisure_centre", "country_mansion",
+                "georgian_country_house"}
+
+
 def all_prefabs():
     import prefab_furnish
-    builds = _all_prefabs()
+    import prefab_stretch
+    builds = [b if b.ident in NOT_ENLARGED or b.category == "Estates" else prefab_stretch.enlarge(b)
+              for b in _all_prefabs()]
     for b in builds:
+        b.fill_ground()
         b.frame_doors()
         prefab_furnish.furnish(b)
     return builds

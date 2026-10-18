@@ -4,6 +4,7 @@ Coordinates as in prefab_lib: u across the front, y up, v from the front boundar
 from prefab_lib import AIR, B, Build, DIRS, light, slab, stairs
 import prefab_parts as P
 import prefab_designs as PD
+from prefab_stretch import enlarge
 
 STONE = P.STONE
 RED, STOCK = "ptmuk:red_brick", "ptmuk:london_stock_brick"
@@ -40,7 +41,7 @@ def flowers(b, cells, y=1):
 
 
 def shed(b, u0, v0, wood="spruce"):
-    b.fill(u0, 1, v0, u0 + 2, 2, v0 + 2, f"{wood}_planks")
+    b.walls(u0, 1, v0, u0 + 2, 2, v0 + 2, f"{wood}_planks")    # hollow, so the door opens into it
     b.fill(u0, 3, v0, u0 + 2, 3, v0 + 2, slab("dark_oak"))
     b.door(u0 + 1, 1, v0, wood, facing="back", hinge="left")
 
@@ -264,7 +265,7 @@ def arts_and_crafts(ident="arts_and_crafts_house", name="Edwardian Arts & Crafts
     b.chimney(17, 10, 8, 16, brick, w=1, d=1, pots=1)
     b.chimney(12, 9, 8, 15, brick, w=1, d=1, pots=1)
     # inside
-    b.fill(10, 1, 6, 10, 3, 14, PLASTER)
+    b.fill(10, 1, 6, 10, 3, 13, PLASTER)                  # stops short of the back door
     b.fill(4, 1, 10, 9, 3, 10, PLASTER)
     b.fill(11, 1, 10, 16, 3, 10, PLASTER)
     for (u, v) in ((10, 8), (10, 12), (12, 10)):
@@ -340,6 +341,8 @@ def executive_house(ident="executive_house", name="Executive Detached House"):
         P.garage_door(b, u, u + 1, 7, 1, 2)
     b.set(16, 1, 6, B("ptmuk:ev_charger", facing="south"))
     b.door(19, 1, 14, "spruce", facing="front", hinge="left")
+    P.garage_kit(b, 17, 18, 13)                         # either side of the back door
+    P.garage_kit(b, 20, 21, 13)
     # roofs
     b.gable_roof(1, 16, 6, 19, 8, roof)
     P.close_gable(b, 2, 7, 18, 8, brick)
@@ -449,6 +452,7 @@ def tudorbethan_detached(ident="thirties_detached", name="1930s Detached House (
     b.fill(15, 4, 7, 18, 4, 14, slab("smooth_stone"))
     b.door(14, 1, 12, "spruce", facing="right", hinge="left")      # from the house into the garage
     b.fill(15, 1, 12, 15, 2, 12, AIR)
+    P.garage_kit(b, 16, 17, 13)
     # roofs: hipped main roof, timbered gable over the bay
     b.hipped_roof(1, 15, 4, 16, 8, roof)
     b.gable_roof_side(2, 8, 3, 9, 8, roof)
@@ -459,7 +463,7 @@ def tudorbethan_detached(ident="thirties_detached", name="1930s Detached House (
                 b.set(u, y, 4, B(timber, axis="y"))
     b.chimney(9, 10, 9, 14, brick, w=1, d=2, pots=2)
     # inside
-    b.fill(8, 1, 6, 8, 3, 14, PLASTER)
+    b.fill(8, 1, 6, 8, 3, 13, PLASTER)                    # stops short of the back door
     b.fill(3, 1, 10, 7, 3, 10, PLASTER)
     for (u, v) in ((8, 8), (8, 12), (5, 10)):
         opening(b, u, 1, v, u, 2, v)
@@ -948,15 +952,20 @@ def _street_lights(b, spots):
         P.street_light(b, u, v, arm)
 
 
+def _along(u_right, u_left, v0, v1, every=12):
+    """Lights down a road running along v, every `every` blocks, alternating sides."""
+    return [(u_right, v, "right") if k % 2 == 0 else (u_left, v, "left") for k, v in enumerate(range(v0, v1, every))]
+
+
 def thirties_estate(ident="estate_thirties_semis", name="1930s Semi-Detached Estate (Cul-de-sac)"):
     doors = [("oak", "dark_oak"), ("spruce", "birch"), ("dark_oak", "jungle"), ("birch", "oak"), ("jungle", "spruce")]
-    pairs = [PD.semi_pair(f"_p{i}", "", "thirties", doors=d) for i, d in enumerate(doors)]
-    pw, pd = pairs[0].W, pairs[0].D                 # 23 x 21
+    pairs = [enlarge(PD.semi_pair(f"_p{i}", "", "thirties", doors=d)) for i, d in enumerate(doors)]
+    pw, pd = pairs[0].W, pairs[0].D
     road = 11
     W = 2 * pd + road
     head0 = 2 * pw
     D = head0 + 10 + pd
-    b = Build(ident, name, "Estates", W, 18, D,
+    b = Build(ident, name, "Estates", W, pairs[0].H, D,
               "Ten 1930s semis (five pairs) round a cul-de-sac with pavements, street lights, a turning head and "
               "corner greens with trees. The road opens onto your street at the front.")
     P.lawn(b, 0, 0, W - 1, D - 1)
@@ -978,36 +987,34 @@ def thirties_estate(ident="estate_thirties_semis", name="1930s Semi-Detached Est
     for (u, v) in ((4, head0 + 4), (W - 5, head0 + 4), (5, D - 6), (W - 6, D - 6)):
         P.tree(b, u, v, h=4, r=2)
     bench(b, 6, head0 + 7, "left")
-    _street_lights(b, [(ru0 + 1, 6, "right"), (ru1 - 1, 18, "left"), (ru0 + 1, 30, "right"), (ru1 - 1, 42, "left"),
-                       (hu0 + 3, head0 + 1, "back"), (hu1 - 3, head0 + 8, "front")])
+    _street_lights(b, _along(ru0 + 1, ru1 - 1, 6, head0) + [(hu0 + 3, head0 + 1, "back"), (hu1 - 3, head0 + 8, "front")])
     return b
 
 
 def victorian_street(ident="estate_victorian_street", name="Victorian Terraced Street"):
-    left = PD.victorian_terrace("_l", "", 7)
-    right = PD.victorian_terrace("_r", "", 7, brick=RED, band=STOCK, doors=["crimson", "dark_oak", "warped", "mangrove"])
+    left = enlarge(PD.victorian_terrace("_l", "", 7))
+    right = enlarge(PD.victorian_terrace("_r", "", 7, brick=RED, band=STOCK, doors=["crimson", "dark_oak", "warped", "mangrove"]))
     road = 10
-    side = left.D                                   # 19
-    W, D = 2 * side + road, left.W                   # 48 x 43
-    b = Build(ident, name, "Estates", W, 15, D,
+    side = left.D
+    W, D = 2 * side + road, left.W
+    b = Build(ident, name, "Estates", W, left.H, D,
               "A Victorian street of fourteen terraced houses facing each other: London stock brick on one side, red "
               "brick on the other, bay windows, railings, back yards and street lights. The street runs straight through.")
     b.paste(left, 0, 0, turns=3)
     b.paste(right, side + road, 0, turns=1)
     P.road_ns(b, side, side + road - 1, 0, D - 1)
-    _street_lights(b, [(side + 1, 4, "right"), (side + road - 2, 16, "left"), (side + 1, 28, "right"),
-                       (side + road - 2, 40, "left")])
+    _street_lights(b, _along(side + 1, side + road - 2, 4, D))
     return b
 
 
 def council_estate(ident="estate_council", name="Post-war Council Estate"):
-    terraces = [PD.council_terrace(f"_c{i}", "", 4) for i in range(4)]       # 25 x 20 each
-    flats = PD.deck_access_flats("_f", "")                                   # 25 x 12
+    terraces = [enlarge(PD.council_terrace(f"_c{i}", "", 4)) for i in range(4)]
+    flats = enlarge(PD.deck_access_flats("_f", ""))
     side, run, road, green = terraces[0].D, terraces[0].W, 10, 25
-    W = 2 * side + 2 * road + green                                          # 85
-    back = 2 * run                                                           # 50
+    W = 2 * side + 2 * road + green
+    back = 2 * run
     D = back + road + flats.D + 3
-    b = Build(ident, name, "Estates", W, 15, D,
+    b = Build(ident, name, "Estates", W, max(terraces[0].H, flats.H), D,
               "A 1950s council estate: sixteen houses in four terraces round a green with a playground, a loop road "
               "with street lights, a block of deck-access flats and rows of lock-up garages at the back.")
     P.lawn(b, 0, 0, W - 1, D - 1)
@@ -1040,9 +1047,8 @@ def council_estate(ident="estate_council", name="Post-war Council Estate"):
         b.set(u, 1, back // 2 + 1, B("ptmuk:bench_metal", facing="north"))
     b.set(mid + 1, 1, back // 2 - 1, B("ptmuk:litter_bin", facing="south"))
     b.set(g1, 1, 1, B("ptmuk:phone_box", facing="south"))
-    _street_lights(b, [(lu0 + 1, 8, "right"), (lu0 + road - 2, 24, "left"), (lu0 + 1, 40, "right"),
-                       (ru0 + road - 2, 8, "left"), (ru0 + 1, 24, "right"), (ru0 + road - 2, 40, "left"),
-                       (W // 2, back + road - 2, "front")])
+    _street_lights(b, _along(lu0 + 1, lu0 + road - 2, 8, back) + _along(ru0 + 1, ru0 + road - 2, 8, back)
+                   + [(W // 2, back + road - 2, "front")])
     return b
 
 
@@ -1055,13 +1061,13 @@ def newbuild_estate(ident="estate_newbuild", name="New-Build Estate (Cul-de-sac)
              dict(brick="bricks", render="bricks", door="dark_oak", bin_colour="brown"),
              dict(brick=RED, render="ptmuk:white_render", door="birch", bin_colour="black"),
              dict(brick=STOCK, render=STOCK, door="mangrove", bin_colour="blue")]
-    houses = [PD.newbuild_detached(f"_n{i}", "", **look) for i, look in enumerate(looks)]
-    hw, hd = houses[0].W, houses[0].D                 # 16 x 21
+    houses = [enlarge(PD.newbuild_detached(f"_n{i}", "", **look)) for i, look in enumerate(looks)]
+    hw, hd = houses[0].W, houses[0].D
     road = 10
     W = 2 * hd + road
     head0 = 3 * hw
     D = head0 + 10 + hd
-    b = Build(ident, name, "Estates", W, 15, D,
+    b = Build(ident, name, "Estates", W, houses[0].H, D,
               "Eight 2020s detached new-builds in mixed brick and render round a cul-de-sac with a block-paved turning "
               "head, pavements, street lights and young trees.")
     P.lawn(b, 0, 0, W - 1, D - 1)
@@ -1078,14 +1084,13 @@ def newbuild_estate(ident="estate_newbuild", name="New-Build Estate (Cul-de-sac)
     b.paste(houses[7], hu1 - hw + 1, head0 + 10, turns=0)
     for (u, v) in ((3, head0 + 4), (W - 4, head0 + 4)):
         P.tree(b, u, v, h=3, r=1, leaves="birch_leaves", log="birch_log")
-    _street_lights(b, [(hd + 1, 8, "right"), (hd + road - 2, 24, "left"), (hd + 1, 40, "right"),
-                       (hu0 + 1, head0 + 8, "front")])
+    _street_lights(b, _along(hd + 1, hd + road - 2, 8, head0) + [(hu0 + 1, head0 + 8, "front")])
     return b
 
 
 def tower_estate(ident="estate_tower_block", name="Council Tower Block Estate"):
-    tower = PD.tower_block("_t", "", storeys=16, house_name="WILLOW HOUSE")     # 17 x 69 x 16
-    blocks = [maisonette_block(f"_m{i}", "") for i in range(2)]                 # 36 x 18 x 13
+    tower = enlarge(PD.tower_block("_t", "", storeys=16, house_name="WILLOW HOUSE"))
+    blocks = [enlarge(maisonette_block(f"_m{i}", "")) for i in range(2)]
     mw, md = blocks[0].W, blocks[0].D
     W = 2 * md + 30
     D = mw + 20
