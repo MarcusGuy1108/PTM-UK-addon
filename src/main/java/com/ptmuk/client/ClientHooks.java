@@ -56,4 +56,11 @@ public final class ClientHooks {
             mc.setScreen(new com.ptmuk.client.building.FuelPriceSignEditScreen(sign));
         }
     }
+
+    public static void openNameplateEditor(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.level.getBlockEntity(pos) instanceof com.ptmuk.map.NameplateBlockEntity plate) {
+            mc.setScreen(new com.ptmuk.client.map.NameplateEditScreen(plate));
+        }
+    }
 }

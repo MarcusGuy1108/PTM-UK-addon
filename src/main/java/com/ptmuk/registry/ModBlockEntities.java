@@ -40,6 +40,8 @@ public final class ModBlockEntities {
             "bus_countdown_sign", () -> BlockEntityType.Builder.of(com.ptmuk.sign.CountdownSignBlockEntity::new, ModBlocks.COUNTDOWN_SIGN.get()).build(null));
 
     @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<com.ptmuk.map.NameplateBlockEntity>> NAMEPLATE = BLOCK_ENTITIES.register(
+            "street_nameplate", () -> BlockEntityType.Builder.of(com.ptmuk.map.NameplateBlockEntity::new, ModBlocks.NAMEPLATE.get()).build(null));
     public static final RegistryObject<BlockEntityType<com.ptmuk.building.ShopSignBlockEntity>> SHOP_SIGN = BLOCK_ENTITIES.register(
             "shop_sign", () -> BlockEntityType.Builder.of(com.ptmuk.building.ShopSignBlockEntity::new, ModBlocks.SHOP_SIGN.get()).build(null));
 

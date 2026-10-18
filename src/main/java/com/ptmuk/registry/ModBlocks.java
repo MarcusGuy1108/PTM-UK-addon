@@ -57,6 +57,7 @@ public final class ModBlocks {
     public static final RegistryObject<Block> BUS_STOP = BLOCKS.register("london_bus_stop", com.ptmuk.sign.BusStopBlock::new);
     public static final RegistryObject<Block> COUNTDOWN_SIGN = BLOCKS.register("bus_countdown_sign", com.ptmuk.sign.CountdownSignBlock::new);
     public static final RegistryObject<Block> SHOP_SIGN = BLOCKS.register("shop_sign", com.ptmuk.building.ShopSignBlock::new);
+    public static final RegistryObject<Block> NAMEPLATE = BLOCKS.register("street_nameplate", com.ptmuk.map.NameplateBlock::new);
     public static final RegistryObject<Block> FUEL_PRICE_SIGN = BLOCKS.register("fuel_price_sign", com.ptmuk.building.FuelPriceSignBlock::new);
     public static final RegistryObject<Block> CAR_WASH = BLOCKS.register("car_wash", com.ptmuk.building.CarWashBlock::new);
     /** Framed windows for UK buildings; must match WINDOWS in tools/building.py. */

@@ -69,4 +69,14 @@ public class FuelPriceSignBlock extends HorizontalDirectionalBlock implements En
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
+
+    /** Broken or replaced: off the map. */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
+        if (!state.is(newState.getBlock())) {
+            com.ptmuk.map.MapPlaces.forget(level, pos);
+        }
+        super.onRemove(state, level, pos, newState, moving);
+    }
 }

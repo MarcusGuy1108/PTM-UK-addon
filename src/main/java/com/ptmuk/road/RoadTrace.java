@@ -29,17 +29,20 @@ public final class RoadTrace {
     private final ServerLevel level;
     private final Block road;
     private final Map<Long, Boolean> mask = new HashMap<>();
+    /** What's on top at a column: open ground only (old roads), or whatever's on top (named roads, bridges too). */
+    private final java.util.function.BiFunction<Integer, Integer, BlockState> surface;
 
-    private RoadTrace(ServerLevel level, Block road) {
+    private RoadTrace(ServerLevel level, Block road, java.util.function.BiFunction<Integer, Integer, BlockState> surface) {
         this.level = level;
         this.road = road;
+        this.surface = surface;
     }
 
     private boolean on(double x, double z) {
         int bx = (int) Math.floor(x), bz = (int) Math.floor(z);
         return mask.computeIfAbsent(((long) bx << 32) ^ (bz & 0xffffffffL), k -> {
             level.getChunk(bx >> 4, bz >> 4);                    // load it, so the road can be followed out of sight
-            BlockState s = BlockSwap.surface(level, bx, bz);
+            BlockState s = surface.apply(bx, bz);
             return s != null && s.getBlock() == road;
         });
     }
@@ -59,7 +62,16 @@ public final class RoadTrace {
         if (s == null) {
             return null;
         }
-        return new RoadTrace(level, s.getBlock()).run(x + 0.5, z + 0.5);
+        return new RoadTrace(level, s.getBlock(), (bx, bz) -> BlockSwap.surface(level, bx, bz)).run(x + 0.5, z + 0.5);
+    }
+
+    /** The same along whatever's on top, raised roads and bridges included (for naming roads on the map). */
+    public static Result traceTop(ServerLevel level, int x, int z, java.util.function.BiFunction<Integer, Integer, BlockState> top) {
+        BlockState s = top.apply(x, z);
+        if (s == null) {
+            return null;
+        }
+        return new RoadTrace(level, s.getBlock(), top).run(x + 0.5, z + 0.5);
     }
 
     private Result run(double x, double z) {

@@ -198,6 +198,17 @@ In the **UK Shop & Commercial Fittings** tab, for fitting out shops, cinemas, ga
 
 All the packaging, films and menus are made up; no real brands.
 
+### Map, road names and directions
+
+Press **M** for the map, a bit like the one on a phone. It fills itself in from everywhere you've been (and keeps up as you build), saved on your computer per world. Drag to move, scroll to zoom.
+
+- **Minimap** in the top right corner: the way you're facing is up, with the name of the road you're on underneath. Turn it off or on from the map.
+- **Pins:** right-click the map and **Drop a pin here**, and name it.
+- **Places:** shops (from their shop signs, named as the sign says) and petrol stations (from their price signs). From PTM2: its stations and bus stops, car parks (with how full they are), its districts as area names, congestion zones in red, and the buses (red, with their route number when you zoom in) and cars on the move.
+- **Road names:** right-click a road and **Name this road** (creative mode). A **Street Nameplate** (street furniture tab) does it in survival too: put it on a wall, or on the ground for one on two legs, write the street name and, if you like, the district and postcode under it (red, London style, or black), and it names the road beside it. Roads built in the Road Planner from a real map keep their OpenStreetMap names.
+- **Search** for a shop, stop, road, area or pin, then **Directions**. Or right-click anywhere and **Directions to here**.
+- **Directions:** a blue route along the roads (tarmac and PTM2's roads), on the map and the minimap, and the next turn across the top of the screen: "In 40 blocks, turn right onto Broadway". Go off the route and it works out a new one; get there and it says you've arrived. With no road there, it points the way as the crow flies. Routes are worked out by the server a slice at a time, reading roads straight from the save, so they don't stall the game.
+
 ### Town Builder
 
 The **Town Builder** (UK Buildings tab, creative mode) puts down trees, bushes, hedges and street furniture. Sneak + right-click (or right-click the sky) to choose; right-click to put it down, from up to 128 blocks away. **Undo last** in the same screen takes back your last ten goes.

@@ -1,0 +1,28 @@
+{
+ "variants": {
+  "facing=north,posts=true": {
+   "model": "ptmuk:block/building/street_nameplate"
+  },
+  "facing=north,posts=false": {
+   "model": "ptmuk:block/building/street_nameplate"
+  },
+  "facing=south,posts=true": {
+   "model": "ptmuk:block/building/street_nameplate"
+  },
+  "facing=south,posts=false": {
+   "model": "ptmuk:block/building/street_nameplate"
+  },
+  "facing=east,posts=true": {
+   "model": "ptmuk:block/building/street_nameplate"
+  },
+  "facing=east,posts=false": {
+   "model": "ptmuk:block/building/street_nameplate"
+  },
+  "facing=west,posts=true": {
+   "model": "ptmuk:block/building/street_nameplate"
+  },
+  "facing=west,posts=false": {
+   "model": "ptmuk:block/building/street_nameplate"
+  }
+ }
+}

@@ -231,6 +231,7 @@ public final class RoadBuilder {
         while (history.size() > UNDO_STEPS) {
             history.removeLast();
         }
+        com.ptmuk.map.MapPlaces.namePlanRoads(job.level, job.plan);
         for (RoadPlan.Node n : job.plan.nodes) {
             n.built = true;
         }

@@ -281,6 +281,7 @@ def generate(gmod):
         G.write_json(G.ASSETS / f"blockstates/{name}_stairs.json", stairs_blockstate(mid, name))
         G.write_json(G.ASSETS / f"models/item/{name}_stairs.json", {"parent": f"{mid}:block/building/{name}_stairs"})
     generate_shop_sign(mid)
+    generate_nameplate(mid)
     generate_windows(mid)
     generate_garage_doors(mid)
     (G.ASSETS / "textures/item").mkdir(parents=True, exist_ok=True)
@@ -602,6 +603,28 @@ def interior_designer_icon():
     return img
 
 
+def nameplate_face():
+    """White plate, black edge, a black line of 'lettering' (the real words are drawn by the renderer)."""
+    img = Image.new("RGBA", (32, 16), (20, 20, 20, 255))
+    d = ImageDraw.Draw(img)
+    d.rectangle((1, 1, 30, 14), fill=(244, 244, 242, 255))
+    for x in range(4, 28, 3):
+        d.rectangle((x, 5, x + 1, 9), fill=(20, 20, 20, 255))
+    d.rectangle((9, 11, 22, 12), fill=(200, 16, 46, 255))
+    return img
+
+
+def generate_nameplate(mid):
+    tex = G.save(nameplate_face(), "building/street_nameplate")
+    # the plate in the world is drawn by NameplateRenderer (it sizes itself to the words); the block model is empty
+    G.write_json(G.ASSETS / "models/block/building/street_nameplate.json", {"textures": {"particle": tex}, "elements": []})
+    G.write_json(G.ASSETS / "models/item/street_nameplate.json", {
+        "parent": "minecraft:item/generated", "textures": {"layer0": tex}})
+    G.write_json(G.ASSETS / "blockstates/street_nameplate.json", {"variants": {
+        f"facing={f},posts={str(p).lower()}": {"model": f"{mid}:block/building/street_nameplate"}
+        for f in ("north", "south", "east", "west") for p in (True, False)}})
+
+
 def generate_shop_sign(mid):
     tex = G.save(shop_sign_board(), "building/shop_sign_board")
     G.write_json(G.ASSETS / "models/block/building/shop_sign.json", {
@@ -621,7 +644,7 @@ def generate_shop_sign(mid):
 
 
 def block_ids():
-    return list(MATERIALS) + [n + "_slab" for n in MATERIALS] + [n + "_stairs" for n in MATERIALS] + ["shop_sign"] + list(WINDOWS) + list(GARAGE_DOORS)
+    return list(MATERIALS) + [n + "_slab" for n in MATERIALS] + [n + "_stairs" for n in MATERIALS] + ["shop_sign", "street_nameplate"] + list(WINDOWS) + list(GARAGE_DOORS)
 
 
 def slab_loot(full):
@@ -639,6 +662,7 @@ def lang(gmod):
         out[f"block.{gmod.MOD_ID}.{n}_slab"] = title + " Slab"
         out[f"block.{gmod.MOD_ID}.{n}_stairs"] = title + " Stairs"
     out[f"block.{gmod.MOD_ID}.shop_sign"] = "Shop Sign (Fascia)"
+    out[f"block.{gmod.MOD_ID}.street_nameplate"] = "Street Nameplate"
     for n, (title, _, _) in WINDOWS.items():
         out[f"block.{gmod.MOD_ID}.{n}"] = title
     for n, (title, _) in GARAGE_DOORS.items():
@@ -648,6 +672,7 @@ def lang(gmod):
     out[f"item.{gmod.MOD_ID}.interior_designer"] = "Interior Designer"
     out[f"item.{gmod.MOD_ID}.town_builder"] = "Town Builder"
     out["key.ptmuk.prefab_rotate"] = "Turn prefab building"
+    out["key.ptmuk.map"] = "Open the map"
     out["key.categories.ptmuk"] = "PTM UK Addon"
     out["itemGroup.ptmuk.building"] = "UK Buildings"
     return out

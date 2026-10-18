@@ -142,6 +142,25 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         read(tag);
     }
 
+    /** On the map as a shop: only the board that carries the name has any text. */
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        com.ptmuk.map.MapPlaces.note(level, worldPosition, com.ptmuk.map.MapData.Kind.SHOP, mapName());
+    }
+
+    /** The name, or the line under it, or the picture's file name. */
+    private String mapName() {
+        if (!text.isBlank()) {
+            return text;
+        }
+        if (!sub.isBlank()) {
+            return sub;
+        }
+        String file = logo.substring(logo.indexOf(':') + 1);
+        return file.contains(".") ? file.substring(0, file.lastIndexOf('.')) : file;
+    }
+
     @Override
     public CompoundTag getUpdateTag() {
         return saveWithoutMetadata();
@@ -160,6 +179,7 @@ public class ShopSignBlockEntity extends BlockEntity implements EditBlockDataMes
         }
         read(tag);
         sync();
+        com.ptmuk.map.MapPlaces.note(level, worldPosition, com.ptmuk.map.MapData.Kind.SHOP, mapName());
         Direction dir = along(getBlockState().getValue(ShopSignBlock.FACING));
         boolean showBoard = !tag.getBoolean("noBoard");
         int span = span(), rows = rows();

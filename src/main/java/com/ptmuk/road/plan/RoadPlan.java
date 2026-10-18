@@ -53,6 +53,8 @@ public final class RoadPlan {
         public double bend;
         public RoadStyle style = RoadStyle.mainRoad();
         public boolean built;
+        /** The road's real name, from a map import (it goes on the world map when built). */
+        public String name = "";
     }
 
     public enum SiteType {

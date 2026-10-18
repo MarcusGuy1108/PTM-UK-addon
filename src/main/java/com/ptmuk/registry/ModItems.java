@@ -84,6 +84,7 @@ public final class ModItems {
         register(ModBlocks.BUS_FURNITURE, BUS_ITEMS);
         register(ModBlocks.FURNITURE, STREET_ITEMS);
         STREET_ITEMS.add(item("fuel_price_sign", ModBlocks.FUEL_PRICE_SIGN));
+        STREET_ITEMS.add(item("street_nameplate", ModBlocks.NAMEPLATE));
         STREET_ITEMS.add(item("car_wash", ModBlocks.CAR_WASH));
         // the stop furniture shows in the buses tab as well
         for (RegistryObject<Item> item : List.copyOf(STREET_ITEMS)) {

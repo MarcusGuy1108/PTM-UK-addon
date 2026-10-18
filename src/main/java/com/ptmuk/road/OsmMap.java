@@ -388,7 +388,7 @@ public final class OsmMap {
             if (prev != null && prev != node) {
                 String key = Math.min(prev.id, node.id) + "-" + Math.max(prev.id, node.id);
                 if (done.add(key)) {
-                    plan.addSegment(prev.id, node.id, st);
+                    plan.addSegment(prev.id, node.id, st).name = w.tag("name");
                     count++;
                 }
             }

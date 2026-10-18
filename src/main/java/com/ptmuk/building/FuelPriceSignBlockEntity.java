@@ -103,6 +103,12 @@ public class FuelPriceSignBlockEntity extends BlockEntity implements EditBlockDa
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        com.ptmuk.map.MapPlaces.note(level, worldPosition, com.ptmuk.map.MapData.Kind.FUEL, brand.isBlank() ? "Petrol station" : brand);
+    }
+
+    @Override
     public CompoundTag getUpdateTag() {
         return saveWithoutMetadata();
     }
@@ -115,6 +121,7 @@ public class FuelPriceSignBlockEntity extends BlockEntity implements EditBlockDa
     @Override
     public void applyEdit(CompoundTag tag) {
         read(tag);
+        com.ptmuk.map.MapPlaces.note(level, worldPosition, com.ptmuk.map.MapData.Kind.FUEL, brand.isBlank() ? "Petrol station" : brand);
         setChanged();
         if (level != null) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);

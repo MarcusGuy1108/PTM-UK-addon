@@ -6,7 +6,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class PtmUkNetwork {
-    private static final String VERSION = "6";
+    private static final String VERSION = "7";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(PtmUk.id("main"), () -> VERSION,
             VERSION::equals, VERSION::equals);
 
@@ -79,6 +79,31 @@ public final class PtmUkNetwork {
                 .encoder(TownBuilderMessage::encode)
                 .decoder(TownBuilderMessage::decode)
                 .consumerMainThread(TownBuilderMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(MapDataRequestMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MapDataRequestMessage::encode)
+                .decoder(MapDataRequestMessage::decode)
+                .consumerMainThread(MapDataRequestMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(MapDataMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(MapDataMessage::encode)
+                .decoder(MapDataMessage::decode)
+                .consumerMainThread(MapDataMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(NameRoadMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(NameRoadMessage::encode)
+                .decoder(NameRoadMessage::decode)
+                .consumerMainThread(NameRoadMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(RouteRequestMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RouteRequestMessage::encode)
+                .decoder(RouteRequestMessage::decode)
+                .consumerMainThread(RouteRequestMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(RouteMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(RouteMessage::encode)
+                .decoder(RouteMessage::decode)
+                .consumerMainThread(RouteMessage::handle)
                 .add();
     }
 }
