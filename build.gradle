@@ -39,6 +39,9 @@ minecraft {
             if (project.hasProperty('quickPlayWorld')) {
                 args '--quickPlaySingleplayer', project.property('quickPlayWorld')
             }
+            // other mods' mixins (Oculus) name things the SRG way; this maps them for the dev client
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
         }
 
         server {
@@ -85,6 +88,11 @@ dependencies {
     // ./gradlew runClient -PwithDH to test how things look in Distant Horizons' LODs (not bundled)
     if (project.hasProperty('withDH')) {
         runtimeOnly fg.deobf("maven.modrinth:distanthorizons:3.3.3-1.20.1")
+    }
+    // ./gradlew runClient -PwithShaders to check the renderers with Oculus shaders (put a pack in run/shaderpacks)
+    if (project.hasProperty('withShaders')) {
+        runtimeOnly fg.deobf("maven.modrinth:embeddium:0.3.31+mc1.20.1")
+        runtimeOnly fg.deobf("maven.modrinth:oculus:1.20.1-1.8.0")
     }
 }
 

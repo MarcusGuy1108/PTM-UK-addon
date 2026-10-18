@@ -9,7 +9,6 @@ import com.ptmuk.motorway.VmsBlockEntity;
 import com.ptmuk.motorway.VmsLayout;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
@@ -38,7 +37,7 @@ public class VmsRenderer implements BlockEntityRenderer<VmsBlockEntity> {
         pose.translate(0.5, 0, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(-facing.toYRot()));
         Matrix4f m = pose.last().pose();
-        VertexConsumer vc = buffers.getBuffer(RenderType.textBackground());
+        VertexConsumer vc = com.ptmuk.client.FlatQuads.of(buffers, pose);
         float w = vms.width - 0.1f, h = VmsLayout.HEIGHT;
         float x0 = -w / 2, x1 = w / 2;
         // housing box: front at z 0.2, back at z -0.25

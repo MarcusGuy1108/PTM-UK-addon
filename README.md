@@ -198,6 +198,14 @@ In the **UK Shop & Commercial Fittings** tab, for fitting out shops, cinemas, ga
 
 All the packaging, films and menus are made up; no real brands.
 
+### Town Builder
+
+The **Town Builder** (UK Buildings tab, creative mode) puts down trees, bushes, hedges and street furniture. Sneak + right-click (or right-click the sky) to choose; right-click to put it down, from up to 128 blocks away. **Undo last** in the same screen takes back your last ten goes.
+
+- **Trees:** London plane, English oak, lime, silver birch, cherry blossom, Scots pine, holly and leylandii, in four sizes (young, semi-mature, mature, veteran) at the same scale as the buildings and roads, so a mature plane is about 28 blocks tall and a veteran about 40. They're built from ordinary logs and leaves (the leaves don't decay). Right-click the ground to plant one; right-click a tree you planted to grow it a size bigger. **Scatter a few** plants a handful round the spot, on grass and earth, some smaller.
+- **Bushes and hedges:** box balls, flowering shrubs and laurel bushes (plant or scatter, as trees); privet, beech and conifer hedges from low to a tall screen: right-click where the hedge starts, then where it ends.
+- **Street furniture:** wooden and metal benches, litter and dog waste bins, cast iron and steel bollards, cycle stands, brick planters, flower troughs, street lights (LED or the old orange ones), heritage lamp posts with one or three lanterns, black guard rail, pillar boxes and grit bins. Right-click where the row starts, then where it ends (the same spot for just one): it puts them along the line, evenly spaced (set how far apart), each facing the road (the side with tarmac, or else the side a kerb lower). Guard rail runs the whole way.
+
 ### Interior Designer
 
 Fit out an empty room in one click. Take the **Interior Designer** (UK Buildings tab, creative mode), right-click the floor of a room, and pick what the room is:
@@ -302,7 +310,7 @@ In the **UK Power** tab, each builder places a whole tower made of real blocks, 
 
 Breaking any part removes the whole tower. In survival you get the builder back.
 
-**Overhead Line Tool:** right-click a tower, then the next one, to string the conductors between them. Spans can be up to 256 blocks. Each conductor connects to its partner on the other tower, with a realistic sag; 400 kV lines are drawn as twin bundles, plus the earth wire. Sneak + right-click a tower to take down its spans. The wires are drawn by the client, so Distant Horizons doesn't show them beyond your normal render distance.
+**Overhead Line Tool:** right-click a tower, then the next one, to string the conductors between them. Spans can be up to 256 blocks. Each conductor connects to its partner on the other tower, with a realistic sag; 400 kV lines are drawn as twin bundles, plus the earth wire. Sneak + right-click a tower to take down its spans. The wires are drawn by the client, so LOD mods (Distant Horizons, Voxy) don't show them beyond your normal render distance; the towers are real blocks, so those do. Wires, sign boards and LED displays draw the same way as chests and banners, so they work with Oculus shader packs (checked with BSL).
 
 ### Buses and cars
 
@@ -361,6 +369,7 @@ Needs JDK 17. PTM2 is downloaded automatically from CurseMaven (it is MIT licens
 ./gradlew build                # mod jar in build/libs/
 ./gradlew runClient            # dev client with PTM2 loaded
 ./gradlew runGameTestServer    # automated in-game tests
+./gradlew runClient -PwithShaders   # with Oculus + Embeddium (put a shader pack in run/shaderpacks)
 ```
 
 ### Models and textures

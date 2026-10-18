@@ -9,7 +9,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
@@ -156,7 +155,7 @@ public class CountdownSignRenderer implements BlockEntityRenderer<CountdownSignB
     }
 
     private VertexConsumer fill() {
-        return buffers.getBuffer(RenderType.textBackground());
+        return com.ptmuk.client.FlatQuads.of(buffers, pose);
     }
 
     private void rect(float x0, float y0, float x1, float y1, int argb) {

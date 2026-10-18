@@ -2,6 +2,7 @@ package com.ptmuk.client.power;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.ptmuk.client.FlatQuads;
 import com.ptmuk.PtmUk;
 import com.ptmuk.power.PowerLines;
 import com.ptmuk.power.PylonData;
@@ -10,7 +11,6 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -144,9 +144,9 @@ public final class ClientPowerLines {
         double maxDist = mc.options.getEffectiveRenderDistance() * 16.0 + 64;
         PoseStack pose = event.getPoseStack();
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-        VertexConsumer vc = buffers.getBuffer(RenderType.leash());
         pose.pushPose();
         pose.translate(-cam.x, -cam.y, -cam.z);
+        VertexConsumer vc = FlatQuads.of(buffers, pose);
         Matrix4f m = pose.last().pose();
         for (Wire w : wires) {
             Vec3 mid = w.a.add(w.b).scale(0.5);
@@ -157,7 +157,7 @@ public final class ClientPowerLines {
             drawWire(vc, m, w, light, cam);
         }
         pose.popPose();
-        buffers.endBatch(RenderType.leash());
+        buffers.endBatch(FlatQuads.TYPE);
     }
 
     private static Vec3 at(Wire w, double t) {
@@ -165,32 +165,29 @@ public final class ClientPowerLines {
         return p.add(0, -4 * w.sag * t * (1 - t), 0);
     }
 
-    /** A ribbon that always faces the camera, as a triangle strip (the leash render type). */
+    /** A ribbon that always faces the camera, one quad per stretch (no strips, which shader packs can join up wrongly). */
     private static void drawWire(VertexConsumer vc, Matrix4f m, Wire w, int light, Vec3 cam) {
         int segs = Math.max(6, Math.min(48, (int) (w.a.distanceTo(w.b) / 3)));
-        Vec3 prev = at(w, 0);
+        Vec3 prevL = null, prevR = null, prev = at(w, 0);
+        int c = 38;
         for (int i = 0; i <= segs; i++) {
             double t = i / (double) segs;
             Vec3 p = at(w, t);
             Vec3 next = at(w, Math.min(1, t + 1.0 / segs));
             Vec3 dir = (i == segs ? p.subtract(prev) : next.subtract(p)).normalize();
-            Vec3 toCam = cam.subtract(p).normalize();
-            Vec3 side = dir.cross(toCam);
+            Vec3 side = dir.cross(cam.subtract(p).normalize());
             if (side.lengthSqr() < 1e-6) {
                 side = new Vec3(0, 1, 0);
             }
             side = side.normalize().scale(w.thickness / 2 * Math.max(1, cam.distanceTo(p) / 40));
             Vec3 l = p.subtract(side), r = p.add(side);
-            int c = 38;
-            if (i == 0) {
-                // degenerate start so consecutive wires don't join up in the strip
-                vc.vertex(m, (float) l.x, (float) l.y, (float) l.z).color(c, c, c + 2, 255).uv2(light).endVertex();
+            if (prevL != null) {
+                for (Vec3 v : new Vec3[]{prevL, prevR, r, l}) {
+                    vc.vertex(m, (float) v.x, (float) v.y, (float) v.z).color(c, c, c + 2, 255).uv2(light).endVertex();
+                }
             }
-            vc.vertex(m, (float) l.x, (float) l.y, (float) l.z).color(c, c, c + 2, 255).uv2(light).endVertex();
-            vc.vertex(m, (float) r.x, (float) r.y, (float) r.z).color(c, c, c + 2, 255).uv2(light).endVertex();
-            if (i == segs) {
-                vc.vertex(m, (float) r.x, (float) r.y, (float) r.z).color(c, c, c + 2, 255).uv2(light).endVertex();
-            }
+            prevL = l;
+            prevR = r;
             prev = p;
         }
     }

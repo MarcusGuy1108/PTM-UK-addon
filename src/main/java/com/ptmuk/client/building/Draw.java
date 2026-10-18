@@ -34,7 +34,7 @@ final class Draw {
     /** A rectangle facing +z at depth z. */
     static void rect(PoseStack pose, MultiBufferSource buffers, float x0, float y0, float x1, float y1, float z, int argb, int light) {
         Matrix4f m = pose.last().pose();
-        VertexConsumer vc = buffers.getBuffer(RenderType.textBackground());
+        VertexConsumer vc = com.ptmuk.client.FlatQuads.of(buffers, pose);
         int a = argb >>> 24, r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
         vc.vertex(m, x0, y0, z).color(r, g, b, a).uv2(light).endVertex();
         vc.vertex(m, x1, y0, z).color(r, g, b, a).uv2(light).endVertex();
@@ -46,7 +46,7 @@ final class Draw {
     static void box(PoseStack pose, MultiBufferSource buffers, float x0, float y0, float z0, float x1, float y1, float z1,
                     int argb, int light) {
         Matrix4f m = pose.last().pose();
-        VertexConsumer vc = buffers.getBuffer(RenderType.textBackground());
+        VertexConsumer vc = com.ptmuk.client.FlatQuads.of(buffers, pose);
         float[][][] faces = {
                 {{x0, y0, z1}, {x1, y0, z1}, {x1, y1, z1}, {x0, y1, z1}}, {{x1, y0, z0}, {x0, y0, z0}, {x0, y1, z0}, {x1, y1, z0}},
                 {{x0, y1, z1}, {x1, y1, z1}, {x1, y1, z0}, {x0, y1, z0}}, {{x0, y0, z0}, {x1, y0, z0}, {x1, y0, z1}, {x0, y0, z1}},

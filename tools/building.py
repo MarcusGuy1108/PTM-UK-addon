@@ -290,6 +290,12 @@ def generate(gmod):
     road_planner_icon().save(G.ASSETS / "textures/item/road_planner.png")
     G.write_json(G.ASSETS / "models/item/road_planner.json", {"parent": "minecraft:item/generated",
                                                               "textures": {"layer0": f"{mid}:item/road_planner"}})
+    # plain white, for flat colour drawn in an entity render type (sign boards, LED digits, wires)
+    (G.ASSETS / "textures/misc").mkdir(parents=True, exist_ok=True)
+    Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(G.ASSETS / "textures/misc/white.png")
+    town_builder_icon().save(G.ASSETS / "textures/item/town_builder.png")
+    G.write_json(G.ASSETS / "models/item/town_builder.json", {"parent": "minecraft:item/generated",
+                                                              "textures": {"layer0": f"{mid}:item/town_builder"}})
     interior_designer_icon().save(G.ASSETS / "textures/item/interior_designer.png")
     G.write_json(G.ASSETS / "models/item/interior_designer.json", {"parent": "minecraft:item/generated",
                                                                    "textures": {"layer0": f"{mid}:item/interior_designer"}})
@@ -562,6 +568,23 @@ def road_planner_icon():
     return img
 
 
+def town_builder_icon():
+    """A round green tree beside a black lamp post and a bench."""
+    n = 32
+    img = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle((9, 18, 11, 29), fill=(110, 80, 50, 255))                               # trunk
+    d.ellipse((2, 3, 19, 20), fill=(70, 140, 60, 255), outline=(35, 80, 35, 255))      # crown
+    d.ellipse((6, 6, 12, 11), fill=(110, 180, 90, 255))
+    d.rectangle((24, 7, 25, 29), fill=(30, 30, 34, 255))                               # lamp post
+    d.rectangle((22, 3, 27, 7), fill=(240, 220, 130, 255), outline=(30, 30, 34, 255))
+    d.rectangle((14, 24, 23, 25), fill=(150, 100, 60, 255))                            # bench
+    d.rectangle((14, 21, 23, 22), fill=(150, 100, 60, 255))
+    d.line([(15, 26), (15, 29)], fill=(30, 30, 34, 255))
+    d.line([(22, 26), (22, 29)], fill=(30, 30, 34, 255))
+    return img
+
+
 def interior_designer_icon():
     """A paint swatch card fanned behind a little armchair."""
     n = 32
@@ -623,6 +646,7 @@ def lang(gmod):
     out[f"item.{gmod.MOD_ID}.prefab_tool"] = "Prefab Tool (British Buildings)"
     out[f"item.{gmod.MOD_ID}.road_planner"] = "Road Planner"
     out[f"item.{gmod.MOD_ID}.interior_designer"] = "Interior Designer"
+    out[f"item.{gmod.MOD_ID}.town_builder"] = "Town Builder"
     out["key.ptmuk.prefab_rotate"] = "Turn prefab building"
     out["key.categories.ptmuk"] = "PTM UK Addon"
     out["itemGroup.ptmuk.building"] = "UK Buildings"

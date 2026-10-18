@@ -13,7 +13,6 @@ import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
@@ -336,7 +335,7 @@ public final class SignPainter {
 
     /** Fetched per shape: drawing text in between switches buffers and ends the previous one. */
     private VertexConsumer fill() {
-        return buffers.getBuffer(RenderType.textBackground());
+        return com.ptmuk.client.FlatQuads.of(buffers, pose);
     }
 
     private void quad(float ax, float ay, float bx, float by, float cx, float cy, float dx, float dy, int argb) {

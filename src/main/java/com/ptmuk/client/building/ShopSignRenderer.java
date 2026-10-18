@@ -9,7 +9,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
@@ -117,7 +116,7 @@ public class ShopSignRenderer implements BlockEntityRenderer<ShopSignBlockEntity
 
     private static void rect(PoseStack pose, MultiBufferSource buffers, float x0, float y0, float x1, float y1, float z, int argb, int light) {
         Matrix4f m = pose.last().pose();
-        VertexConsumer vc = buffers.getBuffer(RenderType.textBackground());
+        VertexConsumer vc = com.ptmuk.client.FlatQuads.of(buffers, pose);
         int a = argb >>> 24, r = (argb >> 16) & 255, g = (argb >> 8) & 255, b = argb & 255;
         vc.vertex(m, x0, y0, z).color(r, g, b, a).uv2(light).endVertex();
         vc.vertex(m, x1, y0, z).color(r, g, b, a).uv2(light).endVertex();
