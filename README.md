@@ -109,7 +109,8 @@ The **Road Planner** (UK Buildings tab, creative mode) opens a top-down map of t
 - **Draw:** click to lay a road point by point; it curves smoothly through the points. End on another road to join it (that makes a junction), or right-click to finish. Right-drag or WASD moves the map, the scroll wheel zooms.
 - **Edit:** drag points around, drag the dot in the middle of a road to bend it, Delete removes, Ctrl+Z undoes. Select a point to change its junction, or a road to change its lanes, markings and pavements.
 - The map reaches 24 chunks each way whatever your render distance (handy with Distant Horizons): the server sends what your game hasn't loaded, read from the saved world without loading or generating anything, and roads level against the real ground there too.
-- The map shows exactly what will be built before you press **Build**. Building happens over a few seconds so big plans don't freeze the game. **Undo build** puts everything back, and the plan stays on the item so you can change it and build again.
+- The map shows exactly what will be built before you press **Build**. Building happens over a few seconds so big plans don't freeze the game. **Undo** puts everything back, and the plan stays on the item so you can change it and build again.
+- **Follow an old road** (in Draw mode): click a road that's already built in the world (any block: an old build's coal or concrete, under carpet markings) and the planner follows it both ways down its middle to its junctions and ends, measuring its width and pavements, and turns it into planner roads of that width. Follow the other roads and they join up at the junctions; then pick a style and **Build** to rebuild them properly, on the same line.
 
 Roads come in UK styles you can mix and adjust: main road (21 wide: two 6-block lanes, dashed centre line and 4-block pavements), residential street (15 wide), high street, wide 4-lane road, dual carriageway with a central reservation and crash barrier, country road with grass verges, one-way street and slip road. Each has settings for lanes, lane width, centre line (dashed, hazard, double white or none), pavement width and surface (light grey concrete, tarmac, paving slabs or block paving), grass verge, raised kerbs, street lights, white edge lines and yellow lines (single, double, or auto: single along the road and double near junctions).
 
@@ -123,6 +124,16 @@ Junctions:
 Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 recognises them, and UK style: hazard lines (long dashes) approaching junctions, solid up to stop lines, and yellow lines that follow the kerb round corners (or, with kerbs turned off, the edge of the road). Pavements use PTM2's sidewalk blocks by default, so PTM2's pedestrians walk on them.
 
 Roads are levelled into the ground: hills are cut through and dips built up with a smooth gradient (no steeper than 1 in 10, in half-block steps), junctions are flat, and the ground either side is sloped to meet the road. Trees in the way are cleared. Set PTM2 to left-hand traffic in its settings so its AI cars use the left lane.
+
+### Upgrading an old build (Block swap)
+
+Worlds brought up from older versions lose their modded blocks: roads come back as coal and carpet, pavements as concrete. The Road Planner's **Swap** mode swaps them over a whole area at once:
+
+- Drag a box over part of the old build (up to 256 x 256). It lists every block in it with how many there are. **Look at: open ground** takes in roads, pavements and anything thin on them (carpet markings, post bases) but not buildings, so a block used both in the ground and in walls only changes in the ground; **everything** takes in the buildings too.
+- Click the arrow under a block to pick what it becomes: suggestions first (coal and dark concrete to tarmac, grey concrete and stone to paving slabs, red to red tarmac or block paving, carpet markings removed), then *remove*. Or click it and type any block's name. **Suggested** picks the first suggestion for every block that has one.
+- **Swap** does it, keeping stairs and slabs turned the way they were; the map updates straight away. **Undo swap** puts back the last swap (the last 5 are kept). The box is remembered next time you open the planner.
+
+Follow the old roads (above) to rebuild them with proper markings and kerbs, and swap the rest of the ground.
 
 ### Real maps (OpenStreetMap import)
 

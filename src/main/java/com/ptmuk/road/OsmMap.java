@@ -434,7 +434,7 @@ public final class OsmMap {
     }
 
     /** Douglas-Peucker: which points of a..b to keep so the line stays within tol of the original. */
-    static boolean[] simplify(double[] x, double[] z, int a, int b, double tol) {
+    public static boolean[] simplify(double[] x, double[] z, int a, int b, double tol) {
         boolean[] keep = new boolean[x.length];
         keep[a] = keep[b] = true;
         Deque<int[]> todo = new ArrayDeque<>();

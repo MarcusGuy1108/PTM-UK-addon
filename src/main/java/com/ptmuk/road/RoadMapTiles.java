@@ -118,6 +118,14 @@ public final class RoadMapTiles {
         });
     }
 
+    /** Send a loaded chunk's map again, after something changed it. */
+    public static void resend(ServerPlayer player, ChunkPos pos) {
+        LevelChunk chunk = player.serverLevel().getChunkSource().getChunkNow(pos.x, pos.z);
+        if (chunk != null) {
+            send(player, pos, fromLevel(player.serverLevel(), chunk));
+        }
+    }
+
     private static void send(ServerPlayer player, ChunkPos pos, Tile tile) {
         PtmUkNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                 new RoadMapTileMessage(pos.x, pos.z, tile.colours, tile.ground));

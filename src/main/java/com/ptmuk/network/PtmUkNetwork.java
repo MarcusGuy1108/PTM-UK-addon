@@ -6,7 +6,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class PtmUkNetwork {
-    private static final String VERSION = "3";
+    private static final String VERSION = "4";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(PtmUk.id("main"), () -> VERSION,
             VERSION::equals, VERSION::equals);
 
@@ -49,6 +49,26 @@ public final class PtmUkNetwork {
                 .encoder(RoadMapTileMessage::encode)
                 .decoder(RoadMapTileMessage::decode)
                 .consumerMainThread(RoadMapTileMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(BlockSwapMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(BlockSwapMessage::encode)
+                .decoder(BlockSwapMessage::decode)
+                .consumerMainThread(BlockSwapMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(BlockSwapListMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(BlockSwapListMessage::encode)
+                .decoder(BlockSwapListMessage::decode)
+                .consumerMainThread(BlockSwapListMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(TraceRoadMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(TraceRoadMessage::encode)
+                .decoder(TraceRoadMessage::decode)
+                .consumerMainThread(TraceRoadMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(TraceResultMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(TraceResultMessage::encode)
+                .decoder(TraceResultMessage::decode)
+                .consumerMainThread(TraceResultMessage::handle)
                 .add();
     }
 }

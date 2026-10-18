@@ -55,7 +55,8 @@ public final class RoadBuilder {
     private static final int MAX_CELLS = 2_500_000;
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
-    private record Saved(BlockPos pos, BlockState state, CompoundTag nbt) {
+    /** A block as it was before a build, to put back. */
+    public record Saved(BlockPos pos, BlockState state, CompoundTag nbt) {
     }
 
     private record Undo(ResourceKey<Level> dimension, List<Saved> blocks) {
@@ -545,6 +546,12 @@ public final class RoadBuilder {
             return;
         }
         List<Saved> blocks = undo.blocks();
+        restore(level, blocks);
+        player.displayClientMessage(Component.literal("Undid the last road build (" + blocks.size() + " blocks put back)"), true);
+    }
+
+    /** Put saved blocks back, last changed first. */
+    public static void restore(ServerLevel level, List<Saved> blocks) {
         for (int i = blocks.size() - 1; i >= 0; i--) {
             Saved s = blocks.get(i);
             level.setBlock(s.pos(), s.state(), FLAGS);
@@ -558,7 +565,6 @@ public final class RoadBuilder {
                 }
             }
         }
-        player.displayClientMessage(Component.literal("Undid the last road build (" + blocks.size() + " blocks put back)"), true);
     }
 
     /** Ground heights for the server: chunks that aren't loaded yet get loaded. */

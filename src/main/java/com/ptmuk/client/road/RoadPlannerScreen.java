@@ -5,8 +5,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.ptmuk.PtmUk;
+import com.ptmuk.network.BlockSwapListMessage;
+import com.ptmuk.network.BlockSwapMessage;
 import com.ptmuk.network.PtmUkNetwork;
 import com.ptmuk.network.RoadPlannerMessage;
+import com.ptmuk.network.TraceResultMessage;
+import com.ptmuk.network.TraceRoadMessage;
+import com.ptmuk.road.BlockSwap;
 import com.ptmuk.road.OsmMap;
 import com.ptmuk.road.RoadPlannerItem;
 import com.ptmuk.road.RoadPlans;
@@ -27,6 +32,8 @@ import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
@@ -34,6 +41,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -53,7 +61,7 @@ public class RoadPlannerScreen extends Screen {
     private static RoadStyle lastStyle = RoadStyle.mainRoad();
     private static double lastZoom = 2;
 
-    private enum Mode { DRAW, EDIT, SITES, MAP }
+    private enum Mode { DRAW, EDIT, SITES, MAP, SWAP }
 
     private static final ResourceLocation OUTLINES = PtmUk.id("road_planner/outlines");
 
@@ -101,6 +109,30 @@ public class RoadPlannerScreen extends Screen {
     private List<OsmMap.Outline> outlines;
     private DynamicTexture outlineTex;
     private double[] measureA, measureB;
+
+    // block swap: a box of the world, what it's made of (from the server) and what each block becomes
+    private static final class SwapRow {
+        final String id;
+        final int count;
+        String to;                      // null: keep it
+
+        SwapRow(String id, int count) {
+            this.id = id;
+            this.count = count;
+        }
+    }
+
+    /** A row of the list: its name and count over its button. */
+    private static final int SWAP_ENTRY = ROW + 10;
+    private static int[] swapBox;       // x0 z0 x1 z1, inclusive: kept for next time the planner's opened
+    private boolean swapDragging;
+    private static boolean swapGroundOnly = true;
+    private final List<SwapRow> swapRows = new ArrayList<>();
+    private int swapSel = -1, swapFirst, swapListTop, swapShown;
+    private String swapNote = "";
+    private EditBox swapEdit;
+    /** Draw mode: a click follows the old road there instead of starting a new one. */
+    private boolean tracing;
 
     public static void open(InteractionHand hand) {
         Minecraft.getInstance().setScreen(new RoadPlannerScreen(hand));
@@ -151,13 +183,15 @@ public class RoadPlannerScreen extends Screen {
         editButton = addRenderableWidget(Button.builder(Component.literal("Edit"), b -> setMode(Mode.EDIT)).bounds(x + 29, 3, 26, 16).build());
         sitesButton = addRenderableWidget(Button.builder(Component.literal("Sites"), b -> setMode(Mode.SITES)).bounds(x + 56, 3, 30, 16).build());
         mapButton = addRenderableWidget(Button.builder(Component.literal("Map"), b -> setMode(Mode.MAP)).bounds(x + 87, 3, 24, 16).build());
+        swapButton = addRenderableWidget(Button.builder(Component.literal("Swap"), b -> setMode(Mode.SWAP)).bounds(x + 112, 3, 30, 16)
+                .tooltip(Tooltip.create(Component.literal("Swap an old build's blocks for new ones: coal roads for tarmac, and so on"))).build());
         if (plan.map != null && outlines == null) {
             readMap(plan.map.file, m -> showOutlines());
         }
         int right = width - 3;
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(right - 36, 3, 36, 16).build());
         addRenderableWidget(Button.builder(Component.literal("Build"), b -> build()).bounds(right - 76, 3, 38, 16).build());
-        addRenderableWidget(Button.builder(Component.literal("Undo build"), b -> {
+        addRenderableWidget(Button.builder(Component.literal("Undo"), b -> {
             send(RoadPlannerMessage.Action.UNDO);
             // the roads are gone again, so the plan can be changed and built afresh
             plan.nodes.forEach(n -> n.built = false);
@@ -165,7 +199,7 @@ public class RoadPlannerScreen extends Screen {
             plan.sites.forEach(st -> st.built = false);
             changed();
             flash("Last build undone - the plan is still here to change and build again");
-        }).bounds(right - 136, 3, 58, 16).build());
+        }).bounds(right - 108, 3, 30, 16).tooltip(Tooltip.create(Component.literal("Undo the last build"))).build());
         addRenderableWidget(Button.builder(Component.literal("Clear"), b -> {
             remember();
             plan = new RoadPlan();
@@ -173,17 +207,21 @@ public class RoadPlannerScreen extends Screen {
             selNode = selSeg = null;
             selSite = null;
             changed();
-        }).bounds(right - 172, 3, 34, 16).build());
+        }).bounds(right - 140, 3, 30, 16).build());
         rebuildPanel();
     }
 
     private void setMode(Mode m) {
         mode = m;
+        tracing = false;
+        if (m == Mode.SWAP && swapBox != null && swapRows.isEmpty()) {
+            swapSend(BlockSwapMessage.Action.SCAN);
+        }
         chainLast = null;
         rebuildPanel();
     }
 
-    private Button drawButton, editButton, sitesButton, mapButton;
+    private Button drawButton, editButton, sitesButton, mapButton, swapButton;
 
     /** The left panel: the selected point's junction, or the selected (or next) road's style. */
     private void rebuildPanel() {
@@ -191,11 +229,16 @@ public class RoadPlannerScreen extends Screen {
             removeWidget(b);
         }
         panelButtons.clear();
+        if (swapEdit != null) {
+            removeWidget(swapEdit);
+            swapEdit = null;
+        }
         if (drawButton != null) {
             drawButton.active = mode != Mode.DRAW;
             editButton.active = mode != Mode.EDIT;
             sitesButton.active = mode != Mode.SITES;
             mapButton.active = mode != Mode.MAP;
+            swapButton.active = mode != Mode.SWAP;
         }
         int y = TOP + 14;
         if (mode == Mode.SITES) {
@@ -204,6 +247,10 @@ public class RoadPlannerScreen extends Screen {
         }
         if (mode == Mode.MAP) {
             mapPanel(y);
+            return;
+        }
+        if (mode == Mode.SWAP) {
+            swapPanel(y);
             return;
         }
         Node n = selNode == null ? null : plan.node(selNode);
@@ -316,6 +363,11 @@ public class RoadPlannerScreen extends Screen {
                 lastStyle = drawStyle.copy();
                 flash("New roads will be " + st.name);
             });
+        } else if (mode == Mode.DRAW) {
+            button(y, () -> tracing ? "Following old roads: on" : "Follow an old road", b -> {
+                tracing = !tracing;
+                chainLast = null;
+            });
         }
     }
 
@@ -351,6 +403,113 @@ public class RoadPlannerScreen extends Screen {
             showOutlines();
             changed();
         });
+    }
+
+    /** The left panel in Swap mode: what's in the box, what each block becomes, and swap. */
+    private void swapPanel(int y) {
+        button(y, () -> "Look at: " + (swapGroundOnly ? "open ground" : "everything"), b -> {
+            swapGroundOnly = !swapGroundOnly;
+            swapSend(BlockSwapMessage.Action.SCAN);
+        });
+        y += ROW + 2;
+        swapListTop = y;
+        swapShown = 0;
+        if (swapRows.isEmpty()) {
+            return;
+        }
+        int bottom = height - 10 - ROW * 3 - 4;
+        int per = Math.max(1, (bottom - y - ROW) / SWAP_ENTRY);
+        swapFirst = Math.max(0, Math.min(swapFirst, swapRows.size() - 1));
+        for (int i = swapFirst; i < Math.min(swapRows.size(), swapFirst + per); i++) {
+            SwapRow r = swapRows.get(i);
+            int k = i;
+            button(y + (i - swapFirst) * SWAP_ENTRY + 10, () -> "\u2192 " + blockName(r.to), b -> {
+                List<String> options = new ArrayList<>();
+                options.add(null);
+                options.addAll(BlockSwap.suggestions(r.id));
+                if (!options.contains("minecraft:air")) {
+                    options.add("minecraft:air");
+                }
+                r.to = options.get((options.indexOf(r.to) + 1) % options.size());
+                swapSel = k;
+            });
+            swapShown++;
+        }
+        if (swapRows.size() > per) {
+            halfButtons(y + per * SWAP_ENTRY, "Up", b -> swapFirst = Math.max(0, swapFirst - per),
+                    "Down", b -> swapFirst = Math.min(swapRows.size() - 1, swapFirst + per));
+        }
+        y = bottom + 10;
+        if (swapSel >= 0 && swapSel < swapRows.size()) {
+            SwapRow r = swapRows.get(swapSel);
+            swapEdit = new EditBox(font, 4, y, PANEL - 8, ROW - 1, Component.literal("Block"));
+            swapEdit.setMaxLength(128);
+            swapEdit.setValue(r.to == null ? "" : r.to);
+            swapEdit.setResponder(v -> {
+                ResourceLocation id = ResourceLocation.tryParse(v.contains(":") ? v : "minecraft:" + v);
+                boolean ok = id != null && ForgeRegistries.BLOCKS.containsKey(id);
+                swapEdit.setTextColor(ok ? 0xE0E0E0 : 0xFF6060);
+                if (ok) {
+                    r.to = id.toString();
+                }
+            });
+            addRenderableWidget(swapEdit);
+        }
+        y += ROW;
+        halfButtons(y, "Suggested", b -> swapRows.forEach(r -> {
+            List<String> sug = BlockSwap.suggestions(r.id);
+            if (!sug.isEmpty()) {
+                r.to = sug.get(0);
+            }
+        }), "Keep all", b -> swapRows.forEach(r -> r.to = null));
+        y += ROW;
+        halfButtons(y, "Swap", b -> swapSend(BlockSwapMessage.Action.APPLY), "Undo swap", b -> swapSend(BlockSwapMessage.Action.UNDO));
+    }
+
+    private static String blockName(String id) {
+        return id == null ? "keep" : id.equals("minecraft:air") ? "remove" : id.substring(id.indexOf(':') + 1).replace('_', ' ');
+    }
+
+    /** Ask the server to list the box, swap the chosen blocks in it, or undo the last swap. */
+    private void swapSend(BlockSwapMessage.Action action) {
+        if (swapBox == null && action != BlockSwapMessage.Action.UNDO) {
+            flash("Drag a box over the area first");
+            return;
+        }
+        int[] box = swapBox == null ? new int[4] : swapBox;
+        List<String> from = new ArrayList<>(), to = new ArrayList<>();
+        if (action == BlockSwapMessage.Action.APPLY) {
+            for (SwapRow r : swapRows) {
+                if (r.to != null) {
+                    from.add(r.id);
+                    to.add(r.to);
+                }
+            }
+            if (from.isEmpty()) {
+                flash("Pick what some blocks become first (click the arrows, or Suggested)");
+                return;
+            }
+        }
+        swapNote = action == BlockSwapMessage.Action.SCAN ? "Looking..." : action == BlockSwapMessage.Action.APPLY ? "Swapping..." : "Undoing...";
+        PtmUkNetwork.CHANNEL.sendToServer(new BlockSwapMessage(action, box[0], box[1], box[2], box[3], swapGroundOnly, from, to));
+    }
+
+    /** What's in the box, from the server: keep the choices already made for blocks still there. */
+    public static void swapList(BlockSwapListMessage msg) {
+        if (!(Minecraft.getInstance().screen instanceof RoadPlannerScreen s)) {
+            return;
+        }
+        java.util.Map<String, String> chosen = new java.util.HashMap<>();
+        s.swapRows.forEach(r -> chosen.put(r.id, r.to));
+        s.swapRows.clear();
+        for (int i = 0; swapBox != null && i < msg.ids().size(); i++) {
+            SwapRow r = new SwapRow(msg.ids().get(i), msg.counts()[i]);
+            r.to = msg.note().startsWith("Swapped") ? null : chosen.get(r.id);    // after a swap, start afresh
+            s.swapRows.add(r);
+        }
+        s.swapSel = -1;
+        s.swapNote = msg.note().isEmpty() ? s.swapRows.size() + " kinds of block" : msg.note();
+        s.rebuildPanel();
     }
 
     /** Read a map file in the background, then carry on with it on the game thread (see tick). */
@@ -875,6 +1034,16 @@ public class RoadPlannerScreen extends Screen {
             siteClick(mx, my);
             return true;
         }
+        if (mode == Mode.SWAP) {
+            if (swapEdit != null) {
+                swapEdit.setFocused(false);
+                setFocused(null);
+            }
+            swapDragging = true;
+            int wx = (int) Math.floor(worldX(mx)), wz = (int) Math.floor(worldZ(my));
+            swapBox = new int[]{wx, wz, wx, wz};
+            return true;
+        }
         if (mode == Mode.MAP) {
             double[] p = {worldX(mx), worldZ(my)};
             if (measureA == null || measureB != null) {
@@ -939,6 +1108,11 @@ public class RoadPlannerScreen extends Screen {
     }
 
     private void drawClick(double mx, double my) {
+        if (tracing) {
+            PtmUkNetwork.CHANNEL.sendToServer(new TraceRoadMessage((int) Math.floor(worldX(mx)), (int) Math.floor(worldZ(my))));
+            flash("Following the road...");
+            return;
+        }
         remember();
         Node hitNode = nodeAt(mx, my);
         boolean joined = false;
@@ -990,6 +1164,90 @@ public class RoadPlannerScreen extends Screen {
         changed();
     }
 
+    /** An old road followed by the server: points down its middle, joined to points already there at its ends. */
+    public static void traced(TraceResultMessage r) {
+        if (Minecraft.getInstance().screen instanceof RoadPlannerScreen s) {
+            s.addTraced(r);
+        }
+    }
+
+    private void addTraced(TraceResultMessage r) {
+        int n = r.x().length;
+        if (n < 2) {
+            flash("That isn't an old road - click the middle of its surface");
+            return;
+        }
+        remember();
+        boolean[] keep = OsmMap.simplify(r.x(), r.z(), 0, n - 1, 2.0);       // old roads are blocky: don't follow every step
+        List<Integer> widths = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            if (r.junction()[i]) {
+                keep[i] = true;
+            } else {
+                widths.add(r.width()[i]);
+            }
+        }
+        widths.sort(null);
+        int w = widths.isEmpty() ? r.width()[0] : widths.get(widths.size() / 2);
+        RoadStyle st = drawStyle.copy();
+        fitWidth(st, w, r.pavement());
+        Node prev = null;
+        int roads = 0, joined = 0;
+        for (int i = 0; i < n; i++) {
+            if (!keep[i]) {
+                continue;
+            }
+            boolean end = i == 0 || i == n - 1 || r.junction()[i];
+            Node node = end ? nodeNear(r.x()[i], r.z()[i], 6) : null;
+            if (node != null) {
+                joined++;
+            } else {
+                node = plan.addNode(Math.floor(r.x()[i]), Math.floor(r.z()[i]));
+            }
+            if (prev != null && prev.id != node.id) {
+                plan.addSegment(prev.id, node.id, st);
+                roads++;
+            }
+            plan.touch(node.id);
+            prev = node;
+        }
+        changed();
+        flash("Followed " + roads + " road" + (roads == 1 ? "" : "s") + ", " + w + " wide" + (r.pavement() > 0 ? ", pavement " + r.pavement() : "")
+                + (joined > 0 ? ", joined to " + joined + " point" + (joined == 1 ? "" : "s") : ""));
+    }
+
+    /** Lanes to fill an old road's width (its surface is the carriageway), and its pavement. */
+    static void fitWidth(RoadStyle st, int w, int pavement) {
+        st.dual = false;
+        if (w <= 5) {
+            st.oneWay = true;
+            st.lanes = 1;
+            st.laneWidth = Math.max(3, w);
+        } else if (w >= 19 && !st.oneWay) {
+            st.lanes = 2;
+            st.laneWidth = Math.max(3, Math.min(7, (w - 3) / 4));
+        } else {
+            st.lanes = 1;
+            st.laneWidth = Math.max(3, Math.min(7, st.oneWay ? w : (w - 1) / 2));
+        }
+        if (pavement > 0) {
+            st.pavement = Math.max(2, Math.min(8, pavement));         // the kerb comes out of the old pavement, so it fits where it was
+        }
+    }
+
+    private Node nodeNear(double x, double z, double within) {
+        Node best = null;
+        double bd = within;
+        for (Node n : plan.nodes) {
+            double d = Math.hypot(n.x + 0.5 - x, n.z + 0.5 - z);
+            if (d <= bd) {
+                bd = d;
+                best = n;
+            }
+        }
+        return best;
+    }
+
     /** Put a new point on a road where it was clicked, splitting it in two. */
     private Node split(int segId, int sample) {
         Segment s = plan.segment(segId);
@@ -1015,6 +1273,11 @@ public class RoadPlannerScreen extends Screen {
         if (panning) {
             camX -= (mx - lastMouseX) / zoom;
             camZ -= (my - lastMouseY) / zoom;
+        } else if (swapDragging && swapBox != null) {
+            int lim = BlockSwap.MAX_SIZE - 1;
+            int wx = (int) Math.floor(worldX(mx)), wz = (int) Math.floor(worldZ(my));
+            swapBox[2] = Math.max(swapBox[0] - lim, Math.min(swapBox[0] + lim, wx));
+            swapBox[3] = Math.max(swapBox[1] - lim, Math.min(swapBox[1] + lim, wz));
         } else if (siteDrag == 1) {
             dragX1 = (int) Math.floor(worldX(mx));
             dragZ1 = (int) Math.floor(worldZ(my));
@@ -1071,6 +1334,14 @@ public class RoadPlannerScreen extends Screen {
                 chainLast = null;                      // right-click finishes the road
                 flash("Road finished");
             }
+            return true;
+        }
+        if (swapDragging) {
+            swapDragging = false;
+            swapRows.clear();
+            swapFirst = 0;
+            swapSend(BlockSwapMessage.Action.SCAN);
+            rebuildPanel();
             return true;
         }
         if (siteDrag != 0) {
@@ -1139,6 +1410,16 @@ public class RoadPlannerScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
+        if (swapEdit != null && swapEdit.isFocused()) {
+            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_ESCAPE) {
+                swapEdit.setFocused(false);
+                setFocused(null);
+                rebuildPanel();
+                return true;
+            }
+            swapEdit.keyPressed(key, scan, mods);
+            return true;                               // typing a block name, not moving the map
+        }
         if (key == GLFW.GLFW_KEY_ESCAPE && chainLast != null) {
             chainLast = null;
             return true;
@@ -1328,6 +1609,7 @@ public class RoadPlannerScreen extends Screen {
         }
         drawPlan(g);
         drawMeasure(g);
+        drawSwapBox(g);
         drawPlayer(g);
         g.disableScissor();
         // panel and bars
@@ -1336,17 +1618,23 @@ public class RoadPlannerScreen extends Screen {
         Node n = selNode == null ? null : plan.node(selNode);
         Segment s = selSeg == null ? null : plan.segment(selSeg);
         Site site = selSite == null ? null : plan.site(selSite);
-        String heading = mode == Mode.MAP ? (plan.map == null ? "Real maps (.osm)" : "Map: " + plan.map.file)
+        String heading = mode == Mode.SWAP ? (swapBox == null ? "Block swap"
+                : "Block swap (" + (Math.abs(swapBox[2] - swapBox[0]) + 1) + " x " + (Math.abs(swapBox[3] - swapBox[1]) + 1) + ")")
+                : mode == Mode.MAP ? (plan.map == null ? "Real maps (.osm)" : "Map: " + plan.map.file)
                 : mode == Mode.SITES ? (site == null ? "Sites" : site.type.title + " (" + site.width() + " x " + site.depth() + ")")
                 : n != null && mode == Mode.EDIT ? "Point " + describe(n)
                 : s != null ? "Selected road (" + s.style.totalWidth() + " wide)"
                 : "New roads (" + drawStyle.totalWidth() + " wide)";
         g.drawString(font, "Road Planner", 6, 6, 0xFFFFD24A);
         g.drawString(font, heading, 6, TOP + 3, 0xFFE0E0E0);
-        String help = mode == Mode.MAP
+        String help = mode == Mode.SWAP
+                ? "Drag a box over an old build. Click an arrow to pick what a block becomes, or type a block's name."
+                : mode == Mode.MAP
                 ? (plan.map == null ? "Move the map to where its middle goes, then pick a file." : "Click two points to measure.")
                 : mode == Mode.SITES
                 ? "Drag out a site; drag it to move, a corner to resize."
+                : mode == Mode.DRAW && tracing
+                ? "Click old roads to follow them to their junctions and ends. Click the button again to stop."
                 : mode == Mode.DRAW
                 ? (chainLast == null ? "Click to start a road. Right-drag: move map. Scroll: zoom."
                 : "Click: next point. End on a road to join it (Shift: slip road). Right-click: finish.")
@@ -1369,6 +1657,9 @@ public class RoadPlannerScreen extends Screen {
         }
         if (mode == Mode.SITES) {
             sitePanelText(g, site);
+        }
+        if (mode == Mode.SWAP) {
+            swapPanelText(g);
         }
         if (mode == Mode.MAP && plan.map == null && mapFiles != null && mapFiles.isEmpty()) {
             List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.literal(
@@ -1447,6 +1738,45 @@ public class RoadPlannerScreen extends Screen {
             g.fill((int) screenX(x0), (int) screenY(z0), (int) screenX(x1), (int) screenY(z1), ok ? 0x40FFD24A : 0x40FF5050);
             rect(g, x0, z0, x1, z1, 1, ok ? 0xFFFFD24A : 0xFFFF5050);
             g.drawString(font, newSiteType.title + "  " + (x1 - x0) + " x " + (z1 - z0), (int) mouseX + 8, (int) mouseY - 4, 0xFFFFD24A);
+        }
+    }
+
+    /** The swap box on the map. */
+    private void drawSwapBox(GuiGraphics g) {
+        if (mode != Mode.SWAP || swapBox == null) {
+            return;
+        }
+        int x0 = Math.min(swapBox[0], swapBox[2]), x1 = Math.max(swapBox[0], swapBox[2]) + 1;
+        int z0 = Math.min(swapBox[1], swapBox[3]), z1 = Math.max(swapBox[1], swapBox[3]) + 1;
+        g.fill((int) screenX(x0), (int) screenY(z0), (int) screenX(x1), (int) screenY(z1), 0x3050E0FF);
+        rect(g, x0, z0, x1, z1, 1, 0xFF50E0FF);
+        if (swapDragging) {
+            g.drawString(font, (x1 - x0) + " x " + (z1 - z0), (int) mouseX + 8, (int) mouseY - 4, 0xFF50E0FF);
+        }
+    }
+
+    /** Each block's name and count over its button, the note from the server, and the typing box's label. */
+    private void swapPanelText(GuiGraphics g) {
+        if (swapBox == null) {
+            List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.literal(
+                    "Drag a box over part of an old build to see what it's made of. Open ground is roads, pavements and "
+                            + "anything thin on them (carpet markings, post bases); everything takes in the buildings too."), PANEL - 10);
+            for (int i = 0; i < lines.size(); i++) {
+                g.drawString(font, lines.get(i), 6, swapListTop + i * 10, 0xFFB0B0B0);
+            }
+            return;
+        }
+        g.drawString(font, swapNote, PANEL + 6, TOP + 6, 0xFF50E0FF);
+        for (int k = 0; k < swapShown; k++) {
+            SwapRow r = swapRows.get(swapFirst + k);
+            String name = font.plainSubstrByWidth(blockName(r.id), PANEL - 50);
+            int y = swapListTop + k * SWAP_ENTRY;
+            g.drawString(font, name, 6, y, swapFirst + k == swapSel ? 0xFFFFD24A : 0xFFE0E0E0);
+            String n = String.valueOf(r.count);
+            g.drawString(font, n, PANEL - 6 - font.width(n), y, 0xFF909090);
+        }
+        if (swapEdit != null) {
+            g.drawString(font, "or type a block:", 6, swapEdit.getY() - 10, 0xFFB0B0B0);
         }
     }
 
