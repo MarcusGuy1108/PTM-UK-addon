@@ -61,7 +61,13 @@ public final class RoadPlan {
         CAR_PARK("Car park"),
         RETAIL_PARK("Retail park"),
         DRIVE_THRU("Drive-thru"),
-        PARADE("Shop parade");
+        PARADE("Shop parade"),
+        TERRACES("Terraced houses"),
+        SEMIS("Semi-detached houses"),
+        DETACHED("Detached houses"),
+        CIVIC("Church, pub and surgery"),
+        /** Not built itself: laid out into roads and the sites above (TownLayout). */
+        TOWN("Town");
 
         public final String title;
 
@@ -91,6 +97,9 @@ public final class RoadPlan {
         public boolean canopy = true;
         /** Which made-up brand names to use (cycled). */
         public int brand;
+        /** Town: a main road through it, shops along its middle, a church, pub and surgery, and which houses (0 terraces, 1 semis, 2 detached, 3 a mix). */
+        public boolean mainRoad = true, highStreet = true, civic = true;
+        public int houses = 3;
         public boolean built;
 
         public int width() {

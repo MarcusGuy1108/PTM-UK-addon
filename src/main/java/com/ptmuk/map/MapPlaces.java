@@ -154,6 +154,19 @@ public final class MapPlaces extends SavedData {
         }
     }
 
+    /** The name of the nearest named road within `reach` blocks of (x, z), or null. */
+    public static String nameNear(ServerLevel level, double x, double z, double reach) {
+        String best = null;
+        for (MapData.Road r : get(level).roads) {
+            double d = distance(r, x, z);
+            if (d < reach) {
+                reach = d;
+                best = r.name();
+            }
+        }
+        return best;
+    }
+
     /** Whether the road passes within `d` blocks of (x, z). */
     static boolean near(MapData.Road r, double x, double z, double d) {
         return distance(r, x, z) <= d;

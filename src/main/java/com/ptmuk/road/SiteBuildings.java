@@ -52,7 +52,7 @@ final class SiteBuildings {
             case "unit" -> s.unit(SiteLayout.RETAIL_BRANDS.get(b.brand()));
             case "canopy" -> s.canopy(b.brand());
             case "drive_thru" -> s.driveThru(SiteLayout.DRIVE_THRU_BRANDS.get(b.brand()));
-            case "prefab" -> s.prefab(SiteLayout.PARADE_UNITS.get(b.brand()));
+            case "prefab" -> s.prefab(SiteLayout.UNITS.get(b.brand()));
             default -> {
             }
         }

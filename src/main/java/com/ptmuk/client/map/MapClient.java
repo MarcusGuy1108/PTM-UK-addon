@@ -26,7 +26,7 @@ public final class MapClient {
     private static final int PER_TICK = 12;
 
     private static int cursor;
-    private static long lastSave, lastAsk = Long.MIN_VALUE;
+    private static long lastSave, lastAsk = -1000;      // long ago, so it asks straight away (not MIN_VALUE: time - lastAsk would overflow)
     /** What the server last sent for the map round us (shops, stops, named roads, buses...). */
     static MapData data = new MapData();
 
@@ -58,7 +58,7 @@ public final class MapClient {
         }
         while (OPEN.consumeClick()) {
             mc.setScreen(new WorldMapScreen());
-            lastAsk = Long.MIN_VALUE;
+            lastAsk = -1000;
         }
         long time = mc.level.getGameTime();
         // ask for the places every few seconds, more often with the map open (the buses move)

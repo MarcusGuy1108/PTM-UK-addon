@@ -6,6 +6,7 @@ import static com.ptmuk.road.layout.SiteFrame.LEFT;
 import static com.ptmuk.road.layout.SiteFrame.RIGHT;
 
 import com.ptmuk.building.PrefabCatalog;
+import com.ptmuk.road.plan.RoadPlan;
 import com.ptmuk.road.plan.RoadPlan.Site;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -106,7 +107,8 @@ public final class SiteLayout {
         switch (site.type) {
             case RETAIL_PARK -> retailPark();
             case DRIVE_THRU -> driveThru();
-            case PARADE -> parade();
+            case PARADE, TERRACES, SEMIS, DETACHED, CIVIC -> row(units(site.type));
+            case TOWN -> warning = "Choose what the town has, then Lay out the town";
             default -> carPark();
         }
         throats();
@@ -152,20 +154,48 @@ public final class SiteLayout {
     public static final List<String> PARADE_UNITS = List.of("fish_and_chips", "pharmacy", "coffee_shop", "newsagent", "bakery",
             "bookmakers", "chinese_takeaway", "barbers", "games_shop", "estate_agent", "kebab_shop", "launderette", "phone_shop",
             "pizza_takeaway", "wine_bar", "pound_shop", "cocktail_bar");
+    public static final List<String> TERRACE_UNITS = List.of("victorian_terrace", "victorian_terrace_red", "victorian_terrace", "georgian_townhouse");
+    public static final List<String> SEMI_UNITS = List.of("thirties_semis", "edwardian_semis");
+    public static final List<String> DETACHED_UNITS = List.of("newbuild_detached", "thirties_detached", "bungalow");
+    public static final List<String> CIVIC_UNITS = List.of("church", "corner_pub", "gp_surgery", "library", "village_hall");
+    /** Every row unit; a row building's brand is its place in here (the parade's come first, as they always have). */
+    public static final List<String> UNITS = java.util.stream.Stream.of(PARADE_UNITS, TERRACE_UNITS, SEMI_UNITS, DETACHED_UNITS, CIVIC_UNITS)
+            .flatMap(List::stream).distinct().toList();
+
+    public static List<String> units(RoadPlan.SiteType type) {
+        return switch (type) {
+            case TERRACES -> TERRACE_UNITS;
+            case SEMIS -> SEMI_UNITS;
+            case DETACHED -> DETACHED_UNITS;
+            case CIVIC -> CIVIC_UNITS;
+            default -> PARADE_UNITS;
+        };
+    }
+
+    /** How deep a row of these has to be for all of them to fit. */
+    public static int depth(RoadPlan.SiteType type) {
+        int d = 0;
+        for (String id : units(type)) {
+            PrefabCatalog.Entry e = PrefabCatalog.get(id);
+            d = Math.max(d, e == null ? 0 : e.depth());
+        }
+        return d;
+    }
 
     /**
-     * A row of high street shops along the front, side by side in a mix that changes with the
-     * site's brand number, centred in the frontage with paving at the ends and behind.
+     * A row of buildings along the front (high street shops, houses, a church and pub), side by side
+     * in a mix that changes with the site's brand number, centred in the frontage; shops stand in
+     * paving, houses and the rest in grass.
      */
-    private void parade() {
-        fill(0, 0, w - 1, d - 1, T_FOOT);
-        int n = PARADE_UNITS.size(), used = 0;
+    private void row(List<String> units) {
+        fill(0, 0, w - 1, d - 1, site.type == RoadPlan.SiteType.PARADE ? T_FOOT : T_GREEN);
+        int n = units.size(), used = 0;
         List<int[]> row = new ArrayList<>();                    // {unit, width, depth}
         for (int next = Math.floorMod(site.brand, n), tries = 0; tries < n; ) {
-            PrefabCatalog.Entry e = PrefabCatalog.get(PARADE_UNITS.get(next));
+            PrefabCatalog.Entry e = PrefabCatalog.get(units.get(next));
             next = (next + 1) % n;
             if (e != null && e.width() <= w - used && e.depth() <= d) {
-                row.add(new int[]{PARADE_UNITS.indexOf(e.id()), e.width(), e.depth()});
+                row.add(new int[]{UNITS.indexOf(e.id()), e.width(), e.depth()});
                 used += e.width();
                 tries = 0;
             } else {
@@ -173,7 +203,7 @@ public final class SiteLayout {
             }
         }
         if (row.isEmpty()) {
-            warning = "Too small for a shop parade (it needs about 10 wide and 22 deep)";
+            warning = "Too small for a " + site.type.title.toLowerCase() + " row (it needs about 10 wide and " + depth(site.type) + " deep)";
             return;
         }
         int u = (w - used) / 2;

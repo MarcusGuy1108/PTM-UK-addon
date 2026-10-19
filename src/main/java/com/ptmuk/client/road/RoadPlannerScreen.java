@@ -628,8 +628,28 @@ public class RoadPlannerScreen extends Screen {
         y += ROW;
         button(y, () -> "Road side: " + sideName(st.front), b -> edit.accept(() -> st.front = st.front >= 3 ? -1 : st.front + 1));
         y += ROW;
-        if (st.type == SiteType.PARADE) {
-            button(y, () -> "Shuffle shops", b -> edit.accept(() -> st.brand = (st.brand + 1) % SiteLayout.PARADE_UNITS.size()));
+        if (st.type == SiteType.TOWN) {
+            button(y, () -> "Main road: " + (st.mainRoad ? "yes" : "no"), b -> edit.accept(() -> st.mainRoad = !st.mainRoad));
+            y += ROW;
+            button(y, () -> "High street: " + (st.highStreet ? "yes" : "no"), b -> edit.accept(() -> st.highStreet = !st.highStreet));
+            y += ROW;
+            button(y, () -> "Houses: " + TOWN_HOUSES[st.houses % TOWN_HOUSES.length], b -> edit.accept(() -> st.houses = (st.houses + 1) % TOWN_HOUSES.length));
+            y += ROW;
+            button(y, () -> "Church, pub etc: " + (st.civic ? "yes" : "no"), b -> edit.accept(() -> st.civic = !st.civic));
+            y += ROW;
+            button(y, () -> "Lay out the town", b -> {
+                remember();
+                flash(com.ptmuk.road.layout.TownLayout.layOut(plan, st, net.minecraft.util.RandomSource.create()));
+                selSite = null;
+                changed();
+                rebuildPanel();
+            });
+            y += ROW;
+            button(y, () -> "Delete site", b -> deleteSelection());
+            return;
+        }
+        if (st.type == SiteType.PARADE || SiteLayout.units(st.type) != SiteLayout.PARADE_UNITS) {
+            button(y, () -> st.type == SiteType.PARADE ? "Shuffle shops" : "Shuffle", b -> edit.accept(() -> st.brand = (st.brand + 1) % 16));
             y += ROW;
             button(y, () -> "Height: " + (Double.isNaN(st.y) ? "from ground" : (int) st.y), b -> edit.accept(() -> st.y = Double.NaN));
             y += ROW;
@@ -668,6 +688,8 @@ public class RoadPlannerScreen extends Screen {
         y += ROW;
         button(y, () -> "Delete site", b -> deleteSelection());
     }
+
+    private static final String[] TOWN_HOUSES = {"Victorian terraces", "1930s semis", "Detached", "A mix"};
 
     private static String sideName(int side) {
         return switch (side) {
@@ -1812,7 +1834,10 @@ public class RoadPlannerScreen extends Screen {
             return;
         }
         int shops = countShops(sl);
-        String what = st.type == SiteType.PARADE ? shops + " shop" + (shops == 1 ? "" : "s") + paradeNames(sl)
+        boolean row = st.type == SiteType.PARADE || SiteLayout.units(st.type) != SiteLayout.PARADE_UNITS;
+        String what = st.type == SiteType.TOWN ? "A town, laid out to fit"
+                : st.type == SiteType.PARADE ? shops + " shop" + (shops == 1 ? "" : "s") + paradeNames(sl)
+                : row ? shops + " building" + (shops == 1 ? "" : "s") + paradeNames(sl)
                 : sl.bayCount() + " parking bays" + (shops == 0 ? "" : ", " + shops + " building" + (shops == 1 ? "" : "s"));
         g.drawString(font, font.plainSubstrByWidth(what, width - PANEL - 150), PANEL + 4, height - 24, 0xFFE0E0E0);   // clear of the x/z readout
         if (sl.warning != null) {
@@ -1823,7 +1848,7 @@ public class RoadPlannerScreen extends Screen {
     private static String paradeNames(SiteLayout sl) {
         StringBuilder s = new StringBuilder(":");
         for (SiteLayout.Building b : sl.buildings) {
-            com.ptmuk.building.PrefabCatalog.Entry e = com.ptmuk.building.PrefabCatalog.get(SiteLayout.PARADE_UNITS.get(b.brand()));
+            com.ptmuk.building.PrefabCatalog.Entry e = com.ptmuk.building.PrefabCatalog.get(SiteLayout.UNITS.get(b.brand()));
             s.append(s.length() > 1 ? ", " : " ").append(e == null ? "?" : e.name().toLowerCase());
         }
         return s.toString();
