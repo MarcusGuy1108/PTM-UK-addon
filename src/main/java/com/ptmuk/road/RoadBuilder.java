@@ -53,6 +53,7 @@ public final class RoadBuilder {
     private static final int CLEAR_ABOVE_PLOT = 16;
     private static final int MAX_FILL = 64;
     private static final int MAX_CELLS = 2_500_000;
+    private static final int TRAFFIC_PER_TICK = 32;
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
     /** A block as it was before a build, to put back. */
@@ -75,8 +76,13 @@ public final class RoadBuilder {
         List<BlockPos> joins = new ArrayList<>();
         Palette palette;
         int changed;
-        /** After the columns: fixtures placed, then the buildings one at a time. */
+        /** After the columns: fixtures placed, then PTM2's traffic points a batch at a time, then the buildings one at a time. */
         boolean fixturesDone;
+        int nextTraffic;
+        /** Where each traffic point goes, whether it's (re)placed in this build, and PTM2's joining-up setting to put back. */
+        BlockPos[] trafficAt;
+        boolean[] trafficPlaced;
+        int connecting;
         int nextBuilding;
     }
 
@@ -161,6 +167,8 @@ public final class RoadBuilder {
             if (job.next >= job.cells.length && !job.fixturesDone) {
                 fixtures(job);
                 job.fixturesDone = true;
+            } else if (job.fixturesDone && job.nextTraffic < job.layout.traffic.size()) {
+                traffic(job);
             } else if (job.fixturesDone && job.nextBuilding < job.layout.buildings.size()) {
                 Layout.SiteBuilding b = job.layout.buildings.get(job.nextBuilding++);
                 RoadPlan.Site st = job.plan.site(b.siteId());
@@ -185,11 +193,68 @@ public final class RoadBuilder {
                 Ptm2Signals.intersection(job.level, zone.x0(), zone.z0(), zone.x1(), zone.z1());
             }
         }
+        for (Layout.JunctionZone zone : layout.junctionZones) {
+            RoadPlan.Node n = job.plan.node(zone.nodeId());
+            if (n != null && !n.built) {
+                Ptm2Traffic.junction(job.level, zone.x0(), zone.z0(), zone.x1(), zone.z1(), zone.roundabout());
+            }
+        }
         for (Layout.Fixture f : layout.fixtures) {
             int idx = layout.index(f.x(), f.z());
             if (idx >= 0 && layout.dirty[idx]) {
                 fixture(job, f);
             }
+        }
+    }
+
+    /**
+     * PTM2's traffic points for the new roads, and the ones next to them on roads already built (so
+     * they join up), a batch a tick: PTM2 looks over every point in the world for each one placed.
+     */
+    private static void traffic(Job job) {
+        Layout layout = job.layout;
+        List<Layout.TrafficPoint> points = layout.traffic;
+        if (job.trafficAt == null) {
+            if (Ptm2Traffic.block(job.level, 0, false) == null) {
+                job.nextTraffic = points.size();
+                return;
+            }
+            job.trafficAt = new BlockPos[points.size()];
+            job.trafficPlaced = new boolean[points.size()];
+            boolean[] fresh = new boolean[points.size()];
+            for (int i = 0; i < points.size(); i++) {
+                Layout.TrafficPoint p = points.get(i);
+                job.trafficAt[i] = new BlockPos(p.x(), (int) Math.ceil(p.top()), p.z());
+                int idx = layout.index(p.x(), p.z());
+                fresh[i] = idx >= 0 && layout.dirty[idx];
+            }
+            for (int i = 0; i < points.size(); i++) {
+                for (int n : points.get(i).next()) {
+                    job.trafficPlaced[i] |= fresh[i] || fresh[n];
+                    job.trafficPlaced[n] |= fresh[i] || fresh[n];
+                }
+            }
+            job.connecting = Ptm2Traffic.pause(job.level);
+        }
+        int end = Math.min(points.size(), job.nextTraffic + TRAFFIC_PER_TICK);
+        for (; job.nextTraffic < end; job.nextTraffic++) {
+            int i = job.nextTraffic;
+            if (!job.trafficPlaced[i]) {
+                continue;
+            }
+            BlockState here = job.level.getBlockState(job.trafficAt[i]);
+            if (Ptm2Traffic.onMarking(here)) {
+                continue;                                   // PTM2 keeps the point on the marking
+            }
+            if (!here.isAir() && !Ptm2Traffic.isPoint(here)) {
+                job.trafficPlaced[i] = false;               // something stands in the road there
+                continue;
+            }
+            Layout.TrafficPoint p = points.get(i);
+            set(job, job.trafficAt[i], Ptm2Traffic.block(job.level, p.rot8(), isHalf(p.top())));
+        }
+        if (job.nextTraffic >= points.size()) {
+            Ptm2Traffic.connect(job.level, points, job.trafficAt, job.trafficPlaced, job.connecting);
         }
     }
 

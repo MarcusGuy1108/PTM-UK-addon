@@ -76,6 +76,21 @@ public final class Layout {
 
     public final List<SiteBuilding> buildings = new ArrayList<>();
 
+    /**
+     * A PTM2 traffic point for its AI cars: the middle of a lane at (x, z) standing on the surface
+     * at {@code top}, the way the traffic goes (PTM2 rotation) and the points it can go on to.
+     */
+    public record TrafficPoint(int x, int z, float top, int rot8, List<Integer> next) {
+    }
+
+    public final List<TrafficPoint> traffic = new ArrayList<>();
+
+    /** A give way junction or roundabout: the area PTM2 treats as the junction (no cars start off in it). */
+    public record JunctionZone(int nodeId, int x0, int z0, int x1, int z1, boolean roundabout) {
+    }
+
+    public final List<JunctionZone> junctionZones = new ArrayList<>();
+
     // ------------------------------------------------------------------ working state
 
     private final RoadPlan plan;
@@ -222,12 +237,16 @@ public final class Layout {
         classify();
         markings();
         lights();
+        traffic();
         markDirty();
         for (Jn j : jns) {
+            int cx = (int) Math.floor(j.node.x), cz = (int) Math.floor(j.node.z);
             if (j.type == Junction.SIGNALS) {
                 int r = (int) Math.ceil(j.zone + j.widest.halfOuter() - j.widest.halfCarriageway() + 2);
-                int cx = (int) Math.floor(j.node.x), cz = (int) Math.floor(j.node.z);
                 signalZones.add(new SignalZone(j.node.id, cx - r, cz - r, cx + r, cz + r));
+            } else if (j.type != Junction.MERGE) {
+                int r = (int) Math.ceil(j.zone);
+                junctionZones.add(new JunctionZone(j.node.id, cx - r, cz - r, cx + r, cz + r, j.type == Junction.ROUNDABOUT));
             }
         }
     }
@@ -1426,6 +1445,258 @@ public final class Layout {
             }
         }
         return false;
+    }
+
+    // ------------------------------------------------------------------ traffic points (PTM2's AI cars)
+
+    /** Where a slip road joins its road, how far along the road the cars merge in (or peel off before). */
+    private static final double MERGE_RUN = 10;
+    /** Room at a dead end to turn round in. */
+    private static final double TURN = 4;
+
+    /** One end of a lane at a node: its point, which lane it is (0 by the kerb) of how many, and which way it's going there. */
+    private record LaneEnd(Seg seg, int point, int lane, int lanes, double dx, double dz) {
+    }
+
+    /** A lane's point where a slip road joins or leaves it. */
+    private record SplitKey(Seg seg, boolean ab, int lane, int sample) {
+    }
+
+    /**
+     * A point down the middle of every lane (traffic keeps left), joined lane by lane: on through
+     * plain bends, across junctions to the lanes each one can turn into (left from the left lane,
+     * right from the right one), round roundabouts clockwise, onto and off the roads slip roads
+     * join, and round at dead ends. PTM2 draws a straight lane between points more than 32 apart
+     * or in line, and curves the rest to fit its eight directions, so the points are spaced to
+     * suit: far apart on the straight, close together round bends.
+     */
+    private void traffic() {
+        Map<Long, Integer> at = new HashMap<>();
+        Map<Integer, Integer> degree = new HashMap<>();
+        for (Seg g : segs) {
+            degree.merge(g.na.id, 1, Integer::sum);
+            degree.merge(g.nb.id, 1, Integer::sum);
+        }
+        Map<Seg, List<Integer>> splits = new HashMap<>();
+        for (Jn j : jns) {
+            if (j.type == Junction.MERGE && j.host != null) {
+                int im = mergeSample(j), d = (int) Math.round(MERGE_RUN / Curve.STEP);
+                splits.computeIfAbsent(j.host, k -> new ArrayList<>()).addAll(List.of(j.host.c.index((im - d) * Curve.STEP),
+                        j.host.c.index((im + d) * Curve.STEP)));
+            }
+        }
+        Map<SplitKey, Integer> splitPoints = new HashMap<>();
+        Map<Integer, List<LaneEnd>> ins = new HashMap<>(), outs = new HashMap<>();
+        for (Seg g : segs) {
+            Curve c = g.c;
+            for (int dir = 0; dir < (g.st.oneWay ? 1 : 2); dir++) {
+                boolean ab = dir == 0;
+                Node from = ab ? g.na : g.nb, to = ab ? g.nb : g.na;
+                int i0 = laneStart(g, ab, degree), i1 = laneEnd(g, !ab, degree), step = ab ? 1 : -1;
+                if ((i1 - i0) * step < 4) {
+                    continue;
+                }
+                int count = (i1 - i0) * step + 1;
+                for (int k = 0; k < g.st.lanes; k++) {
+                    double off = laneOffset(g.st, k) * step;
+                    double[] px = new double[count], pz = new double[count];
+                    for (int m = 0; m < count; m++) {
+                        int i = i0 + m * step;
+                        px[m] = c.x[i] + c.leftX(i) * off;
+                        pz[m] = c.z[i] + c.leftZ(i) * off;
+                    }
+                    boolean[] keep = com.ptmuk.road.OsmMap.simplify(px, pz, 0, count - 1, 0.5);
+                    for (int s : splits.getOrDefault(g, List.of())) {
+                        int m = (s - i0) * step;
+                        if (m >= 0 && m < count) {
+                            keep[m] = true;
+                        }
+                    }
+                    List<Integer> ms = new ArrayList<>();
+                    for (int m = 0; m < count; m++) {
+                        if (!keep[m]) {
+                            continue;
+                        }
+                        // PTM2 would bend a 10 to 32 block piece to fit its eight directions: cut it into short straight ones
+                        if (!ms.isEmpty()) {
+                            int last = ms.get(ms.size() - 1);
+                            double len = Math.hypot(px[m] - px[last], pz[m] - pz[last]);
+                            int parts = len >= 10 && len <= 32 ? (int) Math.ceil(len / 9) : 1;
+                            for (int p = 1; p < parts; p++) {
+                                ms.add(last + (m - last) * p / parts);
+                            }
+                        }
+                        ms.add(m);
+                    }
+                    int first = -1, prev = -1;
+                    for (int m : ms) {
+                        int i = i0 + m * step;
+                        int p = trafficPoint(at, px[m], pz[m], c.tx[i] * step, c.tz[i] * step);
+                        if (p < 0) {
+                            continue;
+                        }
+                        if (prev >= 0) {
+                            link(prev, p);
+                        }
+                        if (first < 0) {
+                            first = p;
+                        }
+                        prev = p;
+                        if (splits.getOrDefault(g, List.of()).contains(i)) {
+                            splitPoints.put(new SplitKey(g, ab, k, i), p);
+                        }
+                    }
+                    if (first < 0 || first == prev) {
+                        continue;
+                    }
+                    outs.computeIfAbsent(from.id, x -> new ArrayList<>())
+                            .add(new LaneEnd(g, first, k, g.st.lanes, c.tx[i0] * step, c.tz[i0] * step));
+                    ins.computeIfAbsent(to.id, x -> new ArrayList<>())
+                            .add(new LaneEnd(g, prev, k, g.st.lanes, c.tx[i1] * step, c.tz[i1] * step));
+                }
+            }
+        }
+        java.util.Set<Integer> nodes = new java.util.HashSet<>(ins.keySet());
+        nodes.addAll(outs.keySet());
+        for (int id : nodes) {
+            List<LaneEnd> in = ins.getOrDefault(id, List.of()), out = outs.getOrDefault(id, List.of());
+            Jn j = jnByNode.get(id);
+            if (j != null && j.type == Junction.ROUNDABOUT) {
+                ring(at, j, in, out);
+            } else if (j != null && j.type == Junction.MERGE) {
+                int im = mergeSample(j), d = (int) Math.round(MERGE_RUN / Curve.STEP);
+                Curve h = j.host.c;
+                for (LaneEnd e : in) {          // joining: onto the kerb lane going the same way, a little further on
+                    boolean ab = e.dx() * h.tx[im] + e.dz() * h.tz[im] > 0;
+                    Integer p = splitPoints.get(new SplitKey(j.host, ab, 0, h.index((ab ? im + d : im - d) * Curve.STEP)));
+                    if (p != null) {
+                        link(e.point(), p);
+                    }
+                }
+                for (LaneEnd o : out) {         // leaving: off the kerb lane going its way, a little before
+                    boolean ab = o.dx() * h.tx[im] + o.dz() * h.tz[im] > 0;
+                    Integer p = splitPoints.get(new SplitKey(j.host, ab, 0, h.index((ab ? im - d : im + d) * Curve.STEP)));
+                    if (p != null) {
+                        link(p, o.point());
+                    }
+                }
+            } else {
+                boolean deadEnd = j == null && degree.getOrDefault(id, 0) == 1, plain = j == null;
+                for (LaneEnd e : in) {
+                    for (LaneEnd o : out) {
+                        if (deadEnd ? o.seg() == e.seg() && o.lane() == e.lane() : o.seg() != e.seg() && turns(e, o, plain)) {
+                            link(e.point(), o.point());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Whether a car can go from one lane into another at a junction (or straight on through a plain bend). */
+    private static boolean turns(LaneEnd e, LaneEnd o, boolean plain) {
+        double dot = e.dx() * o.dx() + e.dz() * o.dz();
+        if (plain || dot > 0.7) {
+            return o.lane() == Math.min(e.lane(), o.lanes() - 1);
+        }
+        if (dot < -0.85) {
+            return false;                                   // straight back the way it came
+        }
+        boolean left = o.dx() * e.dz() - o.dz() * e.dx() > 0;
+        return left ? e.lane() == 0 && o.lane() == 0 : e.lane() == e.lanes() - 1 && o.lane() == o.lanes() - 1;
+    }
+
+    /** Round a roundabout clockwise: a ring of points, joined from every way in and to every way out. */
+    private void ring(Map<Long, Integer> at, Jn j, List<LaneEnd> in, List<LaneEnd> out) {
+        double rc = (j.ri + j.ro) / 2, cx = j.node.x + 0.5, cz = j.node.z + 0.5;
+        int m = Math.max(8, (int) Math.round(2 * Math.PI * rc / 8));
+        int[] ring = new int[m];
+        for (int i = 0; i < m; i++) {
+            double a = 2 * Math.PI * i / m;             // z is south, so a rising angle goes clockwise on the map
+            ring[i] = trafficPoint(at, cx + Math.cos(a) * rc, cz + Math.sin(a) * rc, -Math.sin(a), Math.cos(a));
+        }
+        for (int i = 0; i < m; i++) {
+            if (ring[i] >= 0 && ring[(i + 1) % m] >= 0) {
+                link(ring[i], ring[(i + 1) % m]);
+            }
+        }
+        for (LaneEnd e : in) {
+            int r = ring[Math.floorMod((int) Math.ceil(angle(e.point(), cx, cz) * m / (2 * Math.PI)), m)];
+            if (r >= 0) {
+                link(e.point(), r);
+            }
+        }
+        for (LaneEnd o : out) {
+            int r = ring[Math.floorMod((int) Math.floor(angle(o.point(), cx, cz) * m / (2 * Math.PI)), m)];
+            if (r >= 0) {
+                link(r, o.point());
+            }
+        }
+    }
+
+    private double angle(int point, double cx, double cz) {
+        TrafficPoint p = traffic.get(point);
+        return Math.atan2(p.z() + 0.5 - cz, p.x() + 0.5 - cx);
+    }
+
+    /** The sample on a slip road's host road nearest where it joins. */
+    private static int mergeSample(Jn j) {
+        Curve h = j.host.c;
+        int best = 0;
+        double bestD = Double.MAX_VALUE;
+        for (int i = 0; i < h.n; i++) {
+            double d = Math.hypot(h.x[i] - (j.node.x + 0.5), h.z[i] - (j.node.z + 0.5));
+            if (d < bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    /** How far left of the way it goes the middle of a lane is from the road's centre line (lane 0 is by the kerb). */
+    private static double laneOffset(RoadStyle st, int lane) {
+        double kerb = st.oneWay ? st.directionWidth() / 2.0 : (st.dual ? st.reservationWidth() / 2.0 : 0.5) + st.directionWidth();
+        return kerb - lane * (st.laneWidth + 1) - st.laneWidth / 2.0;
+    }
+
+    /** The sample where lanes leaving one end of a road start: the edge of the junction, or turning room in from a dead end. */
+    private int laneStart(Seg g, boolean atA, Map<Integer, Integer> degree) {
+        int mouth = atA ? g.mouthA : g.mouthB;
+        return mouth >= 0 ? mouth : end(g, atA, degree);
+    }
+
+    /** The sample where lanes coming into one end of a road stop: a block short of the give way or stop line. */
+    private int laneEnd(Seg g, boolean atA, Map<Integer, Integer> degree) {
+        int cut = atA ? g.cutA : g.cutB, back = (int) Math.round(1 / Curve.STEP);
+        return cut >= 0 ? Math.max(0, Math.min(g.c.n - 1, cut + (atA ? back : -back))) : end(g, atA, degree);
+    }
+
+    private int end(Seg g, boolean atA, Map<Integer, Integer> degree) {
+        Node n = atA ? g.na : g.nb;
+        if (!jnByNode.containsKey(n.id) && degree.getOrDefault(n.id, 0) == 1 && !g.st.oneWay) {
+            return g.c.index(atA ? TURN : g.c.length - TURN);
+        }
+        return atA ? 0 : g.c.n - 1;
+    }
+
+    /** The point on the road at (x, z), going the way (tx, tz): a new one, or the one already in that block. */
+    private int trafficPoint(Map<Long, Integer> at, double x, double z, double tx, double tz) {
+        int bx = (int) Math.floor(x), bz = (int) Math.floor(z), idx = index(bx, bz);
+        if (idx < 0 || kind[idx] != ROAD || Float.isNaN(top[idx])) {
+            return -1;
+        }
+        return at.computeIfAbsent(((long) bx << 32) ^ (bz & 0xFFFFFFFFL), k -> {
+            traffic.add(new TrafficPoint(bx, bz, top[idx], rot8(tx, tz), new ArrayList<>()));
+            return traffic.size() - 1;
+        });
+    }
+
+    private void link(int from, int to) {
+        List<Integer> next = traffic.get(from).next();
+        if (from != to && !next.contains(to)) {
+            next.add(to);
+        }
     }
 
     // ------------------------------------------------------------------ what still needs building

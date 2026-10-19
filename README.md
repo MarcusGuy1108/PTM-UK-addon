@@ -129,6 +129,8 @@ Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 r
 
 Roads are levelled into the ground: hills are cut through and dips built up with a smooth gradient (no steeper than 1 in 10, in half-block steps), junctions are flat, and the ground either side is sloped to meet the road. Trees in the way are cleared. Set PTM2 to left-hand traffic in its settings so its AI cars use the left lane.
 
+**AI traffic:** every road you build gets PTM2 traffic points down the middle of each lane, already joined up, so PTM2's cars spawn and drive on them straight away. They keep left, carry on through bends, turn left and right at junctions (left from the left lane, right from the right lane on wider roads), go round roundabouts clockwise to every exit, merge onto and off roads from slip roads, and turn round at dead ends. Give way junctions and roundabouts get a PTM2 junction area too, so cars take turns through them (and know a roundabout when they reach one) and never appear in the middle of one. Building onto roads you built before joins the new points onto the old ones. Hold PTM2's traffic point item to see them and their links, and change any of them by hand as usual. If PTM2 is set to drive on the right in a world, the points are turned round to suit, and switching PTM2 to left-hand traffic afterwards turns them back.
+
 ### Upgrading an old build (Block swap)
 
 Worlds brought up from older versions lose their modded blocks: roads come back as coal and carpet, pavements as concrete. The Road Planner's **Swap** mode swaps them over a whole area at once:
