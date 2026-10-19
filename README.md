@@ -120,17 +120,18 @@ Roads come in UK styles you can mix and adjust: main road (21 wide: two 6-block 
 
 Junctions:
 
-- **Give way** (the default where three or more roads meet): rounded kerbs, the main road's lines carry through, double dashed give-way lines and a triangle on the side roads. **Stop** junctions get a solid stop line.
-- **Roundabouts:** a kerbed central island sized to the roads (or a size you pick) and give-way lines at every entry. **Mini roundabouts** get a white painted dome.
-- **Traffic lights:** stop lines, a pedestrian crossing on every arm with red tactile paving at the dropped kerbs, and black UK signal poles with LED heads facing each approach. A PTM2 intersection is set up automatically so the lights cycle straight away and PTM2's AI traffic obeys them.
+- **Give way** (the default where three or more roads meet): rounded kerbs, the main road's lines carry through, two broken give-way lines and a triangle on the side roads. **Stop** junctions get a solid stop line with STOP written before it.
+- **Roundabouts:** a kerbed central island sized to the roads (or a size you pick) with a black and white chevron board facing each entry, a single broken give-way line at every entry, hatched splitter islands between the ways in and out, and SLOW on the road coming up to it. **Mini roundabouts** get a round white painted disc and the blue mini roundabout sign at each entry.
+- **Traffic lights:** stop lines, a pedestrian crossing on every arm with red tactile paving at the dropped kerbs and LOOK RIGHT (LOOK LEFT where the traffic comes the other way) by each kerb, and black UK signal poles with LED heads facing each approach and a push-button unit for the crossing. A PTM2 intersection is set up automatically so the lights cycle straight away and PTM2's AI traffic obeys them.
 - **Slip roads:** draw a one-way road onto a dual carriageway (or hold Shift when ending on any road) and it merges into the side of the road with a taper instead of making a junction.
 
 Streets come out looking like London's:
 
 - **Junction signs:** a give way or stop sign on a galvanised pole on the left at every give way or stop line (roundabout entries included), and no entry signs both sides where a one-way street comes out.
+- **Direction signs:** a white map-type sign on its legs at the back of the pavement about 30 blocks before every roundabout, and before junctions on roads with a centre line (along the main road, and every way into traffic lights or a mini roundabout). It draws the junction as it is (crossroads, T-junction, roundabout) and says where each road goes: the nearest PTM2 district that way (or **Town Centre** for a town you laid out with the planner) and the nearest PTM2 station, or else the road's name. Right-click one to change it like any direction sign.
 - **Street nameplates:** a black-on-white nameplate on posts at the back of the pavement on each corner of a junction, with the name of the street going off there, facing the traffic on the road it meets. Streets you draw get a British street name when they're built (carried on through bends, and shown on the map); streets without pavements (motorways, country lanes) don't.
 - **Zebra crossings:** the high street style (or any road with **Zebra: yes**) gets one halfway along each stretch between junctions: black and white stripes, give way lines, white zig-zags along the kerbs and down the middle, dropped kerbs with tactile paving and a Belisha beacon each end. PTM2's cars stop for people crossing.
-- **Yellow box junctions:** the middle of every traffic light junction is hatched in yellow.
+- **Yellow box junctions:** where the roads cross at every traffic light junction is hatched in yellow inside a yellow border.
 
 Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 recognises them, and UK style: hazard lines (long dashes) approaching junctions, solid up to stop lines, and yellow lines that follow the kerb round corners (or, with kerbs turned off, the edge of the road). Pavements use PTM2's sidewalk blocks by default, so PTM2's pedestrians walk on them.
 
@@ -274,7 +275,8 @@ The **petrol station** prefab (Prefab Tool, **Other** tab) has all of these set 
 In the **UK Road Signs** tab, mounted on poles with clamps like the signal heads:
 
 - **Speed limits:** 20 to 70, and national speed limit.
-- **Regulatory:** no entry, give way, stop, one way, keep left.
+- **Regulatory:** no entry, give way, stop, one way, keep left, mini roundabout.
+- **Roundabout chevron board.**
 - **Speed camera** sign.
 - **Parking:** parking, pay at machine, disabled parking.
 - **Warnings:** traffic signals ahead, pedestrian crossing, children, road works.

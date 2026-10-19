@@ -978,6 +978,8 @@ ROAD_SIGNS = {
     "stop_sign": (F.stop_sign, 11, "Stop Sign"),
     "one_way_sign": (F.one_way, 12, "One Way Sign"),
     "keep_left_sign": (F.keep_left, 10, "Keep Left Sign"),
+    "mini_roundabout_sign": (F.mini_roundabout, 10.5, "Mini Roundabout Sign"),
+    "chevron_sign": (F.chevrons, 16, "Roundabout Chevron Board"),
     "parking_sign": (F.parking, 9, "Parking Sign"),
     "pay_at_machine_sign": (F.pay_at_machine, 9, "Pay at Machine Sign"),
     "disabled_parking_sign": (F.disabled_parking, 10, "Disabled Parking Sign"),

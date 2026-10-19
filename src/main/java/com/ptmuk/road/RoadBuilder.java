@@ -1,10 +1,14 @@
 package com.ptmuk.road;
 
 import com.ptmuk.block.SignalAccessory;
+import com.ptmuk.map.MapData;
+import com.ptmuk.map.MapPlaces;
 import com.ptmuk.road.layout.Layout;
 import com.ptmuk.road.layout.Terrain;
 import com.ptmuk.road.plan.RoadPlan;
 import com.ptmuk.road.plan.RoadStyle;
+import com.ptmuk.sign.DirectionSignBlockEntity;
+import com.ptmuk.sign.SignDiagram;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -85,6 +89,8 @@ public final class RoadBuilder {
         boolean[] trafficPlaced;
         int connecting;
         int nextBuilding;
+        /** What's on the map round the build (for the direction signs), once looked up. */
+        MapData around;
     }
 
     private static final Map<UUID, Deque<Undo>> HISTORY = new HashMap<>();
@@ -255,6 +261,12 @@ public final class RoadBuilder {
             int idx = layout.index(p.x(), p.z());
             if (idx >= 0 && layout.dirty[idx]) {
                 nameplate(job, p);
+            }
+        }
+        for (Layout.DirectionSign s : layout.directionSigns) {
+            int idx = layout.index(s.x(), s.z());
+            if (idx >= 0 && layout.dirty[idx]) {
+                directionSign(job, s);
             }
         }
     }
@@ -546,7 +558,18 @@ public final class RoadBuilder {
         int m = layout.mark[idx];
         if (m != Layout.M_NONE && kind == Layout.ROAD) {
             BlockState mark = marking(pal, m, layout.markRot[idx], half);
-            set(job, new BlockPos(x, surfaceY + 1, z), mark);
+            BlockPos at = new BlockPos(x, surfaceY + 1, z);
+            set(job, at, mark);
+            BlockEntity be = m == Layout.M_TEXT ? job.level.getBlockEntity(at) : null;
+            if (be != null) {
+                // PTM2's text marking keeps its words in its block entity
+                CompoundTag tag = be.saveWithoutMetadata();
+                tag.putString("Display1", layout.words.getOrDefault(idx, ""));
+                tag.putString("Display2", "");
+                be.load(tag);
+                be.setChanged();
+                job.level.sendBlockUpdated(at, be.getBlockState(), be.getBlockState(), Block.UPDATE_CLIENTS);
+            }
         }
     }
 
@@ -555,13 +578,13 @@ public final class RoadBuilder {
             case Layout.M_LINE -> "ptm2:center_line_marking";
             case Layout.M_DOUBLE -> "ptm2:double_line_marking";
             case Layout.M_HALF -> "ptm2:half_line_marking";
-            case Layout.M_GIVE_WAY -> "ptm2:half_double_line_marking";
             case Layout.M_STOP -> "ptm2:stop_line_marking";
             case Layout.M_TRIANGLE -> "ptm2:triangles_marking";
             case Layout.M_ZEBRA -> "ptm2:pedestrian_crossing_line_marking";
             case Layout.M_HATCH -> "ptm2:restricted_area_marking";
             case Layout.M_ZIGZAG -> "ptm2:zig_zag_marking";
             case Layout.M_ARROW -> "ptm2:arrow_marking";
+            case Layout.M_TEXT -> "ptm2:text_marking";
             default -> null;
         };
         BlockState s = pal.get(id, (m & Layout.YELLOW) != 0 ? "yellow_carpet" : "white_carpet");
@@ -627,6 +650,8 @@ public final class RoadBuilder {
             case GIVE_WAY_SIGN -> roadSign(job, f, "ptmuk:give_way_sign");
             case STOP_SIGN -> roadSign(job, f, "ptmuk:stop_sign");
             case NO_ENTRY_SIGN -> roadSign(job, f, "ptmuk:no_entry_sign");
+            case MINI_ROUNDABOUT_SIGN -> roadSign(job, f, "ptmuk:mini_roundabout_sign");
+            case CHEVRON_SIGN -> roadSign(job, f, "ptmuk:chevron_sign");
             case BELISHA_BEACON -> set(job, new BlockPos(f.x(), standOn(job, f), f.z()), with(job.palette.get("ptmuk:belisha_beacon", "lantern"),
                     "facing", Direction.fromYRot(f.rot8() * 45.0).getSerializedName()));
             default -> SiteFixtures.place(job.level, f, standOn(job, f), job.palette, (pos, state) -> set(job, pos, state));
@@ -672,6 +697,93 @@ public final class RoadBuilder {
         }
     }
 
+    /**
+     * A map-type direction sign: the junction drawn as it is and where each road off it leads,
+     * at the bottom of the panel two blocks up, its legs down to the pavement.
+     */
+    private static void directionSign(Job job, Layout.DirectionSign s) {
+        if (job.around == null) {
+            job.around = MapPlaces.gather(job.level, s.jx(), s.jz());
+        }
+        List<RoadPlan.Site> sites = job.plan.sites;
+        String left = destinations(job.around, sites, s, s.left()), ahead = destinations(job.around, sites, s, s.ahead());
+        String right = destinations(job.around, sites, s, s.right());
+        if (left.isEmpty() && ahead.isEmpty() && right.isEmpty()) {
+            return;
+        }
+        boolean l = s.left() != null, a = s.ahead() != null, r = s.right() != null;
+        SignDiagram diagram = s.roundabout() ? (a ? SignDiagram.ROUNDABOUT : SignDiagram.ROUNDABOUT_3)
+                : l && r ? (a ? SignDiagram.CROSSROADS : SignDiagram.T_JUNCTION)
+                : l ? (a ? SignDiagram.AHEAD_LEFT : SignDiagram.LEFT)
+                : a ? SignDiagram.AHEAD_RIGHT : SignDiagram.RIGHT;
+        BlockPos pos = new BlockPos(s.x(), standOn(job, s.x(), s.z(), s.top()) + 2, s.z());
+        BlockState sign = job.palette.get("ptmuk:direction_sign_local", "oak_sign");
+        set(job, pos, with(sign, "facing", Direction.fromYRot(s.rot8() * 45.0).getSerializedName()));
+        if (job.level.getBlockEntity(pos) instanceof DirectionSignBlockEntity be) {
+            be.diagram = diagram;
+            be.width = l && r ? 4 : 3;
+            be.height = 3;
+            be.legs = true;
+            be.header = "";
+            be.left = left;
+            be.ahead = ahead;
+            be.right = right;
+            be.setChanged();
+            job.level.sendBlockUpdated(pos, be.getBlockState(), be.getBlockState(), Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /**
+     * Where a road off a junction leads, a line or two for its arm of a direction sign: the
+     * nearest PTM2 district that way (or the plan's town centre), and the nearest station; else
+     * just the road's name. "That way" is within 40 degrees of the way the road heads out.
+     */
+    public static String destinations(MapData around, List<RoadPlan.Site> sites, Layout.DirectionSign s, Layout.Exit e) {
+        if (e == null) {
+            return "";
+        }
+        String place = null, station = null;
+        double placeD = Double.MAX_VALUE, stationD = 1024;
+        for (MapData.Area a : around.areas) {
+            boolean here = s.jx() >= a.x0() && s.jx() <= a.x1() && s.jz() >= a.z0() && s.jz() <= a.z1();
+            double d = thatWay(s, e, (a.x0() + a.x1()) / 2.0, (a.z0() + a.z1()) / 2.0);
+            if (a.kind() == MapData.AreaKind.DISTRICT && !here && d < placeD) {
+                place = a.name();
+                placeD = d;
+            }
+        }
+        for (RoadPlan.Site site : sites) {
+            boolean here = s.jx() >= site.x0 && s.jx() <= site.x1 && s.jz() >= site.z0 && s.jz() <= site.z1;
+            if (place == null && site.type == RoadPlan.SiteType.TOWN && !here
+                    && thatWay(s, e, (site.x0 + site.x1) / 2.0, (site.z0 + site.z1) / 2.0) < Double.MAX_VALUE) {
+                place = "Town Centre";
+            }
+        }
+        for (MapData.Place p : around.places) {
+            double d = thatWay(s, e, p.x(), p.z());
+            if (p.kind() == MapData.Kind.STATION && d < stationD) {
+                station = p.name();
+                stationD = d;
+            }
+        }
+        StringBuilder out = new StringBuilder();
+        for (String line : new String[]{place, station}) {
+            if (line != null && !line.isBlank() && out.indexOf(line) < 0) {
+                out.append(out.length() > 0 ? "|" : "").append(line.strip());
+            }
+        }
+        if (out.length() == 0 && e.road() != null && !e.road().isBlank()) {
+            out.append(e.road().strip());
+        }
+        return out.toString();
+    }
+
+    /** How far away a point is, if it's out along a road leaving the junction (and not right by it), else MAX_VALUE. */
+    private static double thatWay(Layout.DirectionSign s, Layout.Exit e, double x, double z) {
+        double dx = x - s.jx(), dz = z - s.jz(), d = Math.hypot(dx, dz);
+        return d > 40 && (dx * e.dx() + dz * e.dz()) / d > 0.766 ? d : Double.MAX_VALUE;
+    }
+
     /** A black signal pole with an LED head on top facing the traffic coming up to the stop line. */
     private static void signal(Job job, Layout.Fixture f) {
         int y0 = standOn(job, f);
@@ -684,6 +796,14 @@ public final class RoadBuilder {
                 set(job, new BlockPos(f.x(), y0 + k, f.z()), with(with(pole, "base", k == 0), "cap", false));
             }
             set(job, new BlockPos(f.x(), y0 + 2, f.z()), head);
+            // the push-button unit for the crossing, at waist height on the junction side of the pole
+            int r = (f.rot8() + 4) % 8;
+            double a = Math.toRadians(r * 45.0);
+            BlockPos at = new BlockPos(f.x() + (int) Math.round(Math.sin(a)), y0 + 1, f.z() - (int) Math.round(Math.cos(a)));
+            if (job.level.getBlockState(at).isAir()) {
+                BlockState button = with(job.palette.get("ptmuk:push_button_unit", "stone_button"), "rotation", r);
+                set(job, at, with(button, "attachment", SignalAccessory.attachmentFor(job.level, at, r).getSerializedName()));
+            }
         } else {
             // a second approach's head higher up the same pole
             set(job, new BlockPos(f.x(), y0 + 3, f.z()), with(with(pole, "base", false), "cap", false));

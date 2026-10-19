@@ -27,6 +27,8 @@ public enum AccessoryType {
     STOP_SIGN("stop_sign", Mount.SIGN),
     ONE_WAY_SIGN("one_way_sign", Mount.SIGN),
     KEEP_LEFT_SIGN("keep_left_sign", Mount.SIGN),
+    MINI_ROUNDABOUT_SIGN("mini_roundabout_sign", Mount.SIGN),
+    CHEVRON_SIGN("chevron_sign", Mount.SIGN),
     PARKING_SIGN("parking_sign", Mount.SIGN),
     PAY_AT_MACHINE_SIGN("pay_at_machine_sign", Mount.SIGN),
     DISABLED_PARKING_SIGN("disabled_parking_sign", Mount.SIGN),

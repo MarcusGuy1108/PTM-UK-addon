@@ -29,16 +29,18 @@ public final class Layout {
     public static final byte NONE = 0, ROAD = 1, KERB = 2, FOOTWAY = 3, VERGE = 4, ISLAND = 5, ISLAND_KERB = 6,
             RESERVATION = 7, BARRIER = 8, PAINT = 9, DOME = 10, BLEND = 11, TACTILE = 12, PLOT = 13;
     // markings (PTM2 blocks); YELLOW is or-ed in for yellow paint
-    public static final byte M_NONE = 0, M_LINE = 1, M_DOUBLE = 2, M_HALF = 3, M_GIVE_WAY = 4, M_STOP = 5,
-            M_TRIANGLE = 6, M_ZEBRA = 7, M_HATCH = 8, M_ZIGZAG = 9, M_ARROW = 10;
+    public static final byte M_NONE = 0, M_LINE = 1, M_DOUBLE = 2, M_HALF = 3, M_STOP = 5,
+            M_TRIANGLE = 6, M_ZEBRA = 7, M_HATCH = 8, M_ZIGZAG = 9, M_ARROW = 10, M_TEXT = 11;
     public static final int YELLOW = 0x40;
 
     public static final int BLEND_WIDTH = 8;
     public static final double MAX_GRADE = 0.1;
     private static final double SMOOTH = 14;
+    /** Radius of a mini roundabout's painted disc: five blocks across, rounded. */
+    private static final double MINI_DISC = 2.1;
 
     public enum FixtureType {
-        STREET_LIGHT, SIGNAL, GIVE_WAY_SIGN, STOP_SIGN, NO_ENTRY_SIGN, BELISHA_BEACON,
+        STREET_LIGHT, SIGNAL, GIVE_WAY_SIGN, STOP_SIGN, NO_ENTRY_SIGN, BELISHA_BEACON, MINI_ROUNDABOUT_SIGN, CHEVRON_SIGN,
         // on sites
         TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
         ORDER_POINT, MENU_BOARD, PICNIC_TABLE
@@ -63,6 +65,22 @@ public final class Layout {
     }
 
     public final List<Nameplate> nameplates = new ArrayList<>();
+    /** The words painted at each M_TEXT cell. */
+    public final Map<Integer, String> words = new HashMap<>();
+
+    /** A road off a junction: its name (or null) and the way it heads out (a unit vector). */
+    public record Exit(String road, double dx, double dz) {
+    }
+
+    /**
+     * A map-type direction sign on the way up to a junction: where it stands, which way its face
+     * looks (PTM2 rotation), the middle of the junction, whether it's a roundabout and the roads
+     * off it to the left, ahead and right (null where there's none).
+     */
+    public record DirectionSign(int x, int z, float top, int rot8, int jx, int jz, boolean roundabout, Exit left, Exit ahead, Exit right) {
+    }
+
+    public final List<DirectionSign> directionSigns = new ArrayList<>();
     /** Effective junction type of each node (null = none). */
     public final Map<Integer, Junction> junctions = new HashMap<>();
     /** A traffic-light junction's controller zone (PTM2 intersection): the node and the area it covers. */
@@ -243,6 +261,7 @@ public final class Layout {
         markings();
         lights();
         nameplates();
+        directionSigns();
         traffic();
         markDirty();
         for (Jn j : jns) {
@@ -779,7 +798,7 @@ public final class Layout {
                     for (int x = 0; x < lw; x++) {
                         int idx = (lz0 + z) * w + lx0 + x;
                         double d = Math.hypot(lx0 + x + x0 + 0.5 - ncx, lz0 + z + z0 + 0.5 - ncz);
-                        if (d <= 1.6 && carriage[idx]) {
+                        if (d <= MINI_DISC && carriage[idx]) {
                             core[idx] = true;
                             coreOwner[idx] = j.index;
                         }
@@ -851,7 +870,7 @@ public final class Layout {
             for (int dx = -2; dx <= 2; dx++) {
                 for (int dz = -2; dz <= 2; dz++) {
                     int i = index((int) Math.floor(j.node.x) + dx, (int) Math.floor(j.node.z) + dz);
-                    if (i >= 0 && carriage[i] && Math.hypot(cellX(i) + 0.5 - cx, cellZ(i) + 0.5 - cz) <= 1.6) {
+                    if (i >= 0 && carriage[i] && Math.hypot(cellX(i) + 0.5 - cx, cellZ(i) + 0.5 - cz) <= MINI_DISC) {
                         kind[i] = PAINT;
                     }
                 }
@@ -1234,7 +1253,8 @@ public final class Layout {
             if (idx < 0) {
                 continue;
             }
-            boolean hit = (core[idx] && coreOwner[idx] == j.index) || island[idx]
+            // this junction's own island only: a roundabout at the far end isn't this junction
+            boolean hit = ((core[idx] || island[idx]) && coreOwner[idx] == j.index)
                     || (toCore.dist[idx] <= 1.01 && toCore.nearest[idx] >= 0 && coreOwner[toCore.nearest[idx]] == j.index);
             if (hit) {
                 if (j.type == Junction.SIGNALS) {
@@ -1290,18 +1310,19 @@ public final class Layout {
             inner = g.st.dual ? g.halfRes : 0;
         }
         boolean stop = j.type == Junction.STOP || j.type == Junction.SIGNALS;
-        int kindAcross = stop ? M_STOP : M_GIVE_WAY;
-        double lx = c.leftX(i), lz = c.leftZ(i);
-        int across = rot8(lx, lz);
         int inbound = atA ? rot8(-c.tx[i], -c.tz[i]) : rot8(c.tx[i], c.tz[i]);
-        int lastIdx = -1;
-        for (double d = inner; d <= outer; d += 0.25) {
-            double sd = side * d;
-            int idx = index((int) Math.floor(c.x[i] + lx * sd), (int) Math.floor(c.z[i] + lz * sd));
-            if (idx >= 0 && idx != lastIdx) {
-                // PTM2 draws a stop line across its direction, give-way dashes along theirs
-                setMark(idx, kindAcross, stop ? inbound : across, 6);
-                lastIdx = idx;
+        int blk = (int) Math.round(1 / Curve.STEP);
+        // a solid stop line; give way: two broken lines at a priority junction, one at a roundabout
+        int rows = j.type == Junction.GIVE_WAY ? 2 : 1;
+        for (int r = 0; r < rows; r++) {
+            int row = Math.max(0, Math.min(c.n - 1, atA ? i + r * blk : i - r * blk));
+            double lx = c.leftX(row), lz = c.leftZ(row);
+            int across = rot8(lx, lz);
+            for (double d = inner; d <= outer; d += 0.25) {
+                double sd = side * d;
+                int idx = index((int) Math.floor(c.x[row] + lx * sd), (int) Math.floor(c.z[row] + lz * sd));
+                // PTM2 draws a stop line across its direction, dashes along theirs
+                setMark(idx, stop ? M_STOP : M_HALF, stop ? inbound : across, 6);
             }
         }
         if (j.type == Junction.SIGNALS) {
@@ -1320,8 +1341,8 @@ public final class Layout {
         }
         // the sign to go with the line, on the pavement on the left a couple of blocks back
         int signBack = (int) Math.round(2 / Curve.STEP);
-        roadSign(g, Math.max(0, Math.min(c.n - 1, atA ? i + signBack : i - signBack)), side, stop ? FixtureType.STOP_SIGN : FixtureType.GIVE_WAY_SIGN,
-                inbound, j.radius + 8);
+        FixtureType sign = stop ? FixtureType.STOP_SIGN : j.type == Junction.MINI_ROUNDABOUT ? FixtureType.MINI_ROUNDABOUT_SIGN : FixtureType.GIVE_WAY_SIGN;
+        roadSign(g, Math.max(0, Math.min(c.n - 1, atA ? i + signBack : i - signBack)), side, sign, inbound, j.radius + 8);
         if (g.st.oneWay) {
             // where a one-way street comes out: no entry, both sides, for anyone turning in (just in, where the kerbs are straight)
             int m = atA ? g.mouthA + signBack : g.mouthB - signBack;
@@ -1329,24 +1350,59 @@ public final class Layout {
                 roadSign(g, m, sideSign, FixtureType.NO_ENTRY_SIGN, (inbound + 4) % 8, j.radius + 8);
             }
         }
-        // a give-way triangle in each lane coming up to the line
-        if (j.type == Junction.GIVE_WAY || j.type == Junction.ROUNDABOUT || j.type == Junction.MINI_ROUNDABOUT) {
-            int back = (int) Math.round(7 / Curve.STEP);
-            int ti = atA ? i + back : i - back;
-            if (ti < 0 || ti >= c.n) {
-                return;
-            }
-            int lanes = g.st.lanes;
-            for (int k = 0; k < lanes; k++) {
-                double centre;
-                if (g.st.oneWay) {
-                    centre = -g.hc + k * (g.st.laneWidth + 1) + g.st.laneWidth / 2.0;
-                } else {
-                    centre = side * (inner + k * (g.st.laneWidth + 1) + g.st.laneWidth / 2.0);
+        // in each lane coming up to the line: STOP written before a stop line, a give-way triangle before the rest
+        if (stop) {
+            eachLane(g, i, atA, side, inner, 4, idx -> write(idx, "STOP", inbound, 5));
+        } else {
+            eachLane(g, i, atA, side, inner, 7, idx -> setMark(idx, M_TRIANGLE, inbound, 5));
+        }
+        if (j.type != Junction.ROUNDABOUT || g.st.oneWay) {
+            return;
+        }
+        eachLane(g, i, atA, side, inner, 22, idx -> write(idx, "SLOW", inbound, 5));
+        if (!g.st.dual) {
+            // a hatched splitter island between the way in and the way out, narrowing away from the ring
+            int mouth = atA ? g.mouthA : g.mouthB, len = (int) Math.round(14 / Curve.STEP);
+            for (int m = 0; m <= len; m++) {
+                int k = (mouth >= 0 ? mouth : i) + (atA ? m : -m);
+                if (k < 0 || k >= c.n) {
+                    break;
                 }
-                int idx = index((int) Math.floor(c.x[ti] + c.leftX(ti) * centre), (int) Math.floor(c.z[ti] + c.leftZ(ti) * centre));
-                setMark(idx, M_TRIANGLE, inbound, 5);
+                double half = 1.6 * (len - m) / len;
+                for (double d = -half; d <= half; d += 0.25) {
+                    setMark(index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d)), M_HATCH, inbound, 7);
+                }
             }
+        }
+        // a chevron board on the island, facing the way in
+        double[] out = outward(g, j.node);
+        double d = j.ri - 1.5;
+        int idx = d < 1.5 ? -1 : index((int) Math.floor(j.node.x + 0.5 + out[0] * d), (int) Math.floor(j.node.z + 0.5 + out[1] * d));
+        if (idx >= 0 && island[idx]) {
+            fixtures.add(new Fixture(FixtureType.CHEVRON_SIGN, cellX(idx), cellZ(idx), top[idx], rot8(-out[0], -out[1]), 0));
+        }
+    }
+
+    /** The cell in the middle of each lane coming up to a junction line at sample i, so many blocks back from it (short of the road's far end). */
+    private void eachLane(Seg g, int i, boolean atA, int side, double inner, double back, java.util.function.IntConsumer put) {
+        Curve c = g.c;
+        int b = (int) Math.round(back / Curve.STEP), ti = atA ? i + b : i - b;
+        int far = atA ? g.cutB : g.cutA, room = (int) Math.round(6 / Curve.STEP);
+        if (ti < 0 || ti >= c.n || (far >= 0 && (atA ? ti > far - room : ti < far + room))) {
+            return;
+        }
+        for (int k = 0; k < g.st.lanes; k++) {
+            double centre = g.st.oneWay ? -g.hc + k * (g.st.laneWidth + 1) + g.st.laneWidth / 2.0
+                    : side * (inner + k * (g.st.laneWidth + 1) + g.st.laneWidth / 2.0);
+            put.accept(index((int) Math.floor(c.x[ti] + c.leftX(ti) * centre), (int) Math.floor(c.z[ti] + c.leftZ(ti) * centre)));
+        }
+    }
+
+    /** Words painted on the road at a cell (PTM2's text marking), reading for someone going (or facing) the PTM2 way rot8. */
+    private void write(int idx, String text, int rot8, int prio) {
+        setMark(idx, M_TEXT, rot8, prio);
+        if (idx >= 0 && mark[idx] == M_TEXT) {
+            words.put(idx, text);
         }
     }
 
@@ -1379,6 +1435,15 @@ public final class Layout {
                     setMark(idx, M_HALF, across, 7);
                 }
             }
+        }
+        // London's LOOK RIGHT (or LEFT) by each kerb, for people stepping off it: the way the nearest lane's traffic comes from
+        int rm = (r1 + r2) / 2;
+        double lx = c.leftX(rm), lz = c.leftZ(rm);
+        for (int sideSign = -1; sideSign <= 1; sideSign += 2) {
+            double d = (g.hc - 1.5) * sideSign;
+            boolean along = g.st.oneWay || sideSign > 0;          // traffic in that lane goes the way the curve does
+            write(index((int) Math.floor(c.x[rm] + lx * d), (int) Math.floor(c.z[rm] + lz * d)),
+                    along == sideSign > 0 ? "LOOK RIGHT" : "LOOK LEFT", rot8(-lx * sideSign, -lz * sideSign), 8);
         }
         tactile(g, Math.min(r1, r2), Math.max(r1, r2), j.radius + 8);
     }
@@ -1503,19 +1568,36 @@ public final class Layout {
         return atA ? in : c.length - in;
     }
 
-    /** London's yellow box junctions: the middle of every traffic light junction hatched in yellow (where nothing else is painted). */
+    /**
+     * London's yellow box junctions: where the roads cross at every traffic light junction (not
+     * the rounded corners), hatched in yellow inside a yellow border, where nothing else is painted.
+     */
     private void boxJunctions() {
         for (Jn j : jns) {
             if (j.type != Junction.SIGNALS) {
                 continue;
             }
             int r = (int) Math.ceil(j.zone), cx = (int) Math.floor(j.node.x), cz = (int) Math.floor(j.node.z);
+            java.util.function.IntPredicate box = idx -> idx >= 0 && core[idx] && !closed[idx] && coreOwner[idx] == j.index
+                    && markPrio[idx] == 0 && mark[idx] == M_NONE;
+            List<Integer> cells = new ArrayList<>();
             for (int z = cz - r; z <= cz + r; z++) {
                 for (int x = cx - r; x <= cx + r; x++) {
-                    int idx = index(x, z);
-                    if (idx >= 0 && core[idx] && coreOwner[idx] == j.index && markPrio[idx] == 0 && mark[idx] == M_NONE) {
-                        setMark(idx, M_HATCH | YELLOW, 0, 0);
+                    if (box.test(index(x, z))) {
+                        cells.add(index(x, z));
                     }
+                }
+            }
+            for (int idx : cells) {
+                setMark(idx, M_HATCH | YELLOW, 0, 0);
+            }
+            java.util.Set<Integer> in = new java.util.HashSet<>(cells);
+            for (int idx : cells) {
+                int x = cellX(idx), z = cellZ(idx);
+                boolean ns = !in.contains(index(x, z - 1)) || !in.contains(index(x, z + 1));
+                boolean ew = !in.contains(index(x - 1, z)) || !in.contains(index(x + 1, z));
+                if (ns || ew) {
+                    setMark(idx, M_LINE | YELLOW, ns ? 2 : 0, 0);    // the border runs along the edge it's on
                 }
             }
         }
@@ -1550,6 +1632,61 @@ public final class Layout {
                 int idx = k < 0 || k >= c.n ? -1 : pavement(g, k, atA ? 1 : -1, 12, true);
                 if (idx >= 0 && !tooClose(cellX(idx), cellZ(idx), 0)) {
                     nameplates.add(new Nameplate(cellX(idx), cellZ(idx), top[idx], rot8(lx, lz), name.trim()));
+                }
+            }
+        }
+    }
+
+    /** How far before a junction's lines its direction signs stand. */
+    private static final double SIGN_BACK = 30;
+
+    /**
+     * Map-type direction signs before roundabouts, and before other junctions on roads with a
+     * centre line (along the main road, or every way into traffic lights or a mini roundabout):
+     * on the left at the back of the pavement, facing the traffic. The layout says which roads
+     * go off which way; which places they lead to is for the builder to find.
+     */
+    private void directionSigns() {
+        int blk = (int) Math.round(1 / Curve.STEP);
+        for (Jn j : jns) {
+            if (j.type == Junction.MERGE || j.arms.size() < 3) {
+                continue;
+            }
+            for (Seg g : j.arms) {
+                boolean atA = g.na.id == j.node.id, minor = atA ? g.minorA : g.minorB;
+                boolean wanted = j.type == Junction.ROUNDABOUT || g.st.centre != RoadStyle.Centre.NONE
+                        && (!minor || j.type == Junction.SIGNALS || j.type == Junction.MINI_ROUNDABOUT);
+                if (!wanted || g.st.oneWay && atA) {
+                    continue;                                    // nobody comes this way up a one-way street
+                }
+                double[] in = outward(g, j.node);
+                double tx = -in[0], tz = -in[1];                 // the way the traffic's going
+                Exit[] exits = new Exit[3];                      // left, ahead, right
+                for (Seg o : j.arms) {
+                    if (o == g || o.st.oneWay && o.nb.id == j.node.id) {
+                        continue;
+                    }
+                    double[] e = outward(o, j.node);
+                    int way = e[0] * tx + e[1] * tz > 0.7 ? 1 : e[0] * tz - e[1] * tx > 0 ? 0 : 2;
+                    if (exits[way] == null) {
+                        exits[way] = new Exit(o.seg.name, e[0], e[1]);
+                    }
+                }
+                Curve c = g.c;
+                double s = atA ? stretchEnd(g, true) + SIGN_BACK : stretchEnd(g, false) - SIGN_BACK;
+                double far = stretchEnd(g, !atA);
+                if (exits[0] == null && exits[2] == null || (atA ? s > far - 5 : s < far + 5)) {
+                    continue;                                    // just a bend, or no room before the junction behind
+                }
+                for (int tries = 0; tries <= 4; tries++) {
+                    int k = c.index(s) + (atA ? tries : -tries) * blk;
+                    int idx = k < 0 || k >= c.n ? -1 : pavement(g, k, atA ? -1 : 1, 12, true);
+                    if (idx >= 0 && !tooClose(cellX(idx), cellZ(idx), 1)) {
+                        int face = atA ? rot8(c.tx[k], c.tz[k]) : rot8(-c.tx[k], -c.tz[k]);
+                        directionSigns.add(new DirectionSign(cellX(idx), cellZ(idx), top[idx], face, (int) Math.floor(j.node.x),
+                                (int) Math.floor(j.node.z), j.type == Junction.ROUNDABOUT, exits[0], exits[1], exits[2]));
+                        break;
+                    }
                 }
             }
         }

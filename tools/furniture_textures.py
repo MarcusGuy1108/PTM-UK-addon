@@ -398,6 +398,34 @@ def triangle(up=True):
     return img, d, S, cy
 
 
+def mini_roundabout():
+    """Blue disc with three white arrows chasing each other clockwise round the middle."""
+    img, d, S = sign_disc(BLUE)
+    c, r, w = S / 2, S * 0.26, S * 0.07
+    for i in range(3):
+        start = -90 + i * 120 + 12
+        end = start + 72
+        d.arc([c - r, c - r, c + r, c + r], start, end, fill=WHITE, width=int(w))
+        a = math.radians(end)
+        tip = math.radians(end + 22)
+        px, py = c + r * math.cos(a), c + r * math.sin(a)
+        nx, ny = math.cos(a), math.sin(a)
+        tx, ty = c + (r - w / 2) * math.cos(tip), c + (r - w / 2) * math.sin(tip)
+        d.polygon([(px + nx * w * 1.3, py + ny * w * 1.3), (px - nx * w * 1.3 - nx * w * 0.5, py - ny * w * 1.3 - ny * w * 0.5),
+                   (tx, ty)], fill=WHITE)
+    return _finish(img)
+
+
+def chevrons():
+    """A roundabout's chevron board: white chevrons pointing left on black."""
+    img, d, S = rect_sign(BLACK, None, 1.0, 0.45, radius=0.02)
+    c, h, w = S / 2, S * 0.15, S * 0.07
+    for i in range(4):
+        x = S * (0.11 + i * 0.2)
+        d.polygon([(x, c), (x + h, c - h), (x + h + w, c - h), (x + w, c), (x + h + w, c + h), (x + h, c + h)], fill=WHITE)
+    return _finish(img)
+
+
 def give_way():
     img, d, S, cy = triangle(up=False)
     centred_text(d, S, "GIVE", S * 0.33, S * 0.11, BLACK, max_w=0.42)

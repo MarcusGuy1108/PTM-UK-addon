@@ -52,6 +52,8 @@
   "ptmuk:stop_sign",
   "ptmuk:one_way_sign",
   "ptmuk:keep_left_sign",
+  "ptmuk:mini_roundabout_sign",
+  "ptmuk:chevron_sign",
   "ptmuk:parking_sign",
   "ptmuk:pay_at_machine_sign",
   "ptmuk:disabled_parking_sign",

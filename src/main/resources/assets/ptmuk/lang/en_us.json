@@ -115,6 +115,8 @@
  "block.ptmuk.stop_sign": "Stop Sign",
  "block.ptmuk.one_way_sign": "One Way Sign",
  "block.ptmuk.keep_left_sign": "Keep Left Sign",
+ "block.ptmuk.mini_roundabout_sign": "Mini Roundabout Sign",
+ "block.ptmuk.chevron_sign": "Roundabout Chevron Board",
  "block.ptmuk.parking_sign": "Parking Sign",
  "block.ptmuk.pay_at_machine_sign": "Pay at Machine Sign",
  "block.ptmuk.disabled_parking_sign": "Disabled Parking Sign",

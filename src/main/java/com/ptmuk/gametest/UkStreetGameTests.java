@@ -1,6 +1,8 @@
 package com.ptmuk.gametest;
 
 import com.ptmuk.PtmUk;
+import com.ptmuk.map.MapData;
+import com.ptmuk.road.RoadBuilder;
 import com.ptmuk.road.layout.Layout;
 import com.ptmuk.road.layout.Terrain;
 import com.ptmuk.road.layout.TownLayout;
@@ -84,6 +86,110 @@ public final class UkStreetGameTests {
         helper.assertTrue(count(l, 100, 190, 80, 115, Layout.M_LINE) >= 20, "the high street lost its centre line");
         helper.assertTrue(count(l, 100, 190, 80, 115, Layout.M_ZEBRA) >= 10, "the high street lost its zebra");
         helper.succeed();
+    }
+
+    /**
+     * Junctions marked and signed the UK way: double broken give way lines at a side road, STOP
+     * written before a stop line, LOOK RIGHT at a signal crossing, a bordered yellow box, and at
+     * a roundabout SLOW, hatched splitter islands, chevrons on the island and a map-type direction
+     * sign on the way in; a mini roundabout's own blue sign.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void marksAndSignsJunctionsTheUkWay(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        // a side road off a main road (give way), traffic lights, a stop junction
+        RoadPlan.Node j = plan.addNode(100, 0);
+        plan.addSegment(plan.addNode(0, 0).id, j.id, RoadStyle.mainRoad());
+        plan.addSegment(j.id, plan.addNode(200, 0).id, RoadStyle.mainRoad());
+        plan.addSegment(j.id, plan.addNode(100, 100).id, RoadStyle.residential());
+        RoadPlan.Node c = plan.addNode(1000, 0), k = plan.addNode(2000, 0), r = plan.addNode(3000, 0), m = plan.addNode(4000, 0);
+        c.junction = RoadPlan.Junction.SIGNALS;
+        k.junction = RoadPlan.Junction.STOP;
+        r.junction = RoadPlan.Junction.ROUNDABOUT;
+        m.junction = RoadPlan.Junction.MINI_ROUNDABOUT;
+        for (RoadPlan.Node n : new RoadPlan.Node[]{c, r, m}) {
+            for (int[] d : new int[][]{{-100, 0}, {100, 0}, {0, -100}, {0, 100}}) {
+                plan.addSegment(n.id, plan.addNode(n.x + d[0], d[1]).id, n == m && d[0] == 0 ? RoadStyle.residential() : RoadStyle.mainRoad());
+            }
+        }
+        plan.addSegment(plan.addNode(1900, 0).id, k.id, RoadStyle.mainRoad());
+        plan.addSegment(k.id, plan.addNode(2100, 0).id, RoadStyle.mainRoad());
+        plan.addSegment(plan.addNode(2000, 100).id, k.id, RoadStyle.residential());
+        Layout l = Layout.of(plan, Terrain.flat(64));
+
+        // two rows of give way dashes across the side road's way in (heading north on its west half)
+        long rows = java.util.stream.IntStream.rangeClosed(3, 25).filter(z -> count(l, 92, 99, z, z, Layout.M_HALF) >= 3).count();
+        helper.assertTrue(rows == 2, "expected a double give way line at the side road, got " + rows + " rows");
+        helper.assertTrue(words(l, "STOP", 1990, 2000, 3, 30), "no STOP before the stop line");
+        helper.assertTrue(words(l, "LOOK RIGHT", 975, 1025, -25, 25), "no LOOK RIGHT at the crossings: " + l.words.values());
+        int border = 0;
+        for (int z = -15; z <= 15; z++) {
+            for (int x = 985; x <= 1015; x++) {
+                if (l.mark[l.index(x, z)] == (Layout.M_LINE | Layout.YELLOW) && (count(l, x - 1, x + 1, z, z, Layout.M_HATCH | Layout.YELLOW)
+                        + count(l, x, x, z - 1, z + 1, Layout.M_HATCH | Layout.YELLOW)) > 0) {
+                    border++;
+                }
+            }
+        }
+        helper.assertTrue(border >= 12, "no border round the yellow box: " + border);
+        // the roundabout
+        helper.assertTrue(words(l, "SLOW", 2940, 2985, -8, 0), "no SLOW on the way into the roundabout");
+        helper.assertTrue(count(l, 2950, 3050, -50, 50, Layout.M_HATCH) >= 20, "no hatched splitter islands");
+        long chevrons = l.fixtures.stream().filter(f -> f.type() == Layout.FixtureType.CHEVRON_SIGN && Math.abs(f.x() - 3000) < 15).count();
+        helper.assertTrue(chevrons == 4, "expected a chevron board facing each way in, got " + chevrons);
+        Layout.DirectionSign ads = l.directionSigns.stream().filter(s -> s.roundabout() && s.x() < 3000 && Math.abs(s.z()) < 15).findFirst().orElse(null);
+        helper.assertTrue(ads != null && ads.rot8() == 2 && ads.z() < 0 && ads.x() < 2975, "no direction sign on the left before the roundabout: " + ads);
+        helper.assertTrue(ads.left().dz() < -0.9 && ads.ahead().dx() > 0.9 && ads.right().dz() > 0.9, "the sign's roads are the wrong way round: " + ads);
+        // the mini roundabout has its blue sign, not a give way sign; no direction signs up its residential side roads
+        helper.assertTrue(has(l, f -> f.type() == Layout.FixtureType.MINI_ROUNDABOUT_SIGN && Math.abs(f.x() - 4000) < 25), "no mini roundabout sign");
+        helper.assertTrue(!has(l, f -> f.type() == Layout.FixtureType.GIVE_WAY_SIGN && Math.abs(f.x() - 4000) < 25), "a give way sign at the mini roundabout");
+        helper.assertTrue(l.directionSigns.stream().noneMatch(s -> Math.abs(s.x() - 4000) < 10), "a direction sign up a residential road");
+        helper.succeed();
+    }
+
+    /** A road from a roundabout to traffic lights keeps its centre line and stop line (the roundabout's island used to count as the lights). */
+    @GameTest(template = "empty5x4x5")
+    public static void roadFromRoundaboutToLightsKeepsItsLines(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Node r = plan.addNode(100, 0), c = plan.addNode(220, 0);
+        r.junction = RoadPlan.Junction.ROUNDABOUT;
+        c.junction = RoadPlan.Junction.SIGNALS;
+        plan.addSegment(plan.addNode(0, 0).id, r.id, RoadStyle.mainRoad());
+        plan.addSegment(r.id, c.id, RoadStyle.mainRoad());
+        plan.addSegment(c.id, plan.addNode(320, 0).id, RoadStyle.mainRoad());
+        for (RoadPlan.Node n : new RoadPlan.Node[]{r, c}) {
+            plan.addSegment(n.id, plan.addNode(n.x, -120).id, RoadStyle.mainRoad());
+            plan.addSegment(n.id, plan.addNode(n.x, 120).id, RoadStyle.mainRoad());
+        }
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        helper.assertTrue(count(l, 130, 195, -1, 1, Layout.M_LINE) >= 20, "the road lost its centre line");
+        helper.assertTrue(count(l, 190, 207, -8, 0, Layout.M_STOP) >= 4, "no stop line at the lights");
+        helper.assertTrue(l.directionSigns.stream().filter(s -> s.x() > 130 && s.x() < 190).count() == 2, "no direction signs along the road");
+        helper.succeed();
+    }
+
+    /** What a direction sign says: the district that way, else the town centre; the station that way; else the road's name. */
+    @GameTest(template = "empty5x4x5")
+    public static void directionSignsSayWhereRoadsGo(GameTestHelper helper) {
+        MapData around = new MapData();
+        around.areas.add(new MapData.Area(MapData.AreaKind.DISTRICT, "Welling", 400, -50, 600, 50, 0));
+        around.areas.add(new MapData.Area(MapData.AreaKind.DISTRICT, "Here", -30, -30, 30, 30, 0));
+        around.places.add(new MapData.Place(MapData.Kind.STATION, "Bexleyheath", 10, -300));
+        RoadPlan plan = new RoadPlan();
+        plan.addSite(RoadPlan.SiteType.TOWN, -50, 400, 50, 500);
+        Layout.DirectionSign s = new Layout.DirectionSign(-40, -8, 64, 2, 0, 0, true, new Layout.Exit("North Road", 0, -1),
+                new Layout.Exit("East Road", 1, 0), new Layout.Exit(null, 0, 1));
+        helper.assertTrue(RoadBuilder.destinations(around, plan.sites, s, s.ahead()).equals("Welling"), "ahead isn't Welling");
+        helper.assertTrue(RoadBuilder.destinations(around, plan.sites, s, s.left()).equals("Bexleyheath"), "left isn't the station");
+        helper.assertTrue(RoadBuilder.destinations(around, plan.sites, s, s.right()).equals("Town Centre"), "right isn't the town centre");
+        helper.assertTrue(RoadBuilder.destinations(around, plan.sites, s, new Layout.Exit("Mill Lane", -1, 0)).equals("Mill Lane"),
+                "a road leading nowhere named isn't signed by its name");
+        helper.succeed();
+    }
+
+    private static boolean words(Layout l, String text, int x0, int x1, int z0, int z1) {
+        return l.words.entrySet().stream().anyMatch(e -> e.getValue().equals(text) && l.mark[e.getKey()] == Layout.M_TEXT
+                && l.cellX(e.getKey()) >= x0 && l.cellX(e.getKey()) <= x1 && l.cellZ(e.getKey()) >= z0 && l.cellZ(e.getKey()) <= z1);
     }
 
     private static boolean has(Layout l, Predicate<Layout.Fixture> what) {
