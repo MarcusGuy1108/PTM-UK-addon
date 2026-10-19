@@ -687,9 +687,9 @@ public final class RoadBuilder {
         set(job, at, with(sign, "attachment", SignalAccessory.attachmentFor(job.level, at, r).getSerializedName()));
     }
 
-    /** A London street nameplate on its posts, saying the street's name. */
+    /** A London street nameplate on its posts, saying the street's name (on a slab it stands down on the slab). */
     private static void nameplate(Job job, Layout.Nameplate p) {
-        BlockPos pos = new BlockPos(p.x(), standOn(job, p.x(), p.z(), p.top()), p.z());
+        BlockPos pos = new BlockPos(p.x(), (int) Math.ceil(p.top()), p.z());
         BlockState plate = job.palette.get("ptmuk:street_nameplate", "oak_sign");
         set(job, pos, with(with(plate, "facing", Direction.fromYRot(p.rot8() * 45.0).getSerializedName()), "posts", true));
         if (job.level.getBlockEntity(pos) instanceof com.ptmuk.map.NameplateBlockEntity be) {

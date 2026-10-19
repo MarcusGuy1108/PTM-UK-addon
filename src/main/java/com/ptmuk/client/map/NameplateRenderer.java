@@ -14,6 +14,9 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import org.joml.Matrix4f;
 
 /** The plate: white with a black edge, the street name in black capitals, the district and postcode under it. */
@@ -39,7 +42,10 @@ public class NameplateRenderer implements BlockEntityRenderer<NameplateBlockEnti
         // as wide as the words need, from one block to three
         float half = Math.max(0.45f, Math.min(1.5f, (font.width(name) * nameH / 7f + 0.24f) / 2));
         pose.pushPose();
-        pose.translate(0.5, 0, 0.5);
+        // on legs over a bottom slab (a raised pavement): down onto the slab
+        BlockState under = plate.getLevel() == null ? null : plate.getLevel().getBlockState(plate.getBlockPos().below());
+        boolean low = posts && under != null && under.hasProperty(SlabBlock.TYPE) && under.getValue(SlabBlock.TYPE) == SlabType.BOTTOM;
+        pose.translate(0.5, low ? -0.5 : 0, 0.5);
         pose.mulPose(Axis.YP.rotationDegrees(-facing.toYRot()));
         float back = posts ? -THICK / 2 : -0.5f, front = back + THICK;
         VertexConsumer vc = FlatQuads.of(buffers, pose);

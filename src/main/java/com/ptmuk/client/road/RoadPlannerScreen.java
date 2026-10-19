@@ -627,8 +627,10 @@ public class RoadPlannerScreen extends Screen {
             siteDefaults(st);
         }));
         y += ROW;
-        button(y, () -> "Road side: " + sideName(st.front), b -> edit.accept(() -> st.front = st.front >= 3 ? -1 : st.front + 1));
-        y += ROW;
+        if (st.type.ground()) {
+            button(y, () -> "Road side: " + sideName(st.front), b -> edit.accept(() -> st.front = st.front >= 3 ? -1 : st.front + 1));
+            y += ROW;
+        }
         if (st.type == SiteType.TOWN) {
             button(y, () -> "Main road: " + (st.mainRoad ? "yes" : "no"), b -> edit.accept(() -> st.mainRoad = !st.mainRoad));
             y += ROW;
@@ -638,6 +640,9 @@ public class RoadPlannerScreen extends Screen {
             y += ROW;
             button(y, () -> "Church, pub etc: " + (st.civic ? "yes" : "no"), b -> edit.accept(() -> st.civic = !st.civic));
             y += ROW;
+            halfButtons(y, () -> "Streets: " + (st.winding ? "winding" : "grid"), b -> edit.accept(() -> st.winding = !st.winding),
+                    () -> "Kerbs: " + (st.kerbs ? "yes" : "no"), b -> edit.accept(() -> st.kerbs = !st.kerbs));
+            y += ROW;
             button(y, () -> "Lay out the town", b -> {
                 remember();
                 flash(com.ptmuk.road.layout.TownLayout.layOut(plan, st, net.minecraft.util.RandomSource.create()));
@@ -646,6 +651,10 @@ public class RoadPlannerScreen extends Screen {
                 rebuildPanel();
             });
             y += ROW;
+            button(y, () -> "Delete site", b -> deleteSelection());
+            return;
+        }
+        if (st.type == SiteType.KEEP_CLEAR || st.type == SiteType.GREEN) {
             button(y, () -> "Delete site", b -> deleteSelection());
             return;
         }
@@ -1741,6 +1750,13 @@ public class RoadPlannerScreen extends Screen {
         g.fill(c - t, b, c, d, colour);
     }
 
+    /** The site's name in its corner, when selected or when it fits inside (a town's plots would bury the map in labels). */
+    private void siteLabel(GuiGraphics g, Site st, boolean sel) {
+        if (sel || zoom >= 1 && font.width(st.type.title) + 6 <= screenX(st.x1 + 1) - screenX(st.x0)) {
+            g.drawString(font, st.type.title, (int) screenX(st.x0) + 3, (int) screenY(st.z0) + 3, sel ? 0xFFFFD24A : 0xFFE0E0E0);
+        }
+    }
+
     /** Site outlines, the road side picked out, handles on the selected one, and one being marked out. */
     private void drawSites(GuiGraphics g) {
         for (Site st : plan.sites) {
@@ -1749,7 +1765,14 @@ public class RoadPlannerScreen extends Screen {
             if (sl == null || pending != null || siteDrag >= 2) {
                 g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), 0x40707478);
             }
-            rect(g, st.x0, st.z0, st.x1 + 1, st.z1 + 1, sel ? 2 : 1, sel ? 0xFFFFD24A : 0xA0FFFFFF);
+            if (st.type == SiteType.KEEP_CLEAR) {
+                g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), 0x50E04040);
+            }
+            rect(g, st.x0, st.z0, st.x1 + 1, st.z1 + 1, sel ? 2 : 1, sel ? 0xFFFFD24A : st.type == SiteType.KEEP_CLEAR ? 0xC0FF6060 : 0xA0FFFFFF);
+            if (!st.type.ground()) {
+                siteLabel(g, st, sel);
+                continue;
+            }
             int front = sl != null ? sl.frame.front() : Math.max(0, st.front);
             double ax = front == 3 ? st.x1 + 1 : st.x0, bx = front == 1 ? st.x0 : st.x1 + 1;
             double az = front == 0 ? st.z1 + 1 : st.z0, bz = front == 2 ? st.z0 : st.z1 + 1;
@@ -1761,9 +1784,7 @@ public class RoadPlannerScreen extends Screen {
                     dot(g, cx, cy, 3, 0xFFFFD24A);
                 }
             }
-            if (zoom >= 1 || sel) {
-                g.drawString(font, st.type.title, (int) screenX(st.x0) + 3, (int) screenY(st.z0) + 3, sel ? 0xFFFFD24A : 0xFFE0E0E0);
-            }
+            siteLabel(g, st, sel);
         }
         if (siteDrag == 1) {
             int x0 = Math.min(dragX0, dragX1), x1 = Math.max(dragX0, dragX1) + 1, z0 = Math.min(dragZ0, dragZ1), z1 = Math.max(dragZ0, dragZ1) + 1;
@@ -1830,6 +1851,11 @@ public class RoadPlannerScreen extends Screen {
     /** Along the bottom of the map: how many bays the selected site got, and any warning. */
     private void sitePanelText(GuiGraphics g, Site st) {
         SiteLayout sl = st == null ? null : siteLayout(st.id);
+        if (st != null && (st.type == SiteType.KEEP_CLEAR || st.type == SiteType.GREEN)) {
+            g.drawString(font, st.type == SiteType.GREEN ? "Grass filling whatever the roads and sites leave, level with them"
+                    : "Left as it is: a town lays no buildings here and the ground isn't touched", PANEL + 4, height - 24, 0xFFE0E0E0);
+            return;
+        }
         if (sl == null) {
             g.drawString(font, "End a road on a site's edge to make a way in.", PANEL + 4, height - 24, 0xFFB0B0B0);
             return;

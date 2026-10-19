@@ -112,45 +112,124 @@ public final class UkSiteGameTests {
     }
 
     /**
-     * A town laid out over 400 x 260: a High Street with shop parades in the middle, named side
-     * streets, rows of houses everywhere else, each row inside the town, clear of the roads and of
-     * each other, and every row filled with buildings.
+     * A grid town over 400 x 260: a High Street with shop parades in the middle, named side
+     * streets, rows of houses everywhere else, a church, pub and surgery, all as checked below.
      */
     @GameTest(template = "empty5x4x5")
-    public static void laysOutATown(GameTestHelper helper) {
+    public static void laysOutAGridTown(GameTestHelper helper) {
+        checkTown(helper, false, 400, 260);
+    }
+
+    /** The same of winding streets, on a bigger site (side streets need room to wind). */
+    @GameTest(template = "empty5x4x5")
+    public static void laysOutAWindingTown(GameTestHelper helper) {
+        checkTown(helper, true, 520, 420);
+    }
+
+    /**
+     * Shops, houses and a church, pub and surgery, on named streets with a High Street; every
+     * building inside the town, clear of the roads and of each other, each with its building; and
+     * the town turned to a green space, so no ground inside it is left as it was.
+     */
+    private static void checkTown(GameTestHelper helper, boolean winding, int w, int d) {
         RoadPlan plan = new RoadPlan();
-        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 399, 259);
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, w - 1, d - 1);
+        town.winding = winding;
         String said = com.ptmuk.road.layout.TownLayout.layOut(plan, town, net.minecraft.util.RandomSource.create(1));
         helper.assertTrue(said.startsWith("Laid out"), said);
         helper.assertTrue(plan.sites.stream().noneMatch(st -> st.type == RoadPlan.SiteType.TOWN), "the town site should give way to the town");
+        helper.assertTrue(town.type == RoadPlan.SiteType.GREEN, "the town site should be left as its green");
         helper.assertTrue(plan.segments.stream().anyMatch(sg -> "High Street".equals(sg.name)), "no High Street");
         long streetNames = plan.segments.stream().map(sg -> sg.name).distinct().count();
         helper.assertTrue(streetNames >= 4 && plan.segments.stream().allMatch(sg -> sg.name != null && !sg.name.isBlank()),
                 "every street should have a name, " + streetNames + " names");
         long parades = plan.sites.stream().filter(st -> st.type == RoadPlan.SiteType.PARADE).count();
-        long houseRows = plan.sites.stream().filter(st -> st.type == RoadPlan.SiteType.TERRACES || st.type == RoadPlan.SiteType.SEMIS
+        long houses = plan.sites.stream().filter(st -> st.type == RoadPlan.SiteType.TERRACES || st.type == RoadPlan.SiteType.SEMIS
                 || st.type == RoadPlan.SiteType.DETACHED).count();
-        helper.assertTrue(parades >= 2 && houseRows >= 8, parades + " parades and " + houseRows + " rows of houses");
+        helper.assertTrue(parades >= 2 && houses >= 8, parades + " parades and " + houses + " lots of houses");
         helper.assertTrue(plan.sites.stream().anyMatch(st -> st.type == RoadPlan.SiteType.CIVIC), "no church, pub and surgery");
-        var nodes = new java.util.HashMap<Integer, RoadPlan.Node>();
-        plan.nodes.forEach(n -> nodes.put(n.id, n));
+        RoadPlan roads = plan.copy();
+        roads.sites.clear();
+        Layout bare = Layout.of(roads, Terrain.flat(64));
         for (RoadPlan.Site a : plan.sites) {
-            helper.assertTrue(a.x0 >= 0 && a.z0 >= 0 && a.x1 <= 399 && a.z1 <= 259, "a row outside the town: " + a.x0 + "," + a.z0 + " " + a.x1 + "," + a.z1);
-            for (RoadPlan.Site b : plan.sites) {
-                helper.assertTrue(a == b || a.x1 < b.x0 || b.x1 < a.x0 || a.z1 < b.z0 || b.z1 < a.z0,
-                        "rows overlap: " + a.type + " " + a.x0 + "," + a.z0 + " and " + b.type + " " + b.x0 + "," + b.z0);
+            if (a == town) {
+                continue;
             }
-            for (RoadPlan.Segment sg : plan.segments) {
-                RoadPlan.Node p = nodes.get(sg.a), q = nodes.get(sg.b);
-                double h = sg.style.halfOuter() - 0.5;
-                double rx0 = Math.min(p.x, q.x) - h, rx1 = Math.max(p.x, q.x) + h, rz0 = Math.min(p.z, q.z) - h, rz1 = Math.max(p.z, q.z) + h;
-                helper.assertTrue(a.x1 + 1 <= rx0 || a.x0 >= rx1 || a.z1 + 1 <= rz0 || a.z0 >= rz1,
-                        "a " + a.type + " row at " + a.x0 + "," + a.z0 + " is on " + sg.name);
+            helper.assertTrue(a.x0 >= 0 && a.z0 >= 0 && a.x1 < w && a.z1 < d, "a " + a.type + " outside the town: " + a.x0 + "," + a.z0 + " " + a.x1 + "," + a.z1);
+            for (RoadPlan.Site b : plan.sites) {
+                helper.assertTrue(a == b || b == town || a.x1 < b.x0 || b.x1 < a.x0 || a.z1 < b.z0 || b.z1 < a.z0,
+                        a.type + " at " + a.x0 + "," + a.z0 + " overlaps " + b.type + " at " + b.x0 + "," + b.z0);
+            }
+            for (int z = a.z0; z <= a.z1; z++) {
+                for (int x = a.x0; x <= a.x1; x++) {
+                    int idx = bare.index(x, z);
+                    byte k = idx < 0 ? Layout.NONE : bare.kind[idx];
+                    helper.assertTrue(k == Layout.NONE || k == Layout.BLEND, "a " + a.type + " at " + a.x0 + "," + a.z0 + " is on a road (" + x + "," + z + ")");
+                }
             }
         }
         Layout l = Layout.of(plan, Terrain.flat(64));
         for (SiteLayout sl : l.sites) {
-            helper.assertTrue(!sl.buildings.isEmpty(), "an empty " + sl.site.type + " row at " + sl.site.x0 + "," + sl.site.z0 + ": " + sl.warning);
+            helper.assertTrue(sl.site == town || !sl.buildings.isEmpty(), "an empty " + sl.site.type + " at " + sl.site.x0 + "," + sl.site.z0 + ": " + sl.warning);
+        }
+        for (int z = 0; z < d; z++) {
+            for (int x = 0; x < w; x++) {
+                int idx = l.index(x, z);
+                helper.assertTrue(idx >= 0 && l.kind[idx] != Layout.NONE && l.kind[idx] != Layout.BLEND, "ground left untouched in the town at " + x + "," + z);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Ground kept clear inside a town gets no buildings, no side streets and isn't touched (no
+     * grass laid over it, no slope cut into it), in either kind of town; a town without kerbs has
+     * none on any of its roads.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void keepsGroundClearAndLeavesOutKerbs(GameTestHelper helper) {
+        for (boolean winding : new boolean[]{false, true}) {
+            RoadPlan plan = new RoadPlan();
+            RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 519, 419);
+            town.winding = winding;
+            town.kerbs = false;
+            // off the main road (which runs through the middle the long way)
+            RoadPlan.Site keep = plan.addSite(RoadPlan.SiteType.KEEP_CLEAR, 300, 20, 420, 120);
+            com.ptmuk.road.layout.TownLayout.layOut(plan, town, net.minecraft.util.RandomSource.create(2));
+            String kind = winding ? "winding" : "grid";
+            helper.assertTrue(plan.segments.stream().noneMatch(sg -> sg.style.kerbs), "a " + kind + " town without kerbs has a road with them");
+            for (RoadPlan.Site a : plan.sites) {
+                helper.assertTrue(a == town || a == keep || a.x1 < keep.x0 || keep.x1 < a.x0 || a.z1 < keep.z0 || keep.z1 < a.z0,
+                        "a " + a.type + " on the kept ground in the " + kind + " town at " + a.x0 + "," + a.z0);
+            }
+            Layout l = Layout.of(plan, Terrain.flat(64));
+            for (int z = keep.z0; z <= keep.z1; z++) {
+                for (int x = keep.x0; x <= keep.x1; x++) {
+                    int idx = l.index(x, z);
+                    helper.assertTrue(winding ? l.kind[idx] == Layout.NONE : l.kind[idx] == Layout.NONE || l.kind[idx] != Layout.BLEND && l.kind[idx] != Layout.ISLAND,
+                            "the kept ground in the " + kind + " town is touched at " + x + "," + z);
+                }
+            }
+        }
+        helper.succeed();
+    }
+
+    /** Street nameplates face their road (with houses behind them, facing away they'd look at a front wall). */
+    @GameTest(template = "empty5x4x5")
+    public static void nameplatesFaceTheirRoad(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 519, 419);
+        com.ptmuk.road.layout.TownLayout.layOut(plan, town, net.minecraft.util.RandomSource.create(3));
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        helper.assertTrue(l.nameplates.size() >= 8, "only " + l.nameplates.size() + " nameplates");
+        for (Layout.Nameplate n : l.nameplates) {
+            double a = Math.toRadians(n.rot8() * 45);
+            boolean road = false;
+            for (int k = 1; k <= 12 && !road; k++) {
+                int idx = l.index(n.x() + (int) Math.round(-Math.sin(a) * k), n.z() + (int) Math.round(Math.cos(a) * k));
+                road = idx >= 0 && l.kind[idx] == Layout.ROAD;
+            }
+            helper.assertTrue(road, "the " + n.name() + " nameplate at " + n.x() + "," + n.z() + " faces away from the road");
         }
         helper.succeed();
     }

@@ -137,6 +137,7 @@ public final class Layout {
     private final float[] resD;
     private final int[] siteOwner;      // index into sites, or -1
     private final int[] blendFrom;      // BLEND cells: the edge cell they slope down (or up) to
+    private boolean[] keep;             // inside a keep-clear site: the ground is left alone
     private Distance toRoad, toCore;
 
     private static final class Seg {
@@ -478,7 +479,7 @@ public final class Layout {
         }
         // a road that ends at a site meets it level
         for (Site st : plan.sites) {
-            if (n.x >= st.x0 - 2 && n.x <= st.x1 + 2 && n.z >= st.z0 - 2 && n.z <= st.z1 + 2) {
+            if (st.type.ground() && n.x >= st.x0 - 2 && n.x <= st.x1 + 2 && n.z >= st.z0 - 2 && n.z <= st.z1 + 2) {
                 return siteLevel(st.id);
             }
         }
@@ -926,7 +927,7 @@ public final class Layout {
         }
         Distance toFoot = Distance.of(foot, w, h);
         for (int idx = 0; idx < size; idx++) {
-            if (!foot[idx] && toFoot.dist[idx] <= BLEND_WIDTH && toFoot.nearest[idx] >= 0) {
+            if (!foot[idx] && !keep[idx] && toFoot.dist[idx] <= BLEND_WIDTH && toFoot.nearest[idx] >= 0) {
                 kind[idx] = BLEND;
                 top[idx] = (float) Math.ceil(top[toFoot.nearest[idx]]);
                 blendDist[idx] = (float) toFoot.dist[idx];
@@ -1622,8 +1623,9 @@ public final class Layout {
 
     /**
      * Street nameplates at junctions, London style: on each corner, at the back of the pavement,
-     * the name of the road going off to its right (looking out of the junction), facing the road
-     * on its left, where people coming along that road see it. A corner with no road on that side gets none.
+     * the name of the road going off to its right (looking out of the junction), along that road
+     * and facing it (with houses behind, facing the other way would put it face to a front wall).
+     * A corner with no road on that side gets none.
      */
     private void nameplates() {
         for (Jn j : jns) {
@@ -1648,7 +1650,7 @@ public final class Layout {
                 int k = mouth >= 0 ? mouth + (atA ? in : -in) : c.index(atA ? j.zone + 3 : c.length - j.zone - 3);
                 int idx = k < 0 || k >= c.n ? -1 : pavement(g, k, atA ? 1 : -1, 12, true);
                 if (idx >= 0 && !tooClose(cellX(idx), cellZ(idx), 0)) {
-                    nameplates.add(new Nameplate(cellX(idx), cellZ(idx), top[idx], rot8(lx, lz), name.trim()));
+                    nameplates.add(new Nameplate(cellX(idx), cellZ(idx), top[idx], rot8(-lx, -lz), name.trim()));
                 }
             }
         }
@@ -2154,7 +2156,24 @@ public final class Layout {
     }
 
     private void applySites() {
+        keep = new boolean[w * h];
+        List<Site> greens = new ArrayList<>();
         for (Site st : plan.sites) {
+            if (st.type == RoadPlan.SiteType.KEEP_CLEAR) {
+                for (int z = st.z0; z <= st.z1; z++) {
+                    for (int x = st.x0; x <= st.x1; x++) {
+                        int idx = index(x, z);
+                        if (idx >= 0) {
+                            keep[idx] = true;
+                        }
+                    }
+                }
+                continue;
+            }
+            if (st.type == RoadPlan.SiteType.GREEN) {
+                greens.add(st);
+                continue;
+            }
             List<Way> ways = ways(st);
             int front = st.front >= 0 ? st.front & 3 : ways.isEmpty() ? 0 : ways.get(0).side;
             SiteFrame frame = new SiteFrame(st.x0, st.z0, st.x1, st.z1, front);
@@ -2192,6 +2211,39 @@ public final class Layout {
             }
             for (SiteLayout.Building b : sl.buildings) {
                 buildings.add(new SiteBuilding(st.id, b.kind(), frame.sub(b.u0(), b.v0(), b.u1(), b.v1(), b.dir()), level + 1, b.brand()));
+            }
+        }
+        greens(greens);
+    }
+
+    /**
+     * Green spaces: grass over whatever the roads and other sites leave of them, each column level
+     * with the nearest thing built (so it meets pavements and gardens without a step or a ditch).
+     */
+    private void greens(List<Site> greens) {
+        if (greens.isEmpty()) {
+            return;
+        }
+        boolean[] built = new boolean[w * h];
+        for (int idx = 0; idx < built.length; idx++) {
+            built[idx] = kind[idx] != NONE || carriage[idx];
+        }
+        Distance near = Distance.of(built, w, h);
+        for (Site st : greens) {
+            int si = sites.size();
+            sites.add(new SiteLayout(st, new SiteFrame(st.x0, st.z0, st.x1, st.z1, 0), List.of()));
+            float level = siteLevel(st.id) + 1;
+            for (int z = st.z0; z <= st.z1; z++) {
+                for (int x = st.x0; x <= st.x1; x++) {
+                    int idx = index(x, z);
+                    if (idx < 0 || built[idx] || keep[idx] || kind[idx] != NONE) {
+                        continue;
+                    }
+                    int n = near.nearest[idx];
+                    kind[idx] = ISLAND;
+                    top[idx] = n >= 0 ? (float) Math.ceil(top[n]) : level;
+                    siteOwner[idx] = si;
+                }
             }
         }
     }

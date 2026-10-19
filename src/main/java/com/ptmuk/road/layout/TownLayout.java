@@ -1,5 +1,6 @@
 package com.ptmuk.road.layout;
 
+import com.ptmuk.building.PrefabCatalog;
 import com.ptmuk.map.StreetNames;
 import com.ptmuk.road.plan.RoadPlan;
 import com.ptmuk.road.plan.RoadStyle;
@@ -10,18 +11,20 @@ import java.util.Set;
 import net.minecraft.util.RandomSource;
 
 /**
- * A town laid out into the plan from a Town site: a main road through it the long way (its middle
- * the high street), residential streets either side of it, the space between each pair just deep
- * enough for two rows of houses back to back, and cross streets joining them every so often. Every
- * stretch of road gets a row of buildings each side: shops on the high street, a church, pub and
- * surgery at its ends, and houses everywhere else. The streets get names. It all goes into the plan
- * as ordinary roads and sites, so it can be changed before it's built.
+ * A town laid out into the plan from a Town site, as winding streets (WindingTown) or this grid: a
+ * main road through it the long way (its middle the high street), residential streets either side
+ * of it, the space between each pair just deep enough for two rows of houses back to back, and
+ * cross streets joining them every so often. Every stretch of road gets a row of buildings each
+ * side: shops on the high street, a church, pub and surgery at its ends, and houses everywhere
+ * else. The streets get names. It all goes into the plan as ordinary roads and sites, so it can be
+ * changed before it's built; nothing is laid out over ground kept clear, and the town site itself
+ * becomes a green space, grass over whatever the streets and houses leave.
  */
 public final class TownLayout {
     /** Cross streets, centre to centre. */
     private static final int BLOCK = 120;
     /** Clear of a crossing road's pavement at a corner. */
-    private static final int CLEAR = 4;
+    private static final int CLEAR = 8;
     private static final int MIN_ROW = 9;
 
     /** A road the long way: where it is across the town and how it looks. */
@@ -35,6 +38,8 @@ public final class TownLayout {
     /** Along the town (the main road's way) and across it. */
     private final int len, wide;
     private final Set<String> names = new HashSet<>();
+    /** Keep-clear sites over the town. */
+    private final List<RoadPlan.Site> kept = new ArrayList<>();
     private int rows, streets;
     /** How deep the rows along the main road can be (shops, the church, houses). */
     private int spineRows;
@@ -46,6 +51,24 @@ public final class TownLayout {
         this.alongX = town.width() >= town.depth();
         this.len = alongX ? town.width() : town.depth();
         this.wide = alongX ? town.depth() : town.width();
+        kept.addAll(kept(plan, town));
+    }
+
+    /** The keep-clear sites over a town. */
+    static List<RoadPlan.Site> kept(RoadPlan plan, RoadPlan.Site town) {
+        List<RoadPlan.Site> out = new ArrayList<>();
+        for (RoadPlan.Site k : plan.sites) {
+            if (k.type == RoadPlan.SiteType.KEEP_CLEAR && k.x1 >= town.x0 && k.x0 <= town.x1 && k.z1 >= town.z0 && k.z0 <= town.z1) {
+                out.add(k);
+            }
+        }
+        return out;
+    }
+
+    /** A road style for the town: with kerbs or not, as it's set. */
+    static RoadStyle kerbed(RoadStyle st, RoadPlan.Site town) {
+        st.kerbs = town.kerbs;
+        return st;
     }
 
     /** Lay the town out (the Town site gives way to it); what it made, to tell the player. */
@@ -53,10 +76,19 @@ public final class TownLayout {
         if (Math.min(town.width(), town.depth()) < 80 || Math.max(town.width(), town.depth()) < 120) {
             return "A town needs at least 120 x 80 blocks";
         }
-        TownLayout t = new TownLayout(plan, town, rand);
-        t.run();
-        plan.sites.remove(town);
-        return "Laid out " + t.streets + " streets and " + t.rows + " rows. Press Build.";
+        String said;
+        if (town.winding) {
+            WindingTown t = new WindingTown(plan, town, rand);
+            t.run();
+            said = "Laid out " + t.streets + " streets and " + t.plots + " buildings. Press Build.";
+        } else {
+            TownLayout t = new TownLayout(plan, town, rand);
+            t.run();
+            said = "Laid out " + t.streets + " streets and " + t.rows + " rows. Press Build.";
+        }
+        town.type = RoadPlan.SiteType.GREEN;
+        town.built = false;
+        return said;
     }
 
     // ------------------------------------------------------------------ town to world
@@ -77,6 +109,10 @@ public final class TownLayout {
 
     /** What houses go where: a mix has terraces near the middle, semis further out and detached at the edge. */
     private RoadPlan.SiteType houses(int ring) {
+        return houses(town, ring);
+    }
+
+    static RoadPlan.SiteType houses(RoadPlan.Site town, int ring) {
         return switch (town.houses) {
             case 0 -> RoadPlan.SiteType.TERRACES;
             case 1 -> RoadPlan.SiteType.SEMIS;
@@ -90,7 +126,7 @@ public final class TownLayout {
     }
 
     private void run() {
-        RoadStyle spineStyle = town.mainRoad ? RoadStyle.mainRoad() : RoadStyle.residential(), res = RoadStyle.residential();
+        RoadStyle spineStyle = kerbed(town.mainRoad ? RoadStyle.mainRoad() : RoadStyle.residential(), town), res = kerbed(RoadStyle.residential(), town);
         spineRows = Math.max(depth(houses(1)), Math.max(town.highStreet ? depth(RoadPlan.SiteType.PARADE) : 0,
                 town.civic ? depth(RoadPlan.SiteType.CIVIC) : 0));
         double spineHalf = spineStyle.halfOuter(), resHalf = res.halfOuter();
@@ -152,7 +188,7 @@ public final class TownLayout {
             for (int j = 0; j + 1 < pts.size(); j++) {
                 RoadStyle st = s.style();
                 boolean centre = s.spine() && town.highStreet && middle(as.get(j), as.get(j + 1));
-                plan.addSegment(pts.get(j).id, pts.get(j + 1).id, centre ? RoadStyle.busyHighStreet() : st).name = s.name();
+                plan.addSegment(pts.get(j).id, pts.get(j + 1).id, centre ? kerbed(RoadStyle.busyHighStreet(), town) : st).name = s.name();
                 rowsAlong(s, as.get(j), as.get(j + 1), j == 0 && s.spine() ? 0 : CLEAR, j + 2 == pts.size() && s.spine() ? 0 : CLEAR, ringOf(along, i, mid));
             }
             streets++;
@@ -245,13 +281,45 @@ public final class TownLayout {
         return alongX ? (side < 0 ? 3 : 1) : (side < 0 ? 0 : 2);
     }
 
-    /** A row site over a0..a1 along the town and c0..c1 across it. */
+    /** A row site over a0..a1 along the town and c0..c1 across it, cut round any ground kept clear (bits too short for one of its buildings dropped). */
     private void row(RoadPlan.SiteType type, double a0, double a1, double c0, double c1, int front) {
         int x0 = (int) Math.round(Math.min(x(a0, c0), x(a1, c1))), x1 = (int) Math.round(Math.max(x(a0, c0), x(a1, c1))) - 1;
         int z0 = (int) Math.round(Math.min(z(a0, c0), z(a1, c1))), z1 = (int) Math.round(Math.max(z(a0, c0), z(a1, c1))) - 1;
-        RoadPlan.Site st = plan.addSite(type, x0, z0, x1, z1);
-        st.front = front;
-        st.brand = rand.nextInt(16);
-        rows++;
+        boolean xLong = front % 2 == 0;                          // facing south or north: the row runs along x
+        List<int[]> spans = new ArrayList<>(List.of(xLong ? new int[]{x0, x1} : new int[]{z0, z1}));
+        for (RoadPlan.Site k : kept) {
+            if (xLong ? k.z1 < z0 || k.z0 > z1 : k.x1 < x0 || k.x0 > x1) {
+                continue;
+            }
+            int lo = xLong ? k.x0 : k.z0, hi = xLong ? k.x1 : k.z1;
+            List<int[]> left = new ArrayList<>();
+            for (int[] sp : spans) {
+                if (hi < sp[0] || lo > sp[1]) {
+                    left.add(sp);
+                    continue;
+                }
+                if (lo - 1 >= sp[0]) {
+                    left.add(new int[]{sp[0], lo - 1});
+                }
+                if (hi + 1 <= sp[1]) {
+                    left.add(new int[]{hi + 1, sp[1]});
+                }
+            }
+            spans = left;
+        }
+        int shortest = Integer.MAX_VALUE;
+        for (String id : SiteLayout.units(type)) {
+            PrefabCatalog.Entry e = PrefabCatalog.get(id);
+            shortest = Math.min(shortest, e == null ? MIN_ROW : e.width());
+        }
+        for (int[] sp : spans) {
+            if (sp[1] - sp[0] + 1 < Math.max(MIN_ROW, shortest)) {
+                continue;
+            }
+            RoadPlan.Site st = xLong ? plan.addSite(type, sp[0], z0, sp[1], z1) : plan.addSite(type, x0, sp[0], x1, sp[1]);
+            st.front = front;
+            st.brand = rand.nextInt(16);
+            rows++;
+        }
     }
 }

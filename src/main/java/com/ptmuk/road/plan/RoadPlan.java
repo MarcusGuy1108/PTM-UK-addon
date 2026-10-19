@@ -67,12 +67,21 @@ public final class RoadPlan {
         DETACHED("Detached houses"),
         CIVIC("Church, pub and surgery"),
         /** Not built itself: laid out into roads and the sites above (TownLayout). */
-        TOWN("Town");
+        TOWN("Town"),
+        /** Grass level with the roads and buildings round it, filling whatever they leave. */
+        GREEN("Green space"),
+        /** Left as it is: a town lays nothing out here and the builder doesn't touch the ground. */
+        KEEP_CLEAR("Keep clear");
 
         public final String title;
 
         SiteType(String title) {
             this.title = title;
+        }
+
+        /** Laid out on the ground itself (a road ending at it meets it level); not a town, green or area kept clear. */
+        public boolean ground() {
+            return this != TOWN && this != GREEN && this != KEEP_CLEAR;
         }
     }
 
@@ -100,6 +109,8 @@ public final class RoadPlan {
         /** Town: a main road through it, shops along its middle, a church, pub and surgery, and which houses (0 terraces, 1 semis, 2 detached, 3 a mix). */
         public boolean mainRoad = true, highStreet = true, civic = true;
         public int houses = 3;
+        /** Town: kerbs on its roads, and winding streets (else a grid). */
+        public boolean kerbs = true, winding = true;
         public boolean built;
 
         public int width() {

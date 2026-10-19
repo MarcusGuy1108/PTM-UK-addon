@@ -55,11 +55,11 @@ public final class UkStreetGameTests {
                 "no stop sign by the one-way street's line");
         helper.assertTrue(has(l, f -> f.type() == Layout.FixtureType.NO_ENTRY_SIGN && f.rot8() == 0 && Math.abs(f.x() - 2000) < 20 && Math.abs(f.z()) < 25),
                 "no no-entry sign where the one-way street comes out");
-        // nameplates: the side road's on its corner facing the high street traffic, the high street's facing the side road
-        helper.assertTrue(l.nameplates.stream().anyMatch(p -> p.name().equals("Church Road") && p.rot8() == 6 && p.x() > 100 && p.z() > 0 && p.z() < 30),
+        // nameplates: the side road's on its corner, the high street's on the other corner, each facing its own road
+        helper.assertTrue(l.nameplates.stream().anyMatch(p -> p.name().equals("Church Road") && p.rot8() == 2 && p.x() > 100 && p.z() > 0 && p.z() < 30),
                 "no Church Road nameplate on its corner: " + l.nameplates);
-        helper.assertTrue(l.nameplates.stream().anyMatch(p -> p.name().equals("High Street") && p.rot8() == 0 && p.x() < 100 && p.x() > 70 && p.z() > 0),
-                "no High Street nameplate facing the side road: " + l.nameplates);
+        helper.assertTrue(l.nameplates.stream().anyMatch(p -> p.name().equals("High Street") && p.rot8() == 4 && p.x() < 100 && p.x() > 70 && p.z() > 0),
+                "no High Street nameplate on the other corner: " + l.nameplates);
         helper.assertTrue(l.nameplates.stream().noneMatch(p -> Math.abs(p.x() - 100) < 30 && p.z() < 0),
                 "a nameplate on the side of the high street with no road off it");
         // a zebra on the high street: stripes, zig-zags and a Belisha beacon each side
@@ -76,7 +76,9 @@ public final class UkStreetGameTests {
     @GameTest(template = "empty5x4x5")
     public static void highStreetKeepsItsLinesUpToTrafficLights(GameTestHelper helper) {
         RoadPlan plan = new RoadPlan();
-        TownLayout.layOut(plan, plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 295, 194), RandomSource.create(1));
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 295, 194);
+        town.winding = false;
+        TownLayout.layOut(plan, town, RandomSource.create(1));
         for (RoadPlan.Node n : plan.nodes) {
             if (plan.segmentsAt(n.id).size() == 4 && n.x > 150) {
                 n.junction = RoadPlan.Junction.SIGNALS;
