@@ -172,9 +172,9 @@ public final class UkStreetGameTests {
         helper.succeed();
     }
 
-    /** Roads built without kerbs keep their roundabout islands flush with the road, signs and all. */
+    /** Roads built without kerbs (flush edges) still get raised roundabout islands, signs and all. */
     @GameTest(template = "empty5x4x5")
-    public static void flatRoadsKeepTheirIslandsFlat(GameTestHelper helper) {
+    public static void roadsWithoutKerbsKeepRaisedIslands(GameTestHelper helper) {
         RoadPlan plan = new RoadPlan();
         RoadPlan.Node r = plan.addNode(0, 0);
         r.junction = RoadPlan.Junction.ROUNDABOUT;
@@ -187,7 +187,7 @@ public final class UkStreetGameTests {
         float road = l.top[l.index(-40, -3)];
         for (int i = 0; i < l.kind.length; i++) {
             if (l.kind[i] == Layout.ISLAND_KERB || l.kind[i] == Layout.ISLAND) {
-                helper.assertTrue(l.top[i] == road, "an island raised above a road without kerbs at " + l.cellX(i) + ", " + l.cellZ(i));
+                helper.assertTrue(l.top[i] > road, "an island not raised at " + l.cellX(i) + ", " + l.cellZ(i));
             }
         }
         helper.assertTrue(has(l, f -> f.type() == Layout.FixtureType.KEEP_LEFT_SIGN), "no keep left sign without kerbs");
