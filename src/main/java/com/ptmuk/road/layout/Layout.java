@@ -895,8 +895,8 @@ public final class Layout {
                 double d = Math.hypot(cellX(idx) + 0.5 - (j.node.x + 0.5), cellZ(idx) + 0.5 - (j.node.z + 0.5));
                 boolean edge = j.ri - d < 1.2;
                 kind[idx] = edge ? ISLAND_KERB : ISLAND;
-                float hgt = heightOf(j.node.id);
-                top[idx] = edge ? hgt + 0.5f : (float) Math.ceil(hgt + 0.5f);
+                float hgt = heightOf(j.node.id), lift = j.widest.kerbs ? 0.5f : 0f;   // flush with the road where it has no kerbs
+                top[idx] = edge ? hgt + lift : (float) Math.ceil(hgt + lift);
                 continue;
             }
             if (resSeg[idx] >= 0) {
@@ -1374,7 +1374,7 @@ public final class Layout {
                     setMark(index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d)), M_HATCH, inbound, 7);
                 }
             }
-            // its end by the ring raised and kerbed, with a keep left sign on the nose facing the way in
+            // its end by the ring kerbed (raised, if the road has kerbs), with a keep left sign on the nose facing the way in
             int nose = (int) Math.round(4 / Curve.STEP), k0 = mouth >= 0 ? mouth : i;
             for (int m = 0; m <= nose; m++) {
                 int k = k0 + (atA ? m : -m);
@@ -1382,7 +1382,7 @@ public final class Layout {
                     int idx = index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d));
                     if (idx >= 0 && kind[idx] == ROAD) {
                         kind[idx] = ISLAND_KERB;
-                        top[idx] += 0.5f;
+                        top[idx] += g.st.kerbs ? 0.5f : 0f;
                     }
                 }
             }

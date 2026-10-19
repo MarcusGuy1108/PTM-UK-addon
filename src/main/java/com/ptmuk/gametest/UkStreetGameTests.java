@@ -172,6 +172,30 @@ public final class UkStreetGameTests {
         helper.succeed();
     }
 
+    /** Roads built without kerbs keep their roundabout islands flush with the road, signs and all. */
+    @GameTest(template = "empty5x4x5")
+    public static void flatRoadsKeepTheirIslandsFlat(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Node r = plan.addNode(0, 0);
+        r.junction = RoadPlan.Junction.ROUNDABOUT;
+        for (int[] d : new int[][]{{-100, 0}, {100, 0}, {0, -100}, {0, 100}}) {
+            RoadStyle st = RoadStyle.mainRoad();
+            st.kerbs = false;
+            plan.addSegment(r.id, plan.addNode(d[0], d[1]).id, st);
+        }
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        float road = l.top[l.index(-40, -3)];
+        for (int i = 0; i < l.kind.length; i++) {
+            if (l.kind[i] == Layout.ISLAND_KERB || l.kind[i] == Layout.ISLAND) {
+                helper.assertTrue(l.top[i] == road, "an island raised above a road without kerbs at " + l.cellX(i) + ", " + l.cellZ(i));
+            }
+        }
+        helper.assertTrue(has(l, f -> f.type() == Layout.FixtureType.KEEP_LEFT_SIGN), "no keep left sign without kerbs");
+        helper.assertTrue(has(l, f -> f.type() == Layout.FixtureType.CHEVRON_SIGN), "no chevrons without kerbs");
+        helper.assertTrue(l.directionSigns.size() == 4, "expected a direction sign on each way in, got " + l.directionSigns.size());
+        helper.succeed();
+    }
+
     /** What a direction sign says: the district that way, else the town centre; the station that way; else the road's name. */
     @GameTest(template = "empty5x4x5")
     public static void directionSignsSayWhereRoadsGo(GameTestHelper helper) {
