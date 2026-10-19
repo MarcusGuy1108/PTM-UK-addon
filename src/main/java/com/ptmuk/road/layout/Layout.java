@@ -40,7 +40,8 @@ public final class Layout {
     private static final double MINI_DISC = 2.1;
 
     public enum FixtureType {
-        STREET_LIGHT, SIGNAL, GIVE_WAY_SIGN, STOP_SIGN, NO_ENTRY_SIGN, BELISHA_BEACON, MINI_ROUNDABOUT_SIGN, CHEVRON_SIGN,
+        STREET_LIGHT, SIGNAL, GIVE_WAY_SIGN, STOP_SIGN, NO_ENTRY_SIGN, BELISHA_BEACON, MINI_ROUNDABOUT_SIGN, CHEVRON_SIGN, KEEP_LEFT_SIGN,
+        ROUNDABOUT_AHEAD_SIGN,
         // on sites
         TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
         ORDER_POINT, MENU_BOARD, PICNIC_TABLE
@@ -1373,6 +1374,22 @@ public final class Layout {
                     setMark(index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d)), M_HATCH, inbound, 7);
                 }
             }
+            // its end by the ring raised and kerbed, with a keep left sign on the nose facing the way in
+            int nose = (int) Math.round(4 / Curve.STEP), k0 = mouth >= 0 ? mouth : i;
+            for (int m = 0; m <= nose; m++) {
+                int k = k0 + (atA ? m : -m);
+                for (double d = -0.75; k >= 0 && k < c.n && d <= 0.75; d += 0.25) {
+                    int idx = index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d));
+                    if (idx >= 0 && kind[idx] == ROAD) {
+                        kind[idx] = ISLAND_KERB;
+                        top[idx] += 0.5f;
+                    }
+                }
+            }
+            int kn = k0 + (atA ? nose : -nose), idx = kn < 0 || kn >= c.n ? -1 : index((int) Math.floor(c.x[kn]), (int) Math.floor(c.z[kn]));
+            if (idx >= 0 && kind[idx] == ISLAND_KERB) {
+                fixtures.add(new Fixture(FixtureType.KEEP_LEFT_SIGN, cellX(idx), cellZ(idx), top[idx], inbound, 0));
+            }
         }
         // a chevron board on the island, facing the way in
         double[] out = outward(g, j.node);
@@ -1639,6 +1656,8 @@ public final class Layout {
 
     /** How far before a junction's lines its direction signs stand. */
     private static final double SIGN_BACK = 30;
+    /** How much further back a roundabout's warning triangle stands. */
+    private static final double WARN_BACK = 25;
 
     /**
      * Map-type direction signs before roundabouts, and before other junctions on roads with a
@@ -1674,7 +1693,12 @@ public final class Layout {
                 }
                 Curve c = g.c;
                 double s = atA ? stretchEnd(g, true) + SIGN_BACK : stretchEnd(g, false) - SIGN_BACK;
-                double far = stretchEnd(g, !atA);
+                double far = stretchEnd(g, !atA), warn = s + (atA ? WARN_BACK : -WARN_BACK);
+                if ((j.type == Junction.ROUNDABOUT || j.type == Junction.MINI_ROUNDABOUT) && (atA ? warn <= far - 5 : warn >= far + 5)) {
+                    // the roundabout warning triangle further back
+                    int k = c.index(warn);
+                    roadSign(g, k, atA ? -1 : 1, FixtureType.ROUNDABOUT_AHEAD_SIGN, atA ? rot8(-c.tx[k], -c.tz[k]) : rot8(c.tx[k], c.tz[k]), 12);
+                }
                 if (exits[0] == null && exits[2] == null || (atA ? s > far - 5 : s < far + 5)) {
                     continue;                                    // just a bend, or no room before the junction behind
                 }

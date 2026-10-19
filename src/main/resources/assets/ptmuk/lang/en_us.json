@@ -123,6 +123,7 @@
  "block.ptmuk.traffic_signals_ahead_sign": "Traffic Signals Ahead Sign",
  "block.ptmuk.pedestrian_crossing_sign": "Pedestrian Crossing Sign",
  "block.ptmuk.children_sign": "Children Crossing Sign",
+ "block.ptmuk.roundabout_ahead_sign": "Roundabout Ahead Sign",
  "block.ptmuk.roadworks_sign": "Road Works Sign",
  "block.ptmuk.speed_camera_sign": "Speed Camera Sign",
  "block.ptmuk.bus_lane_sign": "Bus Lane Sign",

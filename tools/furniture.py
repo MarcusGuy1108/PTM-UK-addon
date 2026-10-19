@@ -986,6 +986,7 @@ ROAD_SIGNS = {
     "traffic_signals_ahead_sign": (lambda: F.warning("traffic_signals"), 12, "Traffic Signals Ahead Sign"),
     "pedestrian_crossing_sign": (lambda: F.warning("pedestrian_crossing"), 12, "Pedestrian Crossing Sign"),
     "children_sign": (lambda: F.warning("children"), 12, "Children Crossing Sign"),
+    "roundabout_ahead_sign": (lambda: F.warning("roundabout"), 12, "Roundabout Ahead Sign"),
     "roadworks_sign": (lambda: F.warning("roadworks"), 12, "Road Works Sign"),
     "speed_camera_sign": (F.speed_camera_sign, 12, "Speed Camera Sign"),
 }

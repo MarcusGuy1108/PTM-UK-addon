@@ -652,6 +652,8 @@ public final class RoadBuilder {
             case NO_ENTRY_SIGN -> roadSign(job, f, "ptmuk:no_entry_sign");
             case MINI_ROUNDABOUT_SIGN -> roadSign(job, f, "ptmuk:mini_roundabout_sign");
             case CHEVRON_SIGN -> roadSign(job, f, "ptmuk:chevron_sign");
+            case KEEP_LEFT_SIGN -> roadSign(job, f, "ptmuk:keep_left_sign");
+            case ROUNDABOUT_AHEAD_SIGN -> roadSign(job, f, "ptmuk:roundabout_ahead_sign");
             case BELISHA_BEACON -> set(job, new BlockPos(f.x(), standOn(job, f), f.z()), with(job.palette.get("ptmuk:belisha_beacon", "lantern"),
                     "facing", Direction.fromYRot(f.rot8() * 45.0).getSerializedName()));
             default -> SiteFixtures.place(job.level, f, standOn(job, f), job.palette, (pos, state) -> set(job, pos, state));

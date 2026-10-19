@@ -121,7 +121,7 @@ Roads come in UK styles you can mix and adjust: main road (21 wide: two 6-block 
 Junctions:
 
 - **Give way** (the default where three or more roads meet): rounded kerbs, the main road's lines carry through, two broken give-way lines and a triangle on the side roads. **Stop** junctions get a solid stop line with STOP written before it.
-- **Roundabouts:** a kerbed central island sized to the roads (or a size you pick) with a black and white chevron board facing each entry, a single broken give-way line at every entry, hatched splitter islands between the ways in and out, and SLOW on the road coming up to it. **Mini roundabouts** get a round white painted disc and the blue mini roundabout sign at each entry.
+- **Roundabouts:** a kerbed central island sized to the roads (or a size you pick) with a black and white chevron board facing each entry, a single broken give-way line at every entry, hatched splitter islands between the ways in and out with a raised kerbed nose and a keep left sign by the ring, and a roundabout warning triangle and SLOW on the road coming up to it. **Mini roundabouts** get a round white painted disc and the blue mini roundabout sign at each entry.
 - **Traffic lights:** stop lines, a pedestrian crossing on every arm with red tactile paving at the dropped kerbs and LOOK RIGHT (LOOK LEFT where the traffic comes the other way) by each kerb, and black UK signal poles with LED heads facing each approach and a push-button unit for the crossing. A PTM2 intersection is set up automatically so the lights cycle straight away and PTM2's AI traffic obeys them.
 - **Slip roads:** draw a one-way road onto a dual carriageway (or hold Shift when ending on any road) and it merges into the side of the road with a taper instead of making a junction.
 
@@ -279,7 +279,7 @@ In the **UK Road Signs** tab, mounted on poles with clamps like the signal heads
 - **Roundabout chevron board.**
 - **Speed camera** sign.
 - **Parking:** parking, pay at machine, disabled parking.
-- **Warnings:** traffic signals ahead, pedestrian crossing, children, road works.
+- **Warnings:** traffic signals ahead, pedestrian crossing, children, roundabout ahead, road works.
 
 ### Direction signs (editable)
 

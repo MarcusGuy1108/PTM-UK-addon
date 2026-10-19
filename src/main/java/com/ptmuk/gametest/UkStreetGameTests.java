@@ -91,8 +91,8 @@ public final class UkStreetGameTests {
     /**
      * Junctions marked and signed the UK way: double broken give way lines at a side road, STOP
      * written before a stop line, LOOK RIGHT at a signal crossing, a bordered yellow box, and at
-     * a roundabout SLOW, hatched splitter islands, chevrons on the island and a map-type direction
-     * sign on the way in; a mini roundabout's own blue sign.
+     * a roundabout a warning triangle, SLOW, hatched splitter islands with a raised nose and keep
+     * left sign, chevrons on the island and a map-type direction sign on the way in; a mini roundabout's own blue sign.
      */
     @GameTest(template = "empty5x4x5")
     public static void marksAndSignsJunctionsTheUkWay(GameTestHelper helper) {
@@ -137,6 +137,10 @@ public final class UkStreetGameTests {
         helper.assertTrue(count(l, 2950, 3050, -50, 50, Layout.M_HATCH) >= 20, "no hatched splitter islands");
         long chevrons = l.fixtures.stream().filter(f -> f.type() == Layout.FixtureType.CHEVRON_SIGN && Math.abs(f.x() - 3000) < 15).count();
         helper.assertTrue(chevrons == 4, "expected a chevron board facing each way in, got " + chevrons);
+        long keepLeft = l.fixtures.stream().filter(f -> f.type() == Layout.FixtureType.KEEP_LEFT_SIGN && Math.hypot(f.x() - 3000, f.z()) < 30).count();
+        helper.assertTrue(keepLeft == 4, "expected a keep left sign on each splitter island's raised nose, got " + keepLeft);
+        helper.assertTrue(has(l, f -> f.type() == Layout.FixtureType.ROUNDABOUT_AHEAD_SIGN && f.x() > 2900 && f.x() < 2950 && f.z() < 0 && f.rot8() == 6),
+                "no roundabout warning triangle on the left well before the roundabout");
         Layout.DirectionSign ads = l.directionSigns.stream().filter(s -> s.roundabout() && s.x() < 3000 && Math.abs(s.z()) < 15).findFirst().orElse(null);
         helper.assertTrue(ads != null && ads.rot8() == 2 && ads.z() < 0 && ads.x() < 2975, "no direction sign on the left before the roundabout: " + ads);
         helper.assertTrue(ads.left().dz() < -0.9 && ads.ahead().dx() > 0.9 && ads.right().dz() > 0.9, "the sign's roads are the wrong way round: " + ads);

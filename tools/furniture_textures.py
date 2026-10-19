@@ -401,19 +401,21 @@ def triangle(up=True):
 def mini_roundabout():
     """Blue disc with three white arrows chasing each other clockwise round the middle."""
     img, d, S = sign_disc(BLUE)
-    c, r, w = S / 2, S * 0.26, S * 0.07
+    circling_arrows(d, S / 2, S / 2, S * 0.26, S * 0.07, WHITE)
+    return _finish(img)
+
+
+def circling_arrows(d, cx, cy, r, w, fill):
+    """Three arrows chasing each other clockwise round (cx, cy)."""
     for i in range(3):
         start = -90 + i * 120 + 12
         end = start + 72
-        d.arc([c - r, c - r, c + r, c + r], start, end, fill=WHITE, width=int(w))
-        a = math.radians(end)
-        tip = math.radians(end + 22)
-        px, py = c + r * math.cos(a), c + r * math.sin(a)
+        d.arc([cx - r, cy - r, cx + r, cy + r], start, end, fill=fill, width=int(w))
+        a, tip = math.radians(end), math.radians(end + 22)
+        px, py = cx + r * math.cos(a), cy + r * math.sin(a)
         nx, ny = math.cos(a), math.sin(a)
-        tx, ty = c + (r - w / 2) * math.cos(tip), c + (r - w / 2) * math.sin(tip)
-        d.polygon([(px + nx * w * 1.3, py + ny * w * 1.3), (px - nx * w * 1.3 - nx * w * 0.5, py - ny * w * 1.3 - ny * w * 0.5),
-                   (tx, ty)], fill=WHITE)
-    return _finish(img)
+        tx, ty = cx + (r - w / 2) * math.cos(tip), cy + (r - w / 2) * math.sin(tip)
+        d.polygon([(px + nx * w * 1.3, py + ny * w * 1.3), (px - nx * w * 1.8, py - ny * w * 1.8), (tx, ty)], fill=fill)
 
 
 def chevrons():
@@ -517,6 +519,8 @@ def warning(symbol):
             d.line([cx * k, (46 + (1 - s) * 10) * k, (cx - 2) * k, 62 * k], fill=BLACK, width=int(4 * k))
             d.line([(cx - 2) * k, 62 * k, (cx - 7) * k, 74 * k], fill=BLACK, width=int(3.5 * k))
             d.line([(cx - 2) * k, 62 * k, (cx + 5) * k, 73 * k], fill=BLACK, width=int(3.5 * k))
+    elif symbol == "roundabout":
+        circling_arrows(d, 50 * k, 63 * k, 17 * k, 6 * k, BLACK)
     elif symbol == "roadworks":
         d.ellipse([40 * k, 38 * k, 47 * k, 45 * k], fill=BLACK)
         d.line([44 * k, 46 * k, 50 * k, 60 * k], fill=BLACK, width=int(5 * k))
