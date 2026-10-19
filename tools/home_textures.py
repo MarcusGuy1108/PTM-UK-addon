@@ -156,7 +156,7 @@ def door_front(colour, size=S, handle="bar", shaker=True, split=None, wood=None,
     return img
 
 
-def tall_door(colour, size=S, wood=None, mirror_panel=False):
+def tall_door(colour, size=S, wood=None, mirror_panel=False, handles=True):
     """A wardrobe or fridge door pair over two blocks: drawn 64 x 128 for a 16 x 32 face."""
     base = np.asarray(wood if wood is not None else gloss(colour, size))[..., :3].astype(float)
     top = to_image(np.vstack([base, base]))
@@ -169,7 +169,7 @@ def tall_door(colour, size=S, wood=None, mirror_panel=False):
         if mirror_panel and x0 == 0:
             m = mirror(size)
             top.paste(m.resize((x1 - x0 - 10, 2 * size - 12)), (x0 + 5, 6))
-    for x in (h - 4, h + 3):
+    for x in ((h - 4, h + 3) if handles else ()):
         d.rectangle([x - 1, size - 10, x + 1, size + 10], fill=(172, 176, 182), outline=(110, 112, 116))
     return top
 
@@ -242,34 +242,73 @@ def hob(on=False, size=S):
     return img
 
 
-def oven_front(on=False, size=S):
-    """Built-under oven: brushed steel fascia with knobs and a clock, black glass door, a bar
-    handle; the light behind the glass comes on with it."""
-    img = H.stainless(size)
+def oven_door(on=False, size=S):
+    """The oven door: black glass in a thin steel frame, the window darker in the middle (lit
+    orange with a shelf showing when it's on)."""
+    img = to_image(_base((20, 20, 22), size, 1.0))
     d = ImageDraw.Draw(img)
-    d.rectangle([4, 16, size - 5, size - 4], fill=(24, 24, 26), outline=(60, 60, 64))
+    d.rectangle([0, 0, size - 1, size - 1], outline=(150, 154, 160), width=2)
+    win = [size // 6, size // 4, size - size // 6, size - size // 6]
     if on:
-        d.rectangle([10, 24, size - 11, size - 10], fill=(120, 70, 20))
-        d.rectangle([12, 34, size - 13, 38], fill=(40, 36, 34))
-    d.rectangle([12, 18, size - 13, 20], fill=(200, 204, 208))
-    for x in (8, 16, 46, 54):
-        d.ellipse([x - 2, 6, x + 2, 10], fill=(40, 40, 44))
-    d.rectangle([26, 5, 37, 11], fill=(10, 10, 12))
-    d.text((27, 4), "12:00", fill=(80, 220, 120) if on else (60, 60, 60))
+        yy, xx = np.mgrid[0:win[3] - win[1], 0:win[2] - win[0]].astype(float)
+        cx, cy = (win[2] - win[0]) / 2, (win[3] - win[1]) / 2
+        glow = np.exp(-(((xx - cx) / cx) ** 2 + ((yy - cy) / cy) ** 2) * 1.2)
+        rgb = np.stack([120 + 120 * glow, 50 + 70 * glow, 10 + 20 * glow], -1)
+        img.paste(to_image(rgb), (win[0], win[1]))
+        d.line([(win[0] + 2, (win[1] + win[3]) // 2 + 4), (win[2] - 2, (win[1] + win[3]) // 2 + 4)], fill=(60, 50, 40), width=2)
+    else:
+        d.rectangle(win, fill=(8, 8, 10))
+    d.rectangle(win, outline=(44, 44, 48))
+    d.line([(win[0] + 3, win[3] - 3), (win[0] + (win[3] - win[1]) // 2, win[1] + 3)], fill=(70, 72, 78))
     return img
 
 
-def fridge_front(size=S):
-    """Tall fridge freezer, white: fridge above, freezer below, recessed handles (64 x 128)."""
-    base = np.asarray(gloss((240, 241, 240), size))[..., :3].astype(float)
-    img = to_image(np.vstack([base, base]))
+def oven_fascia(size=S):
+    """The oven's control strip (64 x 16): a clock in the middle, the knobs stand proud of it."""
+    img = H.stainless(size).resize((size, size // 4))
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, size - 1, 2 * size - 1], outline=(200, 202, 204))
-    d.line([(0, 72), (size, 72)], fill=(180, 182, 186), width=2)
-    for y0, y1 in ((8, 40), (82, 108)):
-        d.rectangle([size - 9, y0, size - 6, y1], fill=(196, 198, 202))
-    d.rectangle([20, 12, 30, 18], fill=(70, 120, 180))
+    d.rectangle([0, 0, size - 1, size // 4 - 1], outline=(120, 124, 130))
+    cx = size // 2
+    d.rectangle([cx - 7, 4, cx + 7, 11], fill=(10, 10, 12))
+    d.text((cx - 6, 2), "12:00", fill=(80, 220, 120))
     return img
+
+
+def microwave_door(on=False, size=32):
+    """Microwave door: black with a dark window behind a dotted mesh (lit and turning plate when on)."""
+    img = to_image(_base((26, 26, 28), size, 1.0))
+    d = ImageDraw.Draw(img)
+    d.rectangle([3, 4, size - 4, size - 5], fill=(170, 120, 50) if on else (12, 12, 14), outline=(60, 60, 64))
+    if on:
+        d.ellipse([7, size // 2, size - 8, size - 7], outline=(230, 210, 160))
+        d.rectangle([size // 2 - 4, size // 2 - 3, size // 2 + 4, size // 2 + 3], fill=(190, 60, 40))
+    for y in range(6, size - 6, 2):
+        for x in range(5 + y % 4 // 2, size - 5, 2):
+            px = img.getpixel((x, y))
+            img.putpixel((x, y), tuple(int(c * 0.82) for c in px[:3]) + (255,))
+    return img
+
+
+def microwave_panel(on=False, size=16):
+    """Microwave controls (16 x 32): a display and a keypad."""
+    img = to_image(_base((32, 32, 34), size, 1.0)).resize((size, size * 2))
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 3, size - 3, 8], fill=(10, 12, 10))
+    if on:
+        d.rectangle([4, 5, size - 5, 6], fill=(90, 230, 120))
+    for r in range(4):
+        for c in range(3):
+            d.rectangle([3 + c * 4, 12 + r * 4, 4 + c * 4, 13 + r * 4], fill=(120, 120, 124))
+    d.rectangle([3, 29, size - 4, 30], fill=(160, 160, 164))
+    return img
+
+
+def water(size=32):
+    """Bath water seen from above: clear blue-green over white enamel, a few soft ripples."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(float)
+    ripple = np.sin(xx * 0.7 + np.sin(yy * 0.4) * 2) * 6 + blur(rng.normal(0, 1, (size, size)), 2) * 8
+    rgb = np.array([150, 200, 214], float) + ripple[..., None]
+    return to_image(rgb)
 
 
 def washer_front(frames=8, size=S):
@@ -294,21 +333,6 @@ def washer_front(frames=8, size=S):
         d.ellipse([cx - r + 6, cy - r + 6, cx - 3, cy - 5], outline=(255, 255, 255))
         out.paste(img, (0, f * size))
     return out
-
-
-def microwave_front(on=False, size=S):
-    img = to_image(_base((30, 30, 32), size, 1))
-    d = ImageDraw.Draw(img)
-    d.rectangle([3, 6, 44, size - 7], fill=(150, 110, 50) if on else (14, 14, 16), outline=(70, 70, 74))
-    if on:
-        d.ellipse([10, 30, 38, 52], outline=(220, 200, 150))
-        d.rectangle([16, 22, 30, 34], fill=(200, 60, 40))
-    d.rectangle([48, 6, 60, 14], fill=(12, 14, 12))
-    d.text((49, 5), "1:30" if on else "", fill=(90, 230, 120))
-    for r in range(4):
-        for c in range(3):
-            d.rectangle([48 + c * 4, 20 + r * 5, 50 + c * 4, 22 + r * 5], fill=(110, 110, 114))
-    return img
 
 
 def screen(frames_out=None, size=64):

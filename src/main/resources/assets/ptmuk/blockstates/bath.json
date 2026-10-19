@@ -16,18 +16,18 @@
    "y": 270
   },
   "lit=true,part=left,facing=north": {
-   "model": "ptmuk:block/home/bath_left"
+   "model": "ptmuk:block/home/bath_left_on"
   },
   "lit=true,part=left,facing=east": {
-   "model": "ptmuk:block/home/bath_left",
+   "model": "ptmuk:block/home/bath_left_on",
    "y": 90
   },
   "lit=true,part=left,facing=south": {
-   "model": "ptmuk:block/home/bath_left",
+   "model": "ptmuk:block/home/bath_left_on",
    "y": 180
   },
   "lit=true,part=left,facing=west": {
-   "model": "ptmuk:block/home/bath_left",
+   "model": "ptmuk:block/home/bath_left_on",
    "y": 270
   },
   "lit=false,part=right,facing=north": {
@@ -46,18 +46,18 @@
    "y": 270
   },
   "lit=true,part=right,facing=north": {
-   "model": "ptmuk:block/home/bath_right"
+   "model": "ptmuk:block/home/bath_right_on"
   },
   "lit=true,part=right,facing=east": {
-   "model": "ptmuk:block/home/bath_right",
+   "model": "ptmuk:block/home/bath_right_on",
    "y": 90
   },
   "lit=true,part=right,facing=south": {
-   "model": "ptmuk:block/home/bath_right",
+   "model": "ptmuk:block/home/bath_right_on",
    "y": 180
   },
   "lit=true,part=right,facing=west": {
-   "model": "ptmuk:block/home/bath_right",
+   "model": "ptmuk:block/home/bath_right_on",
    "y": 270
   }
  }

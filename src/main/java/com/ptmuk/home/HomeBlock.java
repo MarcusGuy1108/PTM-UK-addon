@@ -151,8 +151,8 @@ public class HomeBlock extends HorizontalDirectionalBlock implements EntityBlock
             level.playSound(player, pos, SoundEvents.PLAYER_SPLASH, SoundSource.BLOCKS, 0.5F, 1.4F);
             return InteractionResult.sidedSuccess(level.isClientSide);
         }
-        if (type.seat > 0 && !player.isShiftKeyDown() && !onTaps) {
-            return sit(state, level, pos, player);
+        if (type.seat > 0 && !player.isShiftKeyDown()) {
+            return sit(state, level, pos, player);         // the bath too: shift and click runs (or drains) it
         }
         if (type.oven) {
             if (!level.isClientSide && level.getBlockEntity(base) instanceof MenuProvider oven) {
@@ -204,7 +204,8 @@ public class HomeBlock extends HorizontalDirectionalBlock implements EntityBlock
             }
         }
         SoundEvent sound = switch (type.effect) {
-            case TAP, BATH, SHOWER -> on ? SoundEvents.BUCKET_EMPTY : SoundEvents.LEVER_CLICK;
+            case TAP, SHOWER -> on ? SoundEvents.BUCKET_EMPTY : SoundEvents.LEVER_CLICK;
+            case BATH -> on ? SoundEvents.BUCKET_EMPTY : SoundEvents.BUCKET_FILL;    // running it, pulling the plug
             case FIRE -> on ? SoundEvents.FIRECHARGE_USE : SoundEvents.LEVER_CLICK;
             case TOASTER -> on ? SoundEvents.CHAIN_PLACE : SoundEvents.CHAIN_BREAK;
             case MICROWAVE -> on ? SoundEvents.STONE_BUTTON_CLICK_ON : SoundEvents.NOTE_BLOCK_BELL.get();
@@ -243,9 +244,11 @@ public class HomeBlock extends HorizontalDirectionalBlock implements EntityBlock
                 }
             }
             case BATH -> {
-                Vec3 p = local(pos, f, 2.5, 10.5, 11.8);
-                level.addParticle(ParticleTypes.FALLING_WATER, p.x, p.y, p.z, 0, 0, 0);
-                level.addParticle(ParticleTypes.SPLASH, p.x, pos.getY() + 0.2, p.z, 0, 0, 0);
+                // a full bath: now and then a ripple where the tap drips
+                if (random.nextInt(8) == 0) {
+                    Vec3 p = local(pos, f, 3.9, 6.6, 12.6);
+                    level.addParticle(ParticleTypes.SPLASH, p.x, p.y, p.z, 0, 0, 0);
+                }
             }
             case SHOWER -> {
                 for (int i = 0; i < 3; i++) {
@@ -320,7 +323,11 @@ public class HomeBlock extends HorizontalDirectionalBlock implements EntityBlock
             return null;
         }
         @SuppressWarnings("unchecked")
-        BlockEntityTicker<T> ticker = (l, p, s, be) -> AbstractFurnaceBlockEntity.serverTick(l, p, s, (AbstractFurnaceBlockEntity) be);
+        BlockEntityTicker<T> ticker = (l, p, s, be) -> {
+            ((OvenBlockEntity) be).power();
+            AbstractFurnaceBlockEntity.serverTick(l, p, s, (AbstractFurnaceBlockEntity) be);
+            ((OvenBlockEntity) be).showLit(l, p);
+        };
         return ticker;
     }
 

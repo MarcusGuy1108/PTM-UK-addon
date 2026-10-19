@@ -182,16 +182,16 @@ A site that's too small for a retail park or drive-thru is laid out as a car par
 In the **UK Home Furniture** tab, all drawn for this mod:
 
 - **Living room:** sofas in grey, navy, green, brown leather and cream. Put seats side by side and they join into one long sofa, with arms only at the ends; a single seat is an armchair. Also a coffee table, a TV unit, a flat screen TV, a floor lamp, a table lamp, a ceiling pendant light, a bookcase, an electric fire with a marble mantel, a radiator, a house plant, a dining table (tables side by side join into one long table) and dining chairs.
-- **Kitchen** (white or oak): a cupboard, drawers, a sink, an oven and hob, and a wall cupboard. Also a fridge freezer, a washing machine, a microwave, a kettle and a toaster.
-- **Bathroom:** a toilet, a basin, a bath (two blocks long), a walk-in shower, a heated towel rail and a mirror cabinet.
+- **Kitchen** (white or oak): a cupboard, drawers, a sink (a real stainless bowl let into the worktop, a drainer and a swan-neck mixer tap), an oven and hob (steel control strip with knobs and a clock, a black glass door with a bar handle, a ceramic hob), and a wall cupboard, all with 3D handles. Also a fridge freezer, a washing machine, a microwave, a kettle and a toaster.
+- **Bathroom:** a close-coupled toilet, a pedestal basin with a proper bowl and mixer tap, a fitted bath (two blocks long) with a real tub, deck mixer and sloped back, a walk-in shower, a heated towel rail and a mirror cabinet.
 - **Bedroom and study** (oak or white): a wardrobe, a chest of drawers and a bedside table. Also a desk, an office chair and a computer.
 
 What they do:
 - **Sit:** right-click a sofa, chair, toilet or bath to sit down, and sneak to get up.
 - **Store things:** cupboards, drawers, the wardrobe, the fridge, the bedside table, the desk, the TV unit and the cabinet hold items like a chest (the wardrobe holds as much as a double chest).
-- **Cook:** the oven cooks food like a smoker; the hob glows while it's on.
-- **Switch on:** right-click the TV (it shows made-up programmes), lamps, the fire, the computer, the washing machine, the microwave, the kettle, the toaster and the shower to switch them on. Lamps and the fire light the room. The microwave, kettle, toaster, washing machine and shower switch themselves off after a while.
-- **Taps:** the sink and basin run water, and fill an empty bucket or glass bottle. Click the sink's worktop for the tap and its doors for the cupboard. Sneak and right-click the bath to run it, or the toilet to flush it.
+- **Cook:** the oven and the microwave cook food like a smoker, on mains power: put food in and they switch themselves on, no fuel needed. The hob rings glow red and the oven window lights up while it's cooking.
+- **Switch on:** right-click the TV (it shows made-up programmes), lamps, the fire, the computer, the washing machine, the kettle, the toaster and the shower to switch them on. Lamps and the fire light the room. The kettle, toaster, washing machine and shower switch themselves off after a while.
+- **Taps:** the sink and basin run water, and fill an empty bucket or glass bottle. Click the sink's worktop for the tap and its doors for the cupboard. Sneak and right-click the bath to run it full (sneak and right-click again to pull the plug), or the toilet to flush it.
 - **Tabletop things** (TV, lamps, kettle, toaster, microwave, computer, plant) sit down onto whatever they're placed on: a TV on its unit, a kettle on the worktop, a lamp on a bedside table.
 
 The prefab houses, flats, shops and offices are furnished with these.

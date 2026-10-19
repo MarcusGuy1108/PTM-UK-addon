@@ -47,6 +47,76 @@ def legs(x0, z0, x1, z1, h, w, tex, y0=0):
     return [bx((x, y0, z), (x + w, h, z + w), tex) for x in (x0, x1 - w) for z in (z0, z1 - w)]
 
 
+def hbar(x0, x1, y, zf, tex="#chrome", d=0.9, t=0.5):
+    """A bar handle across a front at height y, standing d proud of the face at z = zf."""
+    return [bx((x0, y - t / 2, zf - d), (x1, y + t / 2, zf - d + t), tex),
+            bx((x0 + 0.3, y - 0.2, zf - d + t), (x0 + 0.8, y + 0.2, zf), tex),
+            bx((x1 - 0.8, y - 0.2, zf - d + t), (x1 - 0.3, y + 0.2, zf), tex)]
+
+
+def vbar(x, y0, y1, zf, tex="#chrome", d=0.9, t=0.5):
+    """An upright bar handle at x from y0 to y1, standing d proud of the face at z = zf."""
+    return [bx((x - t / 2, y0, zf - d), (x + t / 2, y1, zf - d + t), tex),
+            bx((x - 0.2, y0 + 0.3, zf - d + t), (x + 0.2, y0 + 0.8, zf), tex),
+            bx((x - 0.2, y1 - 0.8, zf - d + t), (x + 0.2, y1 - 0.3, zf), tex)]
+
+
+def knob(x, y, zf, r=0.55, d=0.7, tex="#chrome"):
+    """A small round-ish knob (a box with a smaller cap) on a front at z = zf."""
+    return [bx((x - r, y - r, zf - d * 0.6), (x + r, y + r, zf), tex),
+            bx((x - r * 0.7, y - r * 0.7, zf - d), (x + r * 0.7, y + r * 0.7, zf - d * 0.6), tex)]
+
+
+def front(x0, y0, x1, y1, zf, tex, side, d=0.4):
+    """A door or drawer front standing d proud of the carcass face at z = zf: tex on its face (whole
+    texture), side on its edges."""
+    return bx((x0, y0, zf - d), (x1, y1, zf), side, front=tex, full=("north",), faces=("north", "east", "west", "up", "down"))
+
+
+def split_front(x0, y0, x1, y1, zf, tex, side, uv, d=0.4):
+    """A front taller than a block, in two pieces split at the block line (one face spanning two
+    blocks is lit wrongly by smooth lighting): uv is the whole front's [u0, v0, u1, v1]."""
+    u0, v0, u1, v1 = uv
+    vm = v0 + (v1 - v0) * (y1 - 16) / (y1 - y0)
+    lo, hi = front(x0, y0, x1, 16, zf, tex, side, d), front(x0, 16, x1, y1, zf, tex, side, d)
+    lo["faces"]["north"]["uv"] = [u0, vm, u1, v1]
+    hi["faces"]["north"]["uv"] = [u0, v0, u1, vm]
+    del lo["faces"]["up"], hi["faces"]["down"]
+    return [lo, hi]
+
+
+def moved(els, dx=0.0, dz=0.0):
+    """Elements moved sideways (round columns are built round the middle of the block)."""
+    out = json.loads(json.dumps(els))
+    for el in out:
+        for k in ("from", "to"):
+            el[k][0] = round(el[k][0] + dx, 3)
+            el[k][2] = round(el[k][2] + dz, 3)
+        if "rotation" in el:
+            el["rotation"]["origin"][0] = round(el["rotation"]["origin"][0] + dx, 3)
+            el["rotation"]["origin"][2] = round(el["rotation"]["origin"][2] + dz, 3)
+    return out
+
+
+def bowl(x0, z0, x1, z1, y0, y1, tex, floor=None):
+    """The inside of a sink, basin or bath: a floor at y0 and four walls up to y1 facing inwards."""
+    return [bx((x0, y0 - 0.2, z0), (x1, y0, z1), floor or tex, faces=("up",)),
+            bx((x0, y0, z0), (x1, y1, z0 + 0.2), tex, faces=("south",)),
+            bx((x0, y0, z1 - 0.2), (x1, y1, z1), tex, faces=("north",)),
+            bx((x0, y0, z0), (x0 + 0.2, y1, z1), tex, faces=("east",)),
+            bx((x1 - 0.2, y0, z0), (x1, y1, z1), tex, faces=("west",))]
+
+
+def rim(x0, z0, x1, z1, ox0, oz0, ox1, oz1, y0, y1, tex, up=None):
+    """A top surface (x0..x1, z0..z1) with a hole (ox0..ox1, oz0..oz1) cut in it."""
+    els = [bx((x0, y0, z0), (x1, y1, oz0), tex), bx((x0, y0, oz1), (x1, y1, z1), tex),
+           bx((x0, y0, oz0), (ox0, y1, oz1), tex), bx((ox1, y0, oz0), (x1, y1, oz1), tex)]
+    if up:
+        for el in els:
+            el["faces"]["up"]["texture"] = up
+    return els
+
+
 def shift(els, dy):
     """Move a model down (tabletop items standing on lower furniture)."""
     out = json.loads(json.dumps(els))
@@ -67,15 +137,15 @@ def t(key):
 def make_textures():
     s = G.save
     TEX.update({
-        "oak": s(HT.timber((176, 132, 84)), P + "oak"),
-        "walnut": s(HT.timber((92, 60, 40)), P + "walnut"),
-        "white_gloss": s(HT.gloss((238, 238, 234)), P + "white_gloss"),
+        "oak": s(HT.timber((176, 132, 84), 128), P + "oak"),
+        "walnut": s(HT.timber((92, 60, 40), 128), P + "walnut"),
+        "white_gloss": s(HT.gloss((238, 238, 234), 128), P + "white_gloss"),
         "worktop_dark": s(HT.granite(), P + "worktop_dark"),
         "worktop_light": s(HT.granite(base=(196, 194, 188)), P + "worktop_light"),
         "plinth": s(HT.solid((40, 40, 42)), P + "plinth"),
         "stainless": s(H.stainless(64), P + "stainless"),
         "chrome": s(HT.chrome(), P + "chrome"),
-        "ceramic": s(HT.ceramic(), P + "ceramic"),
+        "ceramic": s(HT.ceramic(128), P + "ceramic"),
         "black": s(HT.solid((22, 22, 24)), P + "black"),
         "dark_grey": s(HT.solid((58, 60, 64)), P + "dark_grey"),
         "brass": s(HT.solid((176, 140, 70), n=4), P + "brass"),
@@ -96,13 +166,17 @@ def make_textures():
         "monitor_on": s(HT.monitor_screen(), P + "monitor_on"),
         "hob": s(HT.hob(False), P + "hob"),
         "hob_on": s(HT.hob(True), P + "hob_on"),
-        "oven": s(HT.oven_front(False), P + "oven"),
-        "oven_on": s(HT.oven_front(True), P + "oven_on"),
+        "oven_door": s(HT.oven_door(False), P + "oven_door"),
+        "oven_door_on": s(HT.oven_door(True), P + "oven_door_on"),
+        "oven_fascia": s(HT.oven_fascia(), P + "oven_fascia"),
         "sink_top": s(HT.sink_top(), P + "sink_top"),
         "washer": s(HT.washer_front(1), P + "washer"),
         "washer_on": s(HT.washer_front(8), P + "washer_on", 2),
-        "microwave": s(HT.microwave_front(False), P + "microwave"),
-        "microwave_on": s(HT.microwave_front(True), P + "microwave_on"),
+        "microwave_door": s(HT.microwave_door(False), P + "microwave_door"),
+        "microwave_door_on": s(HT.microwave_door(True), P + "microwave_door_on"),
+        "microwave_panel": s(HT.microwave_panel(False), P + "microwave_panel"),
+        "microwave_panel_on": s(HT.microwave_panel(True), P + "microwave_panel_on"),
+        "water": s(HT.water(), P + "bath_water"),
         "toaster_top": s(HT.toaster_top(), P + "toaster_top"),
         "basin_top": s(HT.basin_top(), P + "basin_top"),
         "bath_top": s(HT.bath_top(), P + "bath_top"),
@@ -114,25 +188,24 @@ def make_textures():
         "office_fabric": s(HT.fabric((36, 38, 42)), P + "office_fabric"),
         "keyboard": s(keys(), P + "keyboard"),
     })
-    lo, hi = HT.halves(HT.fridge_front())
-    TEX["fridge_lower"], TEX["fridge_upper"] = s(lo, P + "fridge_lower"), s(hi, P + "fridge_upper")
     for name, colour in SOFA_COLOURS.items():
         if name == "brown":
-            TEX[f"sofa_{name}"] = s(HT.leather(colour), P + f"sofa_{name}")
-            TEX[f"cushion_{name}"] = s(HT.leather(tuple(int(c * 1.08) for c in colour)), P + f"cushion_{name}")
+            TEX[f"sofa_{name}"] = s(HT.leather(colour, 128), P + f"sofa_{name}")
+            TEX[f"cushion_{name}"] = s(HT.leather(tuple(int(c * 1.08) for c in colour), 128), P + f"cushion_{name}")
         else:
-            TEX[f"sofa_{name}"] = s(HT.fabric(colour), P + f"sofa_{name}")
-            TEX[f"cushion_{name}"] = s(HT.cushion(colour), P + f"cushion_{name}")
+            TEX[f"sofa_{name}"] = s(HT.fabric(colour, 128), P + f"sofa_{name}")
+            TEX[f"cushion_{name}"] = s(HT.cushion(colour, 128), P + f"cushion_{name}")
     for fin, colour in FINISHES.items():
         wood = HT.timber(colour) if fin == "oak" else None
-        TEX[f"door_{fin}"] = s(HT.door_front(colour, wood=wood, h=48), P + f"door_{fin}")
-        TEX[f"doors_{fin}"] = s(HT.door_front(colour, wood=wood, split="v", h=48), P + f"doors_{fin}")
-        TEX[f"drawers_{fin}"] = s(HT.door_front(colour, wood=wood, split=3, h=48), P + f"drawers_{fin}")
-        TEX[f"drawers2_{fin}"] = s(HT.door_front(colour, wood=wood, split=2, handle="knob", h=36), P + f"drawers2_{fin}")
-        TEX[f"wall_doors_{fin}"] = s(HT.door_front(colour, wood=wood, split="v", h=40), P + f"wall_doors_{fin}")
-        lo, hi = HT.halves(HT.tall_door(colour, wood=HT.timber(colour) if fin == "oak" else None,
-                                        mirror_panel=fin == "white"))
-        TEX[f"wardrobe_lower_{fin}"], TEX[f"wardrobe_upper_{fin}"] = s(lo, P + f"wardrobe_lower_{fin}"), s(hi, P + f"wardrobe_upper_{fin}")
+        # fronts drawn to the shape of the door or drawer they go on (handles are 3D)
+        TEX[f"door_plain_{fin}"] = s(HT.door_front(colour, wood=wood, handle=None, h=48), P + f"door_plain_{fin}")
+        TEX[f"door_half_{fin}"] = s(HT.door_front(colour, size=32, wood=wood, handle=None, h=48), P + f"door_half_{fin}")
+        TEX[f"wall_door_{fin}"] = s(HT.door_front(colour, size=32, wood=wood, handle=None, h=44), P + f"wall_door_{fin}")
+        TEX[f"drawer_{fin}"] = s(HT.door_front(colour, wood=wood, handle=None, shaker=False, h=16), P + f"drawer_{fin}")
+        TEX[f"drawer_half_{fin}"] = s(HT.door_front(colour, size=32, wood=wood, handle=None, shaker=False, h=16),
+                                      P + f"drawer_half_{fin}")
+        TEX[f"wardrobe_{fin}"] = s(HT.tall_door(colour, wood=HT.timber(colour) if fin == "oak" else None,
+                                                mirror_panel=fin == "white", handles=False), P + f"wardrobe_{fin}")
         TEX[f"carcass_{fin}"] = TEX["oak"] if fin == "oak" else TEX["white_gloss"]
     TEX["tv_doors"] = G.save(HT.door_front((92, 60, 40), wood=HT.timber((92, 60, 40)), split="v", shaker=False, h=32),
                              P + "tv_unit_doors")
@@ -284,36 +357,48 @@ def keys(size=32):
 
 def sofa(colour, shape):
     """One seat of a modular sofa. Pieces side by side join up: shape is single (arms both sides),
-    west / east (the arm on that end only) or middle (no arms)."""
+    west / east (the arm on that end only) or middle (no arms). Plump seat and back cushions with
+    rounded crowns, rolled arms and turned feet."""
     f, c = f"#sofa_{colour}", f"#cushion_{colour}"
     arm_w, arm_e = shape in ("single", "west"), shape in ("single", "east")
-    x0 = 2.5 if arm_w else 0.15
-    x1 = 13.5 if arm_e else 15.85
-    els = [bx((0, 1.5, 1.5), (16, 4.5, 15), f),
-           bx((x0, 4.5, 1.2), (x1, 7.6, 11.2), f, faces=("north", "east", "west", "down")),
-           bx((x0, 7.6, 1.2), (x1, 7.61, 11.2), c, faces=("up",), full=("up",)),
-           bx((0 if arm_w else 0, 4.5, 11.2), (16, 15, 15), f),
-           bx((x0 + 0.2, 7.6, 9.6), (x1 - 0.2, 14.2, 11.2), c, faces=("north", "up", "east", "west"), full=("north",))]
-    for on, xa, xb in ((arm_w, 0, 2.5), (arm_e, 13.5, 16)):
+    x0 = 2.6 if arm_w else 0.0
+    x1 = 13.4 if arm_e else 16.0
+    els = [bx((0, 1.4, 1.6), (16, 4.6, 15), f),
+           # seat cushion and its crown
+           bx((x0 + 0.1, 4.6, 1.3), (x1 - 0.1, 7.1, 11.0), c, faces=("north", "east", "west")),
+           bx((x0 + 0.35, 7.1, 1.55), (x1 - 0.35, 7.7, 10.8), c, faces=("up", "north", "east", "west"), full=("up",)),
+           # back frame with a rolled top
+           bx((0, 4.6, 11.0), (16, 14.0, 15), f),
+           bx((0, 14.0, 11.3), (16, 14.6, 14.7), f, faces=("up", "north", "south", "east", "west")),
+           # back cushion, puffed out in the middle
+           bx((x0 + 0.2, 7.1, 9.2), (x1 - 0.2, 13.6, 11.0), c, faces=("north", "east", "west", "up")),
+           bx((x0 + 0.5, 7.6, 8.7), (x1 - 0.5, 12.9, 9.2), c, faces=("north", "east", "west", "up", "down"), full=("north",))]
+    for on, xa, xb in ((arm_w, 0, 2.6), (arm_e, 13.4, 16)):
         if on:
-            els.append(bx((xa, 4.5, 1.2), (xb, 11, 15), f))
-            els.append(bx((xa + 0.2, 11, 1.4), (xb - 0.2, 11.4, 14.8), c, faces=("up", "north", "east", "west")))
-    for on, x in ((arm_w, 1), (arm_e, 13.8)):
+            els += [bx((xa, 4.6, 1.5), (xb, 10.0, 15), f),
+                    bx((xa, 10.0, 1.6), (xb, 10.9, 15), c, faces=("up", "north", "east", "west")),
+                    bx((xa + 0.3, 4.9, 1.25), (xb - 0.3, 10.6, 1.5), f, faces=("north", "east", "west"))]
+    for on, x in ((arm_w, 0.9), (arm_e, 13.9)):
         if on:
             for z in (2.2, 13.2):
-                els.append(bx((x, 0, z), (x + 1.2, 1.5, z + 1.2), "#walnut"))
+                els += [bx((x, 0.7, z), (x + 1.2, 1.4, z + 1.2), "#walnut"),
+                        bx((x + 0.2, 0, z + 0.2), (x + 1.0, 0.7, z + 1.0), "#walnut")]
     return els, {f"sofa_{colour}": t(f"sofa_{colour}"), f"cushion_{colour}": t(f"cushion_{colour}"), "walnut": t("walnut")}
 
 
 def coffee_table():
-    els = [bx((1, 7, 3), (15, 8, 13), "#oak"), bx((2.5, 2.2, 4.5), (13.5, 2.8, 11.5), "#oak")]
+    els = [bx((1, 7, 3), (15, 8, 13), "#oak"),
+           bx((1.6, 6.2, 3.6), (14.4, 7, 12.4), "#oak", faces=("north", "east", "south", "west")),
+           bx((2.4, 2.2, 4.4), (13.6, 2.8, 11.6), "#oak")]
     els += legs(1.6, 3.6, 14.4, 12.4, 7, 1.4, "#oak")
     return els, {"oak": t("oak")}
 
 
 def tv_unit():
-    els = [bx((0, 0.6, 3), (16, 8, 15), "#walnut", front="#tv_doors", full=("north",)),
-           bx((0.5, 0, 3.5), (15.5, 0.6, 14.5), "#black")]
+    els = [bx((0.2, 1.2, 3.4), (15.8, 7.4, 15), "#walnut", faces=("east", "south", "west", "down")),
+           bx((0, 7.4, 3), (16, 8, 15.2), "#walnut"),
+           front(0.4, 1.4, 15.6, 7.2, 3.4, "#tv_doors", "#walnut")]
+    els += legs(0.8, 3.8, 15.2, 14.6, 1.2, 0.8, "#black")
     return els, {"walnut": t("walnut"), "tv_doors": t("tv_doors"), "black": t("black")}
 
 
@@ -406,144 +491,252 @@ def dining_table_parts():
 
 
 def dining_chair():
-    els = legs(3, 3, 13, 13, 7, 1.2, "#oak")
-    els += [bx((3, 7, 3), (13, 8, 13), "#oak"), bx((3.3, 8, 3.3), (12.7, 8.6, 11.8), "#sofa_green"),
-            bx((3, 8, 11.8), (4.2, 18, 13), "#oak"), bx((11.8, 8, 11.8), (13, 18, 13), "#oak"),
-            bx((4.2, 13, 12), (11.8, 17.5, 12.8), "#oak")]
-    return els, {"oak": t("oak"), "sofa_green": t("sofa_green")}
+    """A dining chair: tapered front legs, back legs running up into the back posts, side and
+    cross stretchers, an upholstered pad on the seat and a back of three spindles under a top rail."""
+    o = "#oak"
+    els = []
+    for x in (3.2, 11.8):
+        els += [bx((x + 0.1, 0, 3.3), (x + 0.9, 3.6, 4.1), o), bx((x, 3.6, 3.2), (x + 1.0, 6.6, 4.2), o),
+                bx((x, 0, 11.8), (x + 1.0, 6.6, 12.8), o), bx((x, 6.6, 12.0), (x + 1.0, 19.6, 13.0), o)]
+    els += [bx((3.5, 2.2, 4.2), (4.1, 2.8, 11.8), o), bx((12.1, 2.2, 4.2), (12.7, 2.8, 11.8), o),
+            bx((4.2, 1.6, 7.7), (11.8, 2.2, 8.3), o),
+            bx((3.0, 6.6, 3.0), (13.0, 7.6, 13.0), o),
+            bx((3.3, 7.6, 3.2), (12.7, 8.3, 11.8), "#sofa_green"),
+            bx((3.6, 8.3, 3.5), (12.4, 8.7, 11.5), "#cushion_green", faces=("up", "north", "east", "west"), full=("up",)),
+            bx((4.2, 17.4, 12.0), (11.8, 19.4, 12.9), o), bx((4.2, 10.6, 12.1), (11.8, 11.6, 12.7), o)]
+    for x in (5.5, 7.6, 9.7):
+        els.append(bx((x, 11.6, 12.2), (x + 0.8, 17.4, 12.6), o))
+    return els, {"oak": t("oak"), "sofa_green": t("sofa_green"), "cushion_green": t("cushion_green")}
 
 
 # ----------------------------------------------------------------- kitchen
 
-def base_unit(fin, front, top=None, extra=()):
-    """A floor cupboard 90 cm high with a worktop, the plinth set back under the doors."""
-    worktop = "#worktop_dark" if fin == "white" else "#worktop_light"
-    els = [bx((0.4, 0, 1.6), (15.6, 1, 16), "#plinth"),
-           bx((0, 1, 1), (16, 13.2, 16), f"#carcass_{fin}", front=front, full=("north",)),
-           bx((0, 13.2, 0.2), (16, 14, 16), worktop, front=None,
-              uv={"up": [0, 0, 16, 16]} if top is None else None)]
-    if top:
-        els[-1]["faces"]["up"] = {"texture": top, "uv": [0, 0, 16, 16]}
-    els += list(extra)
-    tex = {f"carcass_{fin}": t(f"carcass_{fin}"), worktop[1:]: t(worktop[1:]), "plinth": t("plinth"),
-           front[1:]: t(front[1:])}
-    if top:
-        tex[top[1:]] = t(top[1:])
+def base_unit(fin, fronts, top=None, extra=(), worktop=True):
+    """A floor cupboard 90 cm high: a recessed plinth, the carcass, fronts standing proud of it with
+    their handles, and a worktop overhanging the front."""
+    carcass = f"#carcass_{fin}"
+    wt = "#worktop_dark" if fin == "white" else "#worktop_light"
+    els = [bx((0.4, 0, 1.8), (15.6, 1.2, 16), "#plinth"),
+           bx((0, 1.2, 1.2), (16, 13.2, 16), carcass, faces=("north", "east", "south", "west"))]
+    if worktop:
+        els.append(bx((0, 13.2, 0), (16, 14, 16), wt))
+        if top:
+            els[-1]["faces"]["up"] = {"texture": top, "uv": [0, 0, 16, 16]}
+    els += list(fronts) + list(extra)
+    tex = {f"carcass_{fin}": t(f"carcass_{fin}"), wt[1:]: t(wt[1:]), "plinth": t("plinth"), "chrome": t("chrome")}
     return els, tex
 
 
 def kitchen_unit(fin):
-    return base_unit(fin, f"#door_{fin}")
+    els, tex = base_unit(fin, [front(0.2, 1.4, 15.8, 13.0, 1.2, f"#door_plain_{fin}", f"#carcass_{fin}")]
+                         + hbar(10.4, 14.6, 11.6, 0.8))
+    tex[f"door_plain_{fin}"] = t(f"door_plain_{fin}")
+    return els, tex
 
 
 def kitchen_drawers(fin):
-    return base_unit(fin, f"#drawers_{fin}")
+    fronts = []
+    for y0, y1 in ((1.4, 4.9), (5.1, 8.9), (9.1, 13.0)):
+        fronts.append(front(0.2, y0, 15.8, y1, 1.2, f"#drawer_{fin}", f"#carcass_{fin}"))
+        fronts += hbar(5.4, 10.6, y1 - 1.0, 0.8)
+    els, tex = base_unit(fin, fronts)
+    tex[f"drawer_{fin}"] = t(f"drawer_{fin}")
+    return els, tex
 
 
 def kitchen_sink(fin):
-    tap = [bx((7.4, 14, 12.4), (8.6, 18.5, 13.6), "#chrome"), bx((7.5, 17.6, 9.2), (8.5, 18.6, 13), "#chrome"),
-           bx((7.5, 16.4, 9.2), (8.5, 17.6, 10.2), "#chrome"), bx((6, 14, 12.6), (6.8, 15.5, 13.4), "#chrome"),
-           bx((9.2, 14, 12.6), (10, 15.5, 13.4), "#chrome")]
-    els, tex = base_unit(fin, f"#doors_{fin}", top="#sink_top", extra=tap)
-    tex["chrome"] = t("chrome")
+    """The sink unit: a stainless bowl let into the worktop with a ribbed drainer beside it, a
+    swan-neck mixer tap, and a pair of doors underneath."""
+    wt = "#worktop_dark" if fin == "white" else "#worktop_light"
+    ox0, oz0, ox1, oz1 = 2.2, 2.6, 9.4, 12.4
+    fronts = [front(0.2, 1.4, 7.9, 13.0, 1.2, f"#door_half_{fin}", f"#carcass_{fin}"),
+              front(8.1, 1.4, 15.8, 13.0, 1.2, f"#door_half_{fin}", f"#carcass_{fin}")]
+    fronts += vbar(7.2, 9.6, 12.4, 0.8) + vbar(8.8, 9.6, 12.4, 0.8)
+    top = rim(0, 0, 16, 16, ox0, oz0, ox1, oz1, 13.2, 14, wt)
+    top += bowl(ox0, oz0, ox1, oz1, 10.6, 14, "#stainless")
+    top += [bx((ox0 - 0.4, 14, oz0 - 0.4), (ox1 + 0.4, 14.12, oz0), "#stainless"),
+            bx((ox0 - 0.4, 14, oz1), (ox1 + 0.4, 14.12, oz1 + 0.4), "#stainless"),
+            bx((ox0 - 0.4, 14, oz0), (ox0, 14.12, oz1), "#stainless"),
+            bx((ox1, 14, oz0), (ox1 + 0.4, 14.12, oz1), "#stainless"),
+            bx((ox1 + 0.4, 14, oz0 - 0.4), (15.2, 14.12, oz1 + 0.4), "#stainless", uv={"up": [10, 1.5, 15, 14.5]}),
+            bx((5.3, 10.61, 7.0), (6.3, 10.62, 8.0), "#black", faces=("up",))]
+    for el in top[-2:-1]:
+        el["faces"]["up"]["texture"] = "#sink_top"
+    tap = [bx((5.2, 14.12, 12.6), (6.4, 15.0, 13.8), "#chrome"),
+           bx((5.4, 15.0, 12.8), (6.2, 18.6, 13.6), "#chrome"),
+           bx((5.4, 18.6, 9.8), (6.2, 19.4, 13.6), "#chrome"),
+           bx((5.4, 17.4, 9.8), (6.2, 18.6, 10.6), "#chrome"),
+           bx((6.2, 16.0, 12.9), (7.8, 16.5, 13.5), "#chrome")]
+    els, tex = base_unit(fin, fronts, extra=top + tap, worktop=False)
+    tex.update({f"door_half_{fin}": t(f"door_half_{fin}"), "stainless": t("stainless"), "sink_top": t("sink_top"),
+                "black": t("black")})
     return els, tex
 
 
 def kitchen_oven(fin, on):
+    """Built-under oven with a ceramic hob above: a steel control strip with four knobs and a clock,
+    a black glass door with a bar handle (the window glows when it's on) and the hob's rings glow red."""
     hob = "#hob_on" if on else "#hob"
-    oven = "#oven_on" if on else "#oven"
-    els, tex = base_unit(fin, oven, top=hob)
-    els[1]["faces"]["north"] = {"texture": oven, "uv": [0, 0, 16, 16]}
+    door = "#oven_door_on" if on else "#oven_door"
+    fronts = [front(0.2, 10.9, 15.8, 13.0, 1.2, "#oven_fascia", "#stainless"),
+              front(0.2, 1.4, 15.8, 10.7, 1.2, door, "#stainless")]
     if on:
-        els.append(bx((0.5, 13.21, 0.5), (15.5, 14.01, 15.5), hob, faces=("up",), full=("up",), emissive=True))
-        els.append(bx((0.6, 2, 0.98), (15.4, 11.6, 1), oven, faces=("north",), emissive=True,
-                      uv={"north": [0.6, 4.4, 15.4, 14]}))
+        fronts[-1]["shade"] = False
+        fronts[-1]["forge_data"] = {"block_light": 15, "sky_light": 15}
+    for x in (2.0, 4.0, 12.0, 14.0):
+        fronts += knob(x, 11.95, 0.8)
+    fronts += hbar(2.0, 14.0, 9.6, 0.8, d=1.1)
+    glass = bx((0.8, 14.0, 1.0), (15.2, 14.2, 14.4), hob, faces=("up", "north", "east", "west", "south"),
+               full=("up",), emissive=on)
+    els, tex = base_unit(fin, fronts, extra=[glass])
+    tex.update({"oven_fascia": t("oven_fascia"), door[1:]: t(door[1:]), "stainless": t("stainless"), hob[1:]: t(hob[1:])})
     return els, tex
 
 
 def kitchen_wall_unit(fin):
-    els = [bx((0, 5, 9), (16, 16, 16), f"#carcass_{fin}", front=f"#wall_doors_{fin}", full=("north",))]
-    return els, {f"carcass_{fin}": t(f"carcass_{fin}"), f"wall_doors_{fin}": t(f"wall_doors_{fin}")}
+    carcass = f"#carcass_{fin}"
+    els = [bx((0, 5, 9.4), (16, 16, 16), carcass, faces=("east", "south", "west", "up", "down")),
+           front(0.2, 5.2, 7.9, 15.8, 9.4, f"#wall_door_{fin}", carcass),
+           front(8.1, 5.2, 15.8, 15.8, 9.4, f"#wall_door_{fin}", carcass)]
+    els += vbar(7.2, 5.8, 8.4, 9.0) + vbar(8.8, 5.8, 8.4, 9.0)
+    return els, {f"carcass_{fin}": t(f"carcass_{fin}"), f"wall_door_{fin}": t(f"wall_door_{fin}"), "chrome": t("chrome")}
 
 
 def fridge_freezer():
-    els = [bx((0.5, 0, 1.2), (15.5, 16, 16), "#white_gloss", front="#fridge_lower", full=("north",)),
-           bx((0.5, 16, 1.2), (15.5, 31, 16), "#white_gloss", front="#fridge_upper", full=("north",)),
-           bx((1, 0, 1.6), (15, 0.6, 2), "#black")]
-    els[1]["faces"]["north"]["uv"] = [0, 0, 16, 15]
-    return els, {"white_gloss": t("white_gloss"), "fridge_lower": t("fridge_lower"), "fridge_upper": t("fridge_upper"),
-                 "black": t("black")}
+    """Fridge above, freezer below: two doors with a gap between, upright handles, a kick plate."""
+    g = "#white_gloss"
+    els = [bx((0.5, 0.8, 1.6), (15.5, 16, 16), g, faces=("east", "south", "west")),
+           bx((0.5, 16, 1.6), (15.5, 31, 16), g, faces=("east", "south", "west", "up")),
+           bx((1, 0, 2), (15, 0.8, 15.6), "#black"),
+           front(0.5, 0.8, 15.5, 12.4, 1.6, g, g, d=0.5),
+           bx((2.4, 25.4, 1.05), (5.4, 27.4, 1.1), "#dark_grey", faces=("north",))]
+    els[3]["faces"]["north"]["uv"] = [0, 0, 16, 16]
+    els += split_front(0.5, 12.6, 15.5, 31, 1.6, g, g, [0, 0, 16, 16], d=0.5)
+    els += vbar(13.4, 8.0, 11.8, 1.1, d=0.9) + vbar(13.4, 13.4, 20.4, 1.1, d=0.9)
+    return els, {"white_gloss": t("white_gloss"), "black": t("black"), "chrome": t("chrome"), "dark_grey": t("dark_grey")}
 
 
 def washing_machine(on):
     face = "#washer_on" if on else "#washer"
-    els = [bx((0.5, 0, 1), (15.5, 14, 16), "#white_gloss", front=face, full=("north",))]
+    els = [bx((0.5, 0, 1.2), (15.5, 14, 16), "#white_gloss", front=face, full=("north",))]
     if on:
         els.append(bx((2, 1, 0.98), (14, 12, 1), face, faces=("north",), emissive=False, uv={"north": [2, 3, 14, 15]}))
-    return els, {"white_gloss": t("white_gloss"), face[1:]: t(face[1:])}
+    els += ring(8.0, 5.7, 4.7, 1.2) + knob(12.6, 12.7, 1.2, r=0.9, d=0.7, tex="#white_gloss")
+    els += [bx((1.4, 11.6, 0.8), (5.6, 13.3, 1.2), "#white_gloss"), bx((2.0, 12.0, 0.75), (5.0, 12.5, 0.8), "#dark_grey",
+                                                                        faces=("north",))]
+    return els, {"white_gloss": t("white_gloss"), face[1:]: t(face[1:]), "chrome": t("chrome"), "dark_grey": t("dark_grey")}
+
+
+def ring(cx, cy, r, zf, tex="#chrome", w=0.8, d=0.4):
+    """An eight-sided ring standing proud of a front at z = zf (the washing machine's door)."""
+    side = 2 * r * math.tan(math.radians(22.5)) + w * 0.4
+    els = [bx((cx - side / 2, cy + r - w / 2, zf - d), (cx + side / 2, cy + r + w / 2, zf), tex),
+           bx((cx - side / 2, cy - r - w / 2, zf - d), (cx + side / 2, cy - r + w / 2, zf), tex),
+           bx((cx - r - w / 2, cy - side / 2, zf - d), (cx - r + w / 2, cy + side / 2, zf), tex),
+           bx((cx + r - w / 2, cy - side / 2, zf - d), (cx + r + w / 2, cy + side / 2, zf), tex)]
+    q = r / math.sqrt(2)
+    for sx, sy in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+        px, py = cx + sx * q, cy + sy * q
+        els.append(bx((px - side / 2, py - w / 2, zf - d), (px + side / 2, py + w / 2, zf), tex,
+                      rot=("z", -45 if sx == sy else 45, (px, py, zf - d / 2))))
+    return els
 
 
 def microwave(on):
-    face = "#microwave_on" if on else "#microwave"
-    els = [bx((3, 0, 6), (13, 5.6, 13.5), "#black", front=face, full=("north",))]
+    door = "#microwave_door_on" if on else "#microwave_door"
+    panel = "#microwave_panel_on" if on else "#microwave_panel"
+    els = [bx((3, 0.3, 6.3), (13, 5.6, 13.5), "#black", faces=("east", "south", "west", "up", "down")),
+           front(3.1, 0.4, 10.3, 5.5, 6.3, door, "#black", d=0.3),
+           front(10.4, 0.4, 12.9, 5.5, 6.3, panel, "#black", d=0.15)]
     if on:
-        els.append(bx((3.4, 0.8, 5.98), (10.8, 4.9, 6), face, faces=("north",), emissive=True,
-                      uv={"north": [0.6, 1.5, 11, 14.2]}))
-    return els, {"black": t("black"), face[1:]: t(face[1:])}
+        for el in els[1:3]:
+            el["shade"] = False
+            el["forge_data"] = {"block_light": 15, "sky_light": 15}
+    els += vbar(9.8, 1.0, 4.9, 6.0, tex="#dark_grey", d=0.6, t=0.4)
+    els += [bx((x, 0, z), (x + 0.6, 0.3, z + 0.6), "#dark_grey") for x in (3.4, 12.0) for z in (6.6, 12.6)]
+    return els, {"black": t("black"), door[1:]: t(door[1:]), panel[1:]: t(panel[1:]), "dark_grey": t("dark_grey")}
 
 
 def kettle(on):
-    els = [bx((5, 0, 6), (10, 0.6, 11), "#black"), bx((5.5, 0.6, 6.5), (9.5, 6, 10.5), "#stainless"),
-           bx((6, 6, 7), (9, 6.6, 10), "#black"), bx((9.5, 1.6, 8), (10.8, 5.6, 9), "#black"),
-           bx((4.3, 3.6, 8.1), (5.5, 4.8, 8.9), "#stainless"),
-           bx((9.6, 1, 8.2), (10, 1.6, 8.8), "#bulb" if on else "#black", emissive=on)]
+    """A jug kettle: round base, round steel body and lid, a handle on one side, the spout on the other."""
+    els = moved(G.round_column(2.6, 0, 0.6, "#black", top=True), -0.5, 0.5)
+    els += moved(G.round_column(2.1, 0.6, 5.6, "#stainless", top=True), -0.5, 0.5)
+    els += moved(G.round_column(1.3, 5.6, 6.2, "#black", top=True), -0.5, 0.5)
+    els = [json.loads(json.dumps(e)) for e in els]
+    els += [bx((9.8, 1.6, 8.1), (10.6, 5.4, 8.9), "#black"), bx((9.2, 4.8, 8.1), (10.6, 5.4, 8.9), "#black"),
+            bx((9.2, 1.6, 8.1), (10.6, 2.2, 8.9), "#black"),
+            bx((4.3, 3.6, 8.1), (5.6, 4.6, 8.9), "#stainless"),
+            bx((9.75, 2.6, 8.2), (9.85, 3.2, 8.8), "#bulb" if on else "#black", emissive=on)]
     return els, {"black": t("black"), "stainless": t("stainless"), "bulb": t("bulb")}
 
 
 def toaster(on):
-    els = [bx((4, 0.3, 5.5), (12, 5, 10.5), "#stainless"),
-           bx((4.3, 0, 5.8), (11.7, 0.3, 10.2), "#black"),
-           bx((12, 1.4 if on else 3, 7.5), (12.6, 2.2 if on else 3.8, 8.5), "#black")]
-    els[0]["faces"]["up"] = {"texture": "#toaster_top", "uv": [0, 0, 16, 16]}
+    els = [bx((4.0, 0, 5.5), (12.0, 0.4, 10.5), "#black"),
+           bx((4.3, 0.4, 5.8), (11.7, 4.4, 10.2), "#stainless"),
+           bx((4.6, 4.4, 6.1), (11.4, 4.9, 9.9), "#stainless"),
+           bx((12, 1.4 if on else 3, 7.5), (12.6, 2.2 if on else 3.8, 8.5), "#black"),
+           bx((3.6, 1.4, 7.6), (4.3, 2.2, 8.4), "#black")]
+    els[2]["faces"]["up"] = {"texture": "#toaster_top", "uv": [0, 0, 16, 16]}
     return els, {"stainless": t("stainless"), "black": t("black"), "toaster_top": t("toaster_top")}
 
 
 # ----------------------------------------------------------------- bathroom
 
 def toilet():
-    els = [bx((5.2, 0, 4), (10.8, 5.5, 10.5), "#ceramic"),
-           bx((4, 4, 1.4), (12, 7, 11.2), "#ceramic"),
-           bx((4, 7, 1.4), (12, 7.6, 11.2), "#ceramic", full=("up",)),
-           bx((3, 5.5, 11.2), (13, 15, 15.2), "#ceramic"),
-           bx((7.4, 15, 12.6), (8.6, 15.2, 13.8), "#chrome")]
-    els[2]["faces"]["up"] = {"texture": "#toilet_seat", "uv": [0, 0, 16, 16]}
-    return els, {"ceramic": t("ceramic"), "chrome": t("chrome"), "toilet_seat": t("toilet_seat")}
+    """A close-coupled toilet: foot, pedestal and a rounded bowl, a white seat with the lid down,
+    the cistern behind with its lid and a dual flush button."""
+    c = "#ceramic"
+    els = [bx((5.0, 0, 4.6), (11.0, 0.6, 11.0), c), bx((5.6, 0.6, 5.2), (10.4, 4.2, 10.8), c),
+           bx((4.6, 4.2, 2.8), (11.4, 5.8, 11.4), c), bx((4.0, 5.8, 1.8), (12.0, 7.0, 11.6), c),
+           bx((4.0, 7.0, 1.6), (12.0, 7.5, 11.4), "#white_gloss"),
+           bx((4.1, 7.5, 1.7), (11.9, 8.0, 11.3), "#white_gloss"),
+           bx((5.2, 7.0, 11.4), (6.2, 7.8, 12.0), "#chrome"), bx((9.8, 7.0, 11.4), (10.8, 7.8, 12.0), "#chrome"),
+           bx((3.4, 6.4, 11.8), (12.6, 14.6, 15.2), c), bx((3.2, 14.6, 11.6), (12.8, 15.2, 15.4), c),
+           bx((6.9, 15.2, 13.0), (7.9, 15.4, 14.0), "#chrome"), bx((8.1, 15.2, 13.0), (9.1, 15.4, 14.0), "#chrome")]
+    return els, {"ceramic": t("ceramic"), "chrome": t("chrome"), "white_gloss": t("white_gloss")}
 
 
 def basin():
-    els = [bx((6, 0, 9), (10, 10.5, 13), "#ceramic"),
-           bx((2, 10.5, 5), (14, 13.5, 15), "#ceramic"),
-           bx((7.4, 13.5, 13), (8.6, 16, 14.2), "#chrome"), bx((7.5, 15.2, 10.6), (8.5, 16.2, 14), "#chrome")]
-    els[1]["faces"]["up"] = {"texture": "#basin_top", "uv": [0, 0, 16, 16]}
-    return els, {"ceramic": t("ceramic"), "chrome": t("chrome"), "basin_top": t("basin_top")}
+    """A pedestal basin: a flared pedestal, the basin with a real bowl in it, a plug and a mixer tap."""
+    c = "#ceramic"
+    els = [bx((6.0, 0, 9.0), (10.0, 0.6, 13.4), c), bx((6.4, 0.6, 9.4), (9.6, 6.0, 13.0), c),
+           bx((6.0, 6.0, 9.0), (10.0, 10.2, 13.4), c), bx((3.0, 10.2, 6.0), (13.0, 11.6, 14.6), c)]
+    els += rim(2, 5, 14, 15, 4, 6.6, 12, 12.8, 11.6, 13.5, c)
+    els += bowl(4, 6.6, 12, 12.8, 11.8, 13.5, c)
+    els += [bx((7.6, 11.81, 9.2), (8.4, 11.82, 10.0), "#chrome", faces=("up",)),
+            bx((7.4, 13.5, 13.4), (8.6, 15.4, 14.4), "#chrome"), bx((7.5, 14.8, 11.0), (8.5, 15.6, 14.0), "#chrome"),
+            bx((7.7, 15.6, 13.0), (8.3, 16.2, 14.6), "#chrome")]
+    return els, {"ceramic": t("ceramic"), "chrome": t("chrome")}
 
 
-def bath(part):
-    """Half of a bath (two blocks long): the left half has the taps."""
+def bath(part, on=False):
+    """Half of a fitted bath (two blocks long): a panel along the front, a rolled rim, a real tub
+    inside with a sloped back at the far end; the left half has the deck mixer, the overflow and
+    the plug. Full of water when the taps have been run (on)."""
     left = part == "left"
-    els = [bx((0, 0, 4.5), (16, 9, 5.5), "#white_gloss"),
-           bx((0, 0, 15), (16, 9, 16), "#ceramic"),
-           bx((0, 0, 5.5), (16, 2, 15), "#ceramic"),
-           bx((0, 8.2, 4.5), (16, 9, 16), "#ceramic", faces=("up",))]
-    els[-1]["faces"]["up"] = {"texture": "#bath_top", "uv": [0, 0, 8, 16] if left else [8, 0, 16, 16]}
-    els = els[:3] + [bx((0, 8.2, 4.5), (16, 9, 5.5), "#ceramic"), bx((0, 8.2, 15), (16, 9, 16), "#ceramic")]
+    c = "#ceramic"
+    ox0, ox1 = (1.2, 16) if left else (0, 14.6)
+    els = [bx((0, 0, 4.5), (16, 8.2, 5.1), "#white_gloss", faces=("north", "down")),
+           bx((0, 0, 15.2), (16, 8.2, 16), c, faces=("south", "down")),
+           bx((0, 0, 5.9), (16, 1.8, 15.2), c, faces=("down",))]
+    els += [e for e in rim(0, 4.5, 16, 16, ox0, 5.9, ox1, 14.4, 8.2, 9.0, c)
+            if e["to"][0] - e["from"][0] > 0.01 and e["to"][2] - e["from"][2] > 0.01]
+    inside = bowl(ox0, 5.9, ox1, 14.4, 2.0, 8.2, c)
+    els += inside[:3] + ([inside[3]] if left else [inside[4]])
+    els.append(bx((0 if left else 15.2, 0, 5.1), (0.8 if left else 16, 8.2, 15.2), c, faces=("west",) if left else ("east",)))
     if left:
-        els.append(bx((0, 0, 5.5), (1.2, 9, 15), "#ceramic"))
-        els += [bx((2, 9, 13.4), (3, 11.4, 14.4), "#chrome"), bx((2, 10.6, 11.4), (3, 11.4, 14.4), "#chrome"),
-                bx((4, 9, 13.4), (5, 10.6, 14.4), "#chrome")]
+        els += [bx((ox0, 6.4, 9.6), (ox0 + 0.05, 7.2, 10.4), "#chrome", faces=("east",)),
+                bx((2.4, 2.01, 9.6), (3.2, 2.02, 10.4), "#chrome", faces=("up",)),
+                bx((3.4, 9.0, 14.6), (4.4, 11.0, 15.4), "#chrome"), bx((3.5, 10.6, 12.2), (4.3, 11.4, 15.0), "#chrome"),
+                bx((2.0, 9.0, 14.7), (2.8, 10.0, 15.3), "#chrome"), bx((5.0, 9.0, 14.7), (5.8, 10.0, 15.3), "#chrome"),
+                bx((1.7, 10.0, 14.6), (3.1, 10.3, 15.4), "#chrome"), bx((4.7, 10.0, 14.6), (6.1, 10.3, 15.4), "#chrome")]
     else:
-        els.append(bx((14.8, 0, 5.5), (16, 9, 15), "#ceramic"))
-    return els, {"white_gloss": t("white_gloss"), "ceramic": t("ceramic"), "chrome": t("chrome")}
+        els.append(bx((13.2, 2.0, 6.0), (13.6, 8.6, 14.3), c, rot=("z", 22.5, (13.4, 2.0, 10.0))))
+    tex = {"white_gloss": t("white_gloss"), "ceramic": t("ceramic"), "chrome": t("chrome")}
+    if on:
+        els.append(bx((ox0, 6.4, 5.9), (ox1, 6.5, 14.4), "#water", faces=("up",)))
+        tex["water"] = t("water")
+    return els, tex
 
 
 def shower():
@@ -571,39 +764,63 @@ def towel_radiator():
 
 
 def bathroom_cabinet():
-    els = [bx((2, 4, 11.5), (14, 15, 16), "#white_gloss", front="#mirror", full=("north",))]
+    els = [bx((2, 4, 12), (14, 15, 16), "#white_gloss", faces=("east", "south", "west", "up", "down")),
+           front(2.1, 4.1, 13.9, 14.9, 12, "#mirror", "#white_gloss", d=0.5),
+           bx((2.6, 3.4, 11.2), (13.4, 4.0, 12.0), "#white_gloss")]
     return els, {"white_gloss": t("white_gloss"), "mirror": t("mirror")}
 
 
 # ----------------------------------------------------------------- bedroom and study
 
 def wardrobe(fin):
-    els = [bx((0.4, 0, 2.4), (15.6, 1, 15.6), "#plinth"),
-           bx((0, 1, 2), (16, 16, 16), f"#carcass_{fin}", front=f"#wardrobe_lower_{fin}", full=("north",)),
-           bx((0, 16, 2), (16, 31, 16), f"#carcass_{fin}", front=f"#wardrobe_upper_{fin}", full=("north",)),
-           bx((-0.2, 31, 1.6), (16.2, 32, 16), f"#carcass_{fin}")]
-    els[1]["faces"]["north"]["uv"] = [0, 0, 16, 15]
-    return els, {"plinth": t("plinth"), f"carcass_{fin}": t(f"carcass_{fin}"),
-                 f"wardrobe_lower_{fin}": t(f"wardrobe_lower_{fin}"), f"wardrobe_upper_{fin}": t(f"wardrobe_upper_{fin}")}
+    carcass = f"#carcass_{fin}"
+    doors = split_front(8.05, 1.2, 15.85, 30.4, 2.4, f"#wardrobe_{fin}", carcass, [0, 0, 8, 16]) \
+        + split_front(0.15, 1.2, 7.95, 30.4, 2.4, f"#wardrobe_{fin}", carcass, [8, 0, 16, 16])
+    els = [bx((0.4, 0, 2.8), (15.6, 1, 15.6), "#plinth"),
+           bx((0, 1, 2.4), (16, 16, 16), carcass, faces=("east", "south", "west")),
+           bx((0, 16, 2.4), (16, 30.6, 16), carcass, faces=("east", "south", "west")),
+           bx((-0.3, 30.6, 1.6), (16.3, 31.4, 16), carcass), bx((0, 31.4, 2.0), (16, 32, 16), carcass)] + doors
+    els += vbar(7.3, 13.2, 19.6, 2.0) + vbar(8.7, 13.2, 19.6, 2.0)
+    return els, {"plinth": t("plinth"), f"carcass_{fin}": t(f"carcass_{fin}"), f"wardrobe_{fin}": t(f"wardrobe_{fin}"),
+                 "chrome": t("chrome")}
 
 
 def chest_of_drawers(fin):
-    els = [bx((0.5, 0, 2.5), (15.5, 1, 15.5), "#plinth"),
-           bx((0, 1, 2), (16, 14, 16), f"#carcass_{fin}", front=f"#drawers_{fin}", full=("north",))]
-    return els, {"plinth": t("plinth"), f"carcass_{fin}": t(f"carcass_{fin}"), f"drawers_{fin}": t(f"drawers_{fin}")}
+    """Two small drawers over three big ones, each with its own handle, under an overhanging top."""
+    carcass = f"#carcass_{fin}"
+    els = [bx((0.5, 0, 2.8), (15.5, 1, 15.5), "#plinth"),
+           bx((0, 1, 2.4), (16, 13.2, 16), carcass, faces=("east", "south", "west")),
+           bx((0, 13.2, 1.6), (16, 14, 16), carcass)]
+    for y0, y1 in ((1.2, 4.2), (4.4, 7.4), (7.6, 10.4)):
+        els.append(front(0.2, y0, 15.8, y1, 2.4, f"#drawer_{fin}", carcass))
+        els += hbar(5.8, 10.2, (y0 + y1) / 2 + 0.4, 2.0, d=0.8)
+    els += [front(8.1, 10.6, 15.8, 13.0, 2.4, f"#drawer_half_{fin}", carcass),
+            front(0.2, 10.6, 7.9, 13.0, 2.4, f"#drawer_half_{fin}", carcass)]
+    els += knob(4.0, 11.8, 2.0) + knob(12.0, 11.8, 2.0)
+    return els, {"plinth": t("plinth"), f"carcass_{fin}": t(f"carcass_{fin}"), f"drawer_{fin}": t(f"drawer_{fin}"),
+                 f"drawer_half_{fin}": t(f"drawer_half_{fin}"), "chrome": t("chrome")}
 
 
 def bedside_table(fin):
-    els = [bx((1.5, 0, 2.5), (14.5, 8, 15.5), f"#carcass_{fin}", front=f"#drawers2_{fin}", full=("north",))]
-    return els, {f"carcass_{fin}": t(f"carcass_{fin}"), f"drawers2_{fin}": t(f"drawers2_{fin}")}
+    carcass = f"#carcass_{fin}"
+    els = [bx((1.6, 0.8, 2.9), (14.4, 7.4, 15.4), carcass, faces=("east", "south", "west", "down")),
+           bx((1.4, 7.4, 2.3), (14.6, 8, 15.5), carcass),
+           front(1.7, 1.0, 14.3, 4.0, 2.9, f"#drawer_{fin}", carcass),
+           front(1.7, 4.2, 14.3, 7.2, 2.9, f"#drawer_{fin}", carcass)]
+    els += knob(8, 2.5, 2.5) + knob(8, 5.7, 2.5)
+    els += legs(1.8, 3.0, 14.2, 15.2, 0.8, 0.8, carcass)
+    return els, {f"carcass_{fin}": t(f"carcass_{fin}"), f"drawer_{fin}": t(f"drawer_{fin}"), "chrome": t("chrome")}
 
 
 def desk():
     els = [bx((0, 11, 1), (16, 12, 15), "#oak"),
-           bx((10.5, 0, 1.6), (15.6, 11, 14.4), "#oak", front="#desk_drawers", full=("north",)),
+           bx((10.4, 0.3, 1.8), (15.6, 11, 14.4), "#oak", faces=("east", "south", "west", "down")),
            bx((0.4, 0, 1.6), (1.6, 11, 14.4), "#oak"),
-           bx((1.6, 4, 13.6), (10.5, 11, 14.4), "#oak")]
-    return els, {"oak": t("oak"), "desk_drawers": t("desk_drawers")}
+           bx((1.6, 4, 13.6), (10.4, 11, 14.4), "#oak")]
+    for y0, y1 in ((0.5, 3.8), (4.0, 7.3), (7.5, 10.8)):
+        els.append(front(10.6, y0, 15.4, y1, 1.8, "#drawer_half_oak", "#oak"))
+        els += hbar(11.8, 14.2, y1 - 0.9, 1.4, d=0.7)
+    return els, {"oak": t("oak"), "drawer_half_oak": t("drawer_half_oak"), "chrome": t("chrome")}
 
 
 def office_chair():
@@ -1255,17 +1472,17 @@ def _home():
           group="kitchen", sound="METAL"),
         F("washing_machine", "Washing Machine", washing_machine, shape=(0.5, 0, 1, 15.5, 14, 16), toggle=True, run=600,
           effect="washer", surface="counter", group="kitchen", sound="METAL"),
-        F("microwave", "Microwave", microwave, "tabletop", (3, 0, 6, 13, 5.6, 13.5), light=6, run=200,
+        F("microwave", "Microwave", microwave, "tabletop", (3, 0, 6, 13, 5.6, 13.5), light=6, oven=True,
           effect="microwave", group="kitchen", sound="METAL"),
         F("kettle", "Kettle", kettle, "tabletop", (4.3, 0, 6, 10.8, 6.6, 11), toggle=True, run=100, effect="kettle",
           group="kitchen", sound="METAL"),
         F("toaster", "Toaster", toaster, "tabletop", (4, 0, 5.5, 12.6, 5, 10.5), toggle=True, run=80, effect="toaster",
           group="kitchen", sound="METAL"),
-        F("toilet", "Toilet", toilet, shape=(3, 0, 1.4, 13, 15.2, 15.2), seat=7.6, effect="flush", group="bathroom",
+        F("toilet", "Toilet", toilet, shape=(3, 0, 1.4, 13, 15.2, 15.2), seat=8.0, effect="flush", group="bathroom",
           sound="STONE"),
         F("basin", "Bathroom Basin", basin, shape=(2, 0, 5, 14, 13.5, 15), toggle=True, run=60, effect="tap",
           group="bathroom", sound="STONE"),
-        F("bath", "Bath", bath, "wide", (0, 0, 4.5, 16, 9, 16), seat=2.2, toggle=True, run=100, effect="bath",
+        F("bath", "Bath", bath, "wide", (0, 0, 4.5, 16, 9, 16), seat=2.2, toggle=True, effect="bath",
           group="bathroom", sound="STONE"),
         F("shower", "Walk-in Shower", shower, "tall", (0, 0, 0, 16, 1, 16), toggle=True, run=400, effect="shower",
           group="bathroom", sound="STONE", translucent=True),
@@ -1490,11 +1707,14 @@ def write_block(f):
                 variants.update(_facings(f"half=upper,lit={lit}", empty))
     elif f.kind == "wide":
         whole = []
+        fills = len(inspect.signature(f.builder).parameters) > 1     # its model changes when it's on
         for part in ("left", "right"):
-            els, tex = f.builder(part)
-            mid = _write_model(f"{n}_{part}", els, tex, f)
             for lit in lit_states:
+                on = fills and lit == "true"
+                els, tex = f.builder(part, on) if fills else f.builder(part)
+                mid = _write_model(f"{n}_{part}{'_on' if on else ''}", els, tex, f)
                 variants.update(_facings(f"lit={lit},part={part}", mid))
+            els, tex = f.builder(part)
             whole += json.loads(json.dumps(els)) if part == "left" else \
                 [dict(e, **{"from": [e["from"][0] + 16] + e["from"][1:], "to": [e["to"][0] + 16] + e["to"][1:]}) for e in els]
         for e in whole:
