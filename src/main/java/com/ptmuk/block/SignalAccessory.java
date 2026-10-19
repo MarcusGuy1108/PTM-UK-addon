@@ -121,7 +121,7 @@ public class SignalAccessory extends Block {
      * Same attachment rules PTM2 uses when placing a traffic light (adapted from PTM2's
      * TrafficLight, MIT licence): prefer a streetpost behind or beside, then a solid block.
      */
-    static TrafficLightStates attachmentFor(Level level, BlockPos pos, int rot) {
+    public static TrafficLightStates attachmentFor(Level level, BlockPos pos, int rot) {
         int x = pos.getX(), y = pos.getY(), z = pos.getZ();
         if (rot % 2 == 1) {
             // diagonal: the corner behind, then the two blocks either side of it

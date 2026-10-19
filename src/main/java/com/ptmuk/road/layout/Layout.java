@@ -38,7 +38,7 @@ public final class Layout {
     private static final double SMOOTH = 14;
 
     public enum FixtureType {
-        STREET_LIGHT, SIGNAL,
+        STREET_LIGHT, SIGNAL, GIVE_WAY_SIGN, STOP_SIGN, NO_ENTRY_SIGN, BELISHA_BEACON,
         // on sites
         TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
         ORDER_POINT, MENU_BOARD, PICNIC_TABLE
@@ -58,6 +58,11 @@ public final class Layout {
     /** Columns that belong to something not built yet. */
     public final boolean[] dirty;
     public final List<Fixture> fixtures = new ArrayList<>();
+    /** A street nameplate on posts at the back of a pavement: which way its face looks (PTM2 rotation) and the street's name. */
+    public record Nameplate(int x, int z, float top, int rot8, String name) {
+    }
+
+    public final List<Nameplate> nameplates = new ArrayList<>();
     /** Effective junction type of each node (null = none). */
     public final Map<Integer, Junction> junctions = new HashMap<>();
     /** A traffic-light junction's controller zone (PTM2 intersection): the node and the area it covers. */
@@ -237,6 +242,7 @@ public final class Layout {
         classify();
         markings();
         lights();
+        nameplates();
         traffic();
         markDirty();
         for (Jn j : jns) {
@@ -1057,6 +1063,8 @@ public final class Layout {
             }
         }
         yellows();
+        zebras();
+        boxJunctions();
     }
 
     /**
@@ -1250,19 +1258,25 @@ public final class Layout {
 
     /** Coming along an arm towards a junction, the sample where the kerb starts curving away round a corner. */
     private int flareStart(Seg g, boolean atA, int mouth) {
+        // out from the junction (not in from the far end, which may have a junction of its own)
+        int away = atA ? 1 : -1, i = mouth;
+        while (i + away >= 0 && i + away < g.c.n && flared(g, i + away)) {
+            i += away;
+        }
+        return i;
+    }
+
+    /** Whether the kerb has curved away round a corner beside sample i of a road. */
+    private boolean flared(Seg g, int i) {
         Curve c = g.c;
-        int step = atA ? -1 : 1;
-        int start = atA ? c.n - 1 : 0;
-        for (int i = start; i != mouth; i += step) {
-            for (int sideSign = -1; sideSign <= 1; sideSign += 2) {
-                double d = sideSign * (g.hc + 0.5);
-                int idx = index((int) Math.floor(c.x[i] + c.leftX(i) * d), (int) Math.floor(c.z[i] + c.leftZ(i) * d));
-                if (idx >= 0 && carriage[idx] && (closed[idx] || core[idx])) {
-                    return i;
-                }
+        for (int sideSign = -1; sideSign <= 1; sideSign += 2) {
+            double d = sideSign * (g.hc + 0.5);
+            int idx = index((int) Math.floor(c.x[i] + c.leftX(i) * d), (int) Math.floor(c.z[i] + c.leftZ(i) * d));
+            if (idx >= 0 && carriage[idx] && (closed[idx] || core[idx])) {
+                return true;
             }
         }
-        return mouth;
+        return false;
     }
 
     private void giveWay(Jn j, Seg g, boolean atA, int i) {
@@ -1296,22 +1310,24 @@ public final class Layout {
             // a couple of blocks back from the line, where the kerb is still straight; step out to it
             int back = (int) Math.round(2 / Curve.STEP);
             int k0 = Math.max(0, Math.min(c.n - 1, atA ? i + back : i - back));
-            double kx = c.leftX(k0), kz = c.leftZ(k0);
             for (int sideSign : new int[]{side, -side}) {
-                int kerbs = 0;
-                for (double d = g.hc - 1; d < g.hc + j.radius + 8; d += 0.5) {
-                    double sd = sideSign * d;
-                    int idx = index((int) Math.floor(c.x[k0] + kx * sd), (int) Math.floor(c.z[k0] + kz * sd));
-                    if (idx < 0 || kind[idx] == NONE || kind[idx] == BLEND || (kind[idx] == KERB && ++kerbs > 6)) {
-                        break;
-                    }
-                    if (kind[idx] == FOOTWAY || kind[idx] == VERGE) {
-                        signalAt(cellX(idx), cellZ(idx), top[idx], inbound);
-                        break;
-                    }
+                int idx = pavement(g, k0, sideSign, j.radius + 8, false);
+                if (idx >= 0) {
+                    signalAt(cellX(idx), cellZ(idx), top[idx], inbound);
                 }
             }
             return;
+        }
+        // the sign to go with the line, on the pavement on the left a couple of blocks back
+        int signBack = (int) Math.round(2 / Curve.STEP);
+        roadSign(g, Math.max(0, Math.min(c.n - 1, atA ? i + signBack : i - signBack)), side, stop ? FixtureType.STOP_SIGN : FixtureType.GIVE_WAY_SIGN,
+                inbound, j.radius + 8);
+        if (g.st.oneWay) {
+            // where a one-way street comes out: no entry, both sides, for anyone turning in (just in, where the kerbs are straight)
+            int m = atA ? g.mouthA + signBack : g.mouthB - signBack;
+            for (int sideSign = -1; sideSign <= 1; sideSign += 2) {
+                roadSign(g, m, sideSign, FixtureType.NO_ENTRY_SIGN, (inbound + 4) % 8, j.radius + 8);
+            }
         }
         // a give-way triangle in each lane coming up to the line
         if (j.type == Junction.GIVE_WAY || j.type == Junction.ROUNDABOUT || j.type == Junction.MINI_ROUNDABOUT) {
@@ -1364,22 +1380,176 @@ public final class Layout {
                 }
             }
         }
-        // dropped kerbs with red tactile paving where the crossing meets each pavement
-        for (int k = Math.min(r1, r2); k <= Math.max(r1, r2); k += 2) {
+        tactile(g, Math.min(r1, r2), Math.max(r1, r2), j.radius + 8);
+    }
+
+    /** Dropped kerbs with tactile paving where a crossing over samples k0..k1 meets each pavement. */
+    private void tactile(Seg g, int k0, int k1, double reach) {
+        Curve c = g.c;
+        for (int k = k0; k <= k1; k += 2) {
             double lx = c.leftX(k), lz = c.leftZ(k);
             for (int sideSign = -1; sideSign <= 1; sideSign += 2) {
                 int paved = 0;
-                for (double d = g.hc - 1; d < g.hc + j.radius + 8 && paved < 3; d += 0.5) {
+                for (double d = g.hc - 1; d < g.hc + reach && paved < 3; d += 0.5) {
                     int idx = index((int) Math.floor(c.x[k] + lx * d * sideSign), (int) Math.floor(c.z[k] + lz * d * sideSign));
                     if (idx < 0 || kind[idx] == NONE || kind[idx] == BLEND || kind[idx] == VERGE) {
                         break;
                     }
-                    if (kind[idx] == KERB || kind[idx] == FOOTWAY || kind[idx] == TACTILE) {
-                        if (kind[idx] != TACTILE) {
-                            kind[idx] = TACTILE;
-                            paved++;
+                    if (kind[idx] == KERB || kind[idx] == FOOTWAY) {
+                        kind[idx] = TACTILE;
+                        paved++;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * The pavement (or verge) beside sample k of a road, on one side (sideSign: +1 the curve's
+     * left): the first cell out past the kerb, or (back) the last one before whatever's behind it. -1 if there's none within reach.
+     */
+    private int pavement(Seg g, int k, int sideSign, double reach, boolean back) {
+        Curve c = g.c;
+        double kx = c.leftX(k) * sideSign, kz = c.leftZ(k) * sideSign;
+        int kerbs = 0, found = -1;
+        for (double d = g.hc - 1; d < g.hc + reach; d += 0.5) {
+            int idx = index((int) Math.floor(c.x[k] + kx * d), (int) Math.floor(c.z[k] + kz * d));
+            boolean paved = idx >= 0 && (kind[idx] == FOOTWAY || kind[idx] == VERGE);
+            if (found >= 0 && !paved && idx != found) {
+                return found;
+            }
+            if (idx < 0 || kind[idx] == NONE || kind[idx] == BLEND || (kind[idx] == KERB && ++kerbs > 6)) {
+                return found;
+            }
+            if (paved) {
+                if (!back) {
+                    return idx;
+                }
+                found = idx;
+            }
+        }
+        return found;
+    }
+
+    /** A sign on a pole on the pavement beside sample k (sideSign: +1 the curve's left), facing the traffic going the PTM2 way rot8. */
+    private void roadSign(Seg g, int k, int sideSign, FixtureType type, int rot8, double reach) {
+        int idx = k < 0 || k >= g.c.n ? -1 : pavement(g, k, sideSign, reach, false);
+        if (idx >= 0 && !tooClose(cellX(idx), cellZ(idx), 0)) {
+            fixtures.add(new Fixture(type, cellX(idx), cellZ(idx), top[idx], rot8, 0));
+        }
+    }
+
+    /**
+     * Zebra crossings, halfway along each stretch between junctions of a road that asks for them:
+     * stripes across the road, a give way line each side, zig-zags along the kerbs (and down the
+     * middle of a two-way road) for a dozen blocks either side, dropped kerbs with tactile paving
+     * and a Belisha beacon at each end.
+     */
+    private void zebras() {
+        int blk = (int) Math.round(1 / Curve.STEP);
+        for (Seg g : segs) {
+            if (!g.st.zebra || g.st.footway() == 0) {
+                continue;
+            }
+            Curve c = g.c;
+            double s0 = stretchEnd(g, true), s1 = stretchEnd(g, false);
+            if (s1 - s0 < 50) {
+                continue;
+            }
+            int m = c.index((s0 + s1) / 2), half = (int) Math.round(1.5 / Curve.STEP);
+            for (int k = m - half; k <= m + half; k++) {
+                int across = rot8(c.leftX(k), c.leftZ(k));
+                boolean line = k == m - half || k == m + half;
+                for (double d = -g.hc + 0.01; d < g.hc; d += 0.25) {
+                    int idx = index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d));
+                    if (idx >= 0) {
+                        setMark(idx, line ? M_HALF : M_ZEBRA, across, 9);
+                    }
+                }
+            }
+            List<Double> zigs = new ArrayList<>(List.of(g.hc - 0.5, -(g.hc - 0.5)));
+            if (!g.st.oneWay && !g.st.dual) {
+                zigs.add(0.0);
+            }
+            for (int end = -1; end <= 1; end += 2) {
+                int a = m + end * (half + blk), b = m + end * (half + 13 * blk);
+                for (double d : zigs) {
+                    for (int[] cell : chain(c, d, Math.max(0, Math.min(a, b)), Math.min(c.n - 1, Math.max(a, b)))) {
+                        int idx = index(cell[0], cell[1]);
+                        if (idx >= 0 && kind[idx] == ROAD) {
+                            setMark(idx, M_ZIGZAG, rot8(c.tx[cell[2]], c.tz[cell[2]]), 9);
                         }
                     }
+                }
+            }
+            tactile(g, m - half + blk, m + half - blk, 8);
+            for (int sideSign = -1; sideSign <= 1; sideSign += 2) {
+                int k = m + sideSign * (half + blk);
+                int idx = pavement(g, k, sideSign, 8, false);
+                if (idx >= 0 && !tooClose(cellX(idx), cellZ(idx), 0)) {
+                    fixtures.add(new Fixture(FixtureType.BELISHA_BEACON, cellX(idx), cellZ(idx), top[idx],
+                            rot8(-c.leftX(k) * sideSign, -c.leftZ(k) * sideSign), 0));
+                }
+            }
+        }
+    }
+
+    /** How far along a road its clear stretch starts (atA) or ends: short of the junction lines or area at each end. */
+    private double stretchEnd(Seg g, boolean atA) {
+        Curve c = g.c;
+        int cut = atA ? g.cutA : g.cutB;
+        Jn j = jnByNode.get(atA ? g.na.id : g.nb.id);
+        double in = cut >= 0 ? (atA ? c.s(cut) : c.length - c.s(cut)) : j == null ? 0 : j.zone;
+        return atA ? in : c.length - in;
+    }
+
+    /** London's yellow box junctions: the middle of every traffic light junction hatched in yellow (where nothing else is painted). */
+    private void boxJunctions() {
+        for (Jn j : jns) {
+            if (j.type != Junction.SIGNALS) {
+                continue;
+            }
+            int r = (int) Math.ceil(j.zone), cx = (int) Math.floor(j.node.x), cz = (int) Math.floor(j.node.z);
+            for (int z = cz - r; z <= cz + r; z++) {
+                for (int x = cx - r; x <= cx + r; x++) {
+                    int idx = index(x, z);
+                    if (idx >= 0 && core[idx] && coreOwner[idx] == j.index && markPrio[idx] == 0 && mark[idx] == M_NONE) {
+                        setMark(idx, M_HATCH | YELLOW, 0, 0);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Street nameplates at junctions, London style: on each corner, at the back of the pavement,
+     * the name of the road going off to its right (looking out of the junction), facing the road
+     * on its left, where people coming along that road see it. A corner with no road on that side gets none.
+     */
+    private void nameplates() {
+        for (Jn j : jns) {
+            if (j.type == Junction.MERGE) {
+                continue;
+            }
+            for (Seg g : j.arms) {
+                String name = g.seg.name;
+                boolean atA = g.na.id == j.node.id;
+                double[] out = outward(g, j.node);
+                double lx = out[1], lz = -out[0];               // left, looking out along the road
+                boolean corner = false;
+                for (Seg o : j.arms) {
+                    double[] d = outward(o, j.node);
+                    corner |= o != g && d[0] * lx + d[1] * lz > 0.5;
+                }
+                if (name == null || name.isBlank() || !corner) {
+                    continue;
+                }
+                Curve c = g.c;
+                int mouth = atA ? g.mouthA : g.mouthB, in = (int) Math.round(3 / Curve.STEP);
+                int k = mouth >= 0 ? mouth + (atA ? in : -in) : c.index(atA ? j.zone + 3 : c.length - j.zone - 3);
+                int idx = k < 0 || k >= c.n ? -1 : pavement(g, k, atA ? 1 : -1, 12, true);
+                if (idx >= 0 && !tooClose(cellX(idx), cellZ(idx), 0)) {
+                    nameplates.add(new Nameplate(cellX(idx), cellZ(idx), top[idx], rot8(lx, lz), name.trim()));
                 }
             }
         }

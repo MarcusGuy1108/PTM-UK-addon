@@ -43,6 +43,8 @@ public final class RoadStyle {
     /** Radius of the kerb round the corners where this road meets another. */
     public int cornerRadius = 8;
     public String surface = "ptm2:fresh_asphalt_road";
+    /** A zebra crossing (stripes, zig-zags, Belisha beacons) halfway along each stretch between junctions. */
+    public boolean zebra;
 
     public RoadStyle copy() {
         RoadStyle s = new RoadStyle();
@@ -65,6 +67,7 @@ public final class RoadStyle {
         s.lightSpacing = lightSpacing;
         s.cornerRadius = cornerRadius;
         s.surface = surface;
+        s.zebra = zebra;
         return s;
     }
 
@@ -141,6 +144,7 @@ public final class RoadStyle {
         s.footSurface = "ptmuk:paving_slabs";
         s.pavement = 5;
         s.lightSpacing = 22;
+        s.zebra = true;
         return s;
     }
 

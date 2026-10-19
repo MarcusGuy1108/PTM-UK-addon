@@ -321,7 +321,8 @@ public class RoadPlannerScreen extends Screen {
         button(y, () -> "Pavement: " + (st.pavement == 0 ? "none" : st.pavement + (st.kerbs ? " (with kerb)" : "")),
                 b -> edit.accept(() -> st.pavement = st.pavement >= 6 ? 0 : st.pavement + 1));
         y += ROW;
-        button(y, () -> "Grass verge: " + (st.verge == 0 ? "none" : st.verge), b -> edit.accept(() -> st.verge = st.verge >= 4 ? 0 : st.verge + 1));
+        halfButtons(y, () -> "Verge: " + (st.verge == 0 ? "none" : st.verge), b -> edit.accept(() -> st.verge = st.verge >= 4 ? 0 : st.verge + 1),
+                () -> "Zebra: " + (st.zebra ? "yes" : "no"), b -> edit.accept(() -> st.zebra = !st.zebra));
         y += ROW;
         halfButtons(y, () -> "Kerbs: " + (st.kerbs ? "yes" : "no"), b -> edit.accept(() -> st.kerbs = !st.kerbs),
                 () -> "Lights: " + (st.lights ? "yes" : "no"), b -> edit.accept(() -> st.lights = !st.lights));

@@ -116,7 +116,7 @@ The **Road Planner** (UK Buildings tab, creative mode) opens a top-down map of t
 - The map shows exactly what will be built before you press **Build**. Building happens over a few seconds so big plans don't freeze the game. **Undo** puts everything back, and the plan stays on the item so you can change it and build again.
 - **Follow an old road** (in Draw mode): click a road that's already built in the world (any block: an old build's coal or concrete, under carpet markings) and the planner follows it both ways down its middle to its junctions and ends, measuring its width and pavements, and turns it into planner roads of that width. Follow the other roads and they join up at the junctions; then pick a style and **Build** to rebuild them properly, on the same line.
 
-Roads come in UK styles you can mix and adjust: main road (21 wide: two 6-block lanes, dashed centre line and 4-block pavements), residential street (15 wide), high street, wide 4-lane road, dual carriageway with a central reservation and crash barrier, country road with grass verges, one-way street and slip road. Each has settings for lanes, lane width, centre line (dashed, hazard, double white or none), pavement width and surface (light grey concrete, tarmac, paving slabs or block paving), grass verge, raised kerbs, street lights, white edge lines and yellow lines (single, double, or auto: single along the road and double near junctions).
+Roads come in UK styles you can mix and adjust: main road (21 wide: two 6-block lanes, dashed centre line and 4-block pavements), residential street (15 wide), high street, wide 4-lane road, dual carriageway with a central reservation and crash barrier, country road with grass verges, one-way street and slip road. Each has settings for lanes, lane width, centre line (dashed, hazard, double white or none), pavement width and surface (light grey concrete, tarmac, paving slabs or block paving), grass verge, zebra crossings, raised kerbs, street lights, white edge lines and yellow lines (single, double, or auto: single along the road and double near junctions).
 
 Junctions:
 
@@ -124,6 +124,13 @@ Junctions:
 - **Roundabouts:** a kerbed central island sized to the roads (or a size you pick) and give-way lines at every entry. **Mini roundabouts** get a white painted dome.
 - **Traffic lights:** stop lines, a pedestrian crossing on every arm with red tactile paving at the dropped kerbs, and black UK signal poles with LED heads facing each approach. A PTM2 intersection is set up automatically so the lights cycle straight away and PTM2's AI traffic obeys them.
 - **Slip roads:** draw a one-way road onto a dual carriageway (or hold Shift when ending on any road) and it merges into the side of the road with a taper instead of making a junction.
+
+Streets come out looking like London's:
+
+- **Junction signs:** a give way or stop sign on a galvanised pole on the left at every give way or stop line (roundabout entries included), and no entry signs both sides where a one-way street comes out.
+- **Street nameplates:** a black-on-white nameplate on posts at the back of the pavement on each corner of a junction, with the name of the street going off there, facing the traffic on the road it meets. Streets you draw get a British street name when they're built (carried on through bends, and shown on the map); streets without pavements (motorways, country lanes) don't.
+- **Zebra crossings:** the high street style (or any road with **Zebra: yes**) gets one halfway along each stretch between junctions: black and white stripes, give way lines, white zig-zags along the kerbs and down the middle, dropped kerbs with tactile paving and a Belisha beacon each end. PTM2's cars stop for people crossing.
+- **Yellow box junctions:** the middle of every traffic light junction is hatched in yellow.
 
 Markings are PTM2's own blocks (white, and yellow for the kerb lines), so PTM2 recognises them, and UK style: hazard lines (long dashes) approaching junctions, solid up to stop lines, and yellow lines that follow the kerb round corners (or, with kerbs turned off, the edge of the road). Pavements use PTM2's sidewalk blocks by default, so PTM2's pedestrians walk on them.
 

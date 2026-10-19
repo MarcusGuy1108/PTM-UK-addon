@@ -1,5 +1,6 @@
 package com.ptmuk.road;
 
+import com.ptmuk.block.SignalAccessory;
 import com.ptmuk.road.layout.Layout;
 import com.ptmuk.road.layout.Terrain;
 import com.ptmuk.road.plan.RoadPlan;
@@ -109,6 +110,7 @@ public final class RoadBuilder {
             return;
         }
         ServerLevel level = player.serverLevel();
+        nameStreets(plan, level.getRandom());
         // node heights come from the ground once, then stay put so later edits don't shift built roads
         Terrain terrain = new LoadingTerrain(level, (int) Math.floor(player.getY()));
         Layout first = Layout.of(plan, terrain);
@@ -149,6 +151,50 @@ public final class RoadBuilder {
         job.palette = new Palette();
         JOBS.add(job);
         player.displayClientMessage(Component.literal("Building roads: " + job.cells.length + " columns..."), true);
+    }
+
+    /**
+     * New streets the plan hasn't named get a British street name (for their nameplates and the
+     * map), one name along each street through plain bends, carrying on an existing name where
+     * there is one. Roads without pavements (motorways, country lanes) are left alone.
+     */
+    static void nameStreets(RoadPlan plan, net.minecraft.util.RandomSource rand) {
+        Set<String> used = new HashSet<>();
+        for (RoadPlan.Segment s : plan.segments) {
+            if (s.name != null && !s.name.isBlank()) {
+                used.add(s.name);
+            }
+        }
+        for (RoadPlan.Segment s : plan.segments) {
+            if (s.built || (s.name != null && !s.name.isBlank()) || s.style.footway() == 0) {
+                continue;
+            }
+            // the whole street: on through each end where it's the only road carrying on
+            List<RoadPlan.Segment> street = new ArrayList<>(List.of(s));
+            Deque<Integer> ends = new ArrayDeque<>(List.of(s.a, s.b));
+            while (!ends.isEmpty()) {
+                int n = ends.pop();
+                RoadPlan.Node node = plan.node(n);
+                List<RoadPlan.Segment> here = plan.segmentsAt(n);
+                if (node == null || here.size() != 2 || (node.junction != null && node.junction != RoadPlan.Junction.AUTO)) {
+                    continue;
+                }
+                for (RoadPlan.Segment t : here) {
+                    if (!street.contains(t) && t.style.footway() > 0) {
+                        street.add(t);
+                        ends.push(t.a == n ? t.b : t.a);
+                    }
+                }
+            }
+            String name = street.stream().map(t -> t.name).filter(t -> t != null && !t.isBlank()).findFirst()
+                    .orElseGet(() -> com.ptmuk.map.StreetNames.pick(rand, used));
+            used.add(name);
+            for (RoadPlan.Segment t : street) {
+                if (!t.built && (t.name == null || t.name.isBlank())) {
+                    t.name = name;
+                }
+            }
+        }
     }
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
@@ -203,6 +249,12 @@ public final class RoadBuilder {
             int idx = layout.index(f.x(), f.z());
             if (idx >= 0 && layout.dirty[idx]) {
                 fixture(job, f);
+            }
+        }
+        for (Layout.Nameplate p : layout.nameplates) {
+            int idx = layout.index(p.x(), p.z());
+            if (idx >= 0 && layout.dirty[idx]) {
+                nameplate(job, p);
             }
         }
     }
@@ -556,10 +608,13 @@ public final class RoadBuilder {
 
     /** The first block above the surface a fixture stands on (a half-height surface is made a full block). */
     private static int standOn(Job job, Layout.Fixture f) {
-        float t = f.top();
+        return standOn(job, f.x(), f.z(), f.top());
+    }
+
+    private static int standOn(Job job, int x, int z, float t) {
         if (isHalf(t)) {
             int b = (int) Math.floor(t);
-            set(job, new BlockPos(f.x(), b, f.z()), job.palette.get("ptmuk:paving_slabs", "smooth_stone"));
+            set(job, new BlockPos(x, b, z), job.palette.get("ptmuk:paving_slabs", "smooth_stone"));
             return b + 1;
         }
         return (int) t;
@@ -569,6 +624,11 @@ public final class RoadBuilder {
         switch (f.type()) {
             case SIGNAL -> signal(job, f);
             case STREET_LIGHT -> streetLight(job, f);
+            case GIVE_WAY_SIGN -> roadSign(job, f, "ptmuk:give_way_sign");
+            case STOP_SIGN -> roadSign(job, f, "ptmuk:stop_sign");
+            case NO_ENTRY_SIGN -> roadSign(job, f, "ptmuk:no_entry_sign");
+            case BELISHA_BEACON -> set(job, new BlockPos(f.x(), standOn(job, f), f.z()), with(job.palette.get("ptmuk:belisha_beacon", "lantern"),
+                    "facing", Direction.fromYRot(f.rot8() * 45.0).getSerializedName()));
             default -> SiteFixtures.place(job.level, f, standOn(job, f), job.palette, (pos, state) -> set(job, pos, state));
         }
     }
@@ -582,6 +642,34 @@ public final class RoadBuilder {
         Direction facing = Direction.fromYRot(f.rot8() * 45.0);
         set(job, new BlockPos(f.x(), y0 + 5, f.z()), with(job.palette.get("ptmuk:street_light_led", "lantern"), "facing",
                 facing.getSerializedName()));
+    }
+
+    /**
+     * A UK sign on a galvanised pole: the plate a block towards the traffic it's for (going the
+     * PTM2 way rot8), clamped to the pole behind it.
+     */
+    private static void roadSign(Job job, Layout.Fixture f, String id) {
+        int y0 = standOn(job, f), r = f.rot8();
+        BlockState pole = job.palette.get("ptmuk:sign_pole_galvanised", "iron_bars");
+        for (int k = 0; k < 3; k++) {
+            set(job, new BlockPos(f.x(), y0 + k, f.z()), with(with(pole, "base", k == 0), "cap", k == 2));
+        }
+        double a = Math.toRadians(r * 45.0);
+        BlockPos at = new BlockPos(f.x() + (int) Math.round(Math.sin(a)), y0 + 2, f.z() - (int) Math.round(Math.cos(a)));
+        BlockState sign = with(job.palette.get(id, "oak_sign"), "rotation", r);
+        set(job, at, with(sign, "attachment", SignalAccessory.attachmentFor(job.level, at, r).getSerializedName()));
+    }
+
+    /** A London street nameplate on its posts, saying the street's name. */
+    private static void nameplate(Job job, Layout.Nameplate p) {
+        BlockPos pos = new BlockPos(p.x(), standOn(job, p.x(), p.z(), p.top()), p.z());
+        BlockState plate = job.palette.get("ptmuk:street_nameplate", "oak_sign");
+        set(job, pos, with(with(plate, "facing", Direction.fromYRot(p.rot8() * 45.0).getSerializedName()), "posts", true));
+        if (job.level.getBlockEntity(pos) instanceof com.ptmuk.map.NameplateBlockEntity be) {
+            be.name = p.name();
+            be.setChanged();
+            job.level.sendBlockUpdated(pos, be.getBlockState(), be.getBlockState(), Block.UPDATE_CLIENTS);
+        }
     }
 
     /** A black signal pole with an LED head on top facing the traffic coming up to the stop line. */
