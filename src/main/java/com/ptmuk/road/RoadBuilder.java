@@ -65,7 +65,7 @@ public final class RoadBuilder {
     public record Saved(BlockPos pos, BlockState state, CompoundTag nbt) {
     }
 
-    private record Undo(ResourceKey<Level> dimension, List<Saved> blocks) {
+    private record Undo(ResourceKey<Level> dimension, List<Saved> blocks, List<com.ptmuk.map.MapData.Road> names) {
     }
 
     private static final class Job {
@@ -356,11 +356,10 @@ public final class RoadBuilder {
             set(job, p, Block.updateFromNeighbourShapes(s, job.level, p));
         }
         Deque<Undo> history = HISTORY.computeIfAbsent(job.player, k -> new ArrayDeque<>());
-        history.push(new Undo(job.level.dimension(), job.saved));
+        history.push(new Undo(job.level.dimension(), job.saved, com.ptmuk.map.MapPlaces.namePlanRoads(job.level, job.plan)));
         while (history.size() > UNDO_STEPS) {
             history.removeLast();
         }
-        com.ptmuk.map.MapPlaces.namePlanRoads(job.level, job.plan);
         for (RoadPlan.Node n : job.plan.nodes) {
             n.built = true;
         }
@@ -832,6 +831,7 @@ public final class RoadBuilder {
         }
         List<Saved> blocks = undo.blocks();
         restore(level, blocks);
+        com.ptmuk.map.MapPlaces.forgetRoads(level, undo.names());
         player.displayClientMessage(Component.literal("Undid the last road build (" + blocks.size() + " blocks put back)"), true);
     }
 

@@ -22,6 +22,8 @@ import net.minecraft.util.Mth;
  */
 public class WorldMapScreen extends Screen {
     private static final float MIN_SCALE = 0.125f, MAX_SCALE = 8f;
+    /** How far round a click "Clear road names here" reaches. */
+    private static final int CLEAR_RADIUS = 128;
     /** Where the map was looking last time, so it opens there again (until you move a long way). */
     private static double lastX = Double.NaN, lastZ;
     private static float lastScale = 1f;
@@ -144,6 +146,13 @@ public class WorldMapScreen extends Screen {
                     nameText = road == null ? "" : road.name();
                     rebuildWidgets();
                 }).bounds(menuX, my, 120, 20).build());
+                my += 21;
+                addRenderableWidget(Button.builder(Component.literal("Clear road names here"), b -> {
+                    PtmUkNetwork.CHANNEL.sendToServer(new NameRoadMessage(menuWX, menuWZ, "", CLEAR_RADIUS));
+                    menuX = -1;
+                    rebuildWidgets();
+                }).bounds(menuX, my, 120, 20).tooltip(net.minecraft.client.gui.components.Tooltip.create(
+                        Component.literal("Takes the names off every road within " + CLEAR_RADIUS + " blocks"))).build());
             }
         }
     }
@@ -157,7 +166,7 @@ public class WorldMapScreen extends Screen {
             MapPrefs.savePins();
             select(new Sel(pin.name(), "Pin", pin.x() + 0.5, pin.z() + 0.5, pin));
         } else {
-            PtmUkNetwork.CHANNEL.sendToServer(new NameRoadMessage(menuWX, menuWZ, name));
+            PtmUkNetwork.CHANNEL.sendToServer(new NameRoadMessage(menuWX, menuWZ, name, 0));
         }
         naming = null;
         menuX = -1;

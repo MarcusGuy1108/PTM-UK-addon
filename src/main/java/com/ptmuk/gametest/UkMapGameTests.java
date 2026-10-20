@@ -39,6 +39,42 @@ public final class UkMapGameTests {
     private UkMapGameTests() {
     }
 
+    /**
+     * The name of a road that's been taken away (grass where it was, as after clearing a test town)
+     * drops off the map; a road built of any other block keeps its name.
+     */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 100, batch = "map")
+    public static void forgetsNamesOfRoadsThatHaveGone(GameTestHelper helper) {
+        Block tarmac = ForgeRegistries.BLOCKS.getValue(PtmUk.id("tarmac"));
+        int z0 = Z + 200;
+        for (int x = -4; x <= 44; x++) {
+            for (int z = -4; z <= 24; z++) {
+                helper.setBlock(x, Y, z0 + z, z >= 0 && z <= 4 ? tarmac : z >= 14 && z <= 18 ? Blocks.STONE_BRICKS : Blocks.GRASS_BLOCK);
+                for (int y = 1; y < 16; y++) {
+                    helper.setBlock(x, Y + y, z0 + z, Blocks.AIR);
+                }
+            }
+        }
+        var level = helper.getLevel();
+        BlockPos gone = helper.absolutePos(new BlockPos(20, Y, z0 + 2)), kept = helper.absolutePos(new BlockPos(20, Y, z0 + 16));
+        MapPlaces.nameRoad(level, gone.getX(), gone.getZ(), "");              // left over from an earlier run
+        MapPlaces.nameRoad(level, kept.getX(), kept.getZ(), "");
+        helper.assertTrue(MapPlaces.nameRoad(level, gone.getX(), gone.getZ(), "Gone Lane").startsWith("Named"), "couldn't name the tarmac road");
+        helper.assertTrue(MapPlaces.nameRoad(level, kept.getX(), kept.getZ(), "Brick Row").startsWith("Named"), "couldn't name the brick road");
+        for (int x = -4; x <= 44; x++) {
+            for (int z = 0; z <= 4; z++) {
+                helper.setBlock(x, Y, z0 + z, Blocks.GRASS_BLOCK);
+            }
+        }
+        MapPlaces.forgetGoneRoads(level, gone.getX(), gone.getZ());
+        helper.assertTrue(MapPlaces.roads(level).stream().noneMatch(r -> r.name().equals("Gone Lane") && MapPlaces.distance(r, gone.getX(), gone.getZ()) < 4),
+                "the name of the road that's gone is still on the map");
+        helper.assertTrue(MapPlaces.roads(level).stream().anyMatch(r -> r.name().equals("Brick Row") && MapPlaces.distance(r, kept.getX(), kept.getZ()) < 4),
+                "the brick road lost its name");
+        MapPlaces.nameRoad(level, kept.getX(), kept.getZ(), "");
+        helper.succeed();
+    }
+
     @GameTest(template = "empty5x4x5", timeoutTicks = 200, batch = "map")
     public static void namesRoadsAndGivesDirections(GameTestHelper helper) {
         Block tarmac = ForgeRegistries.BLOCKS.getValue(PtmUk.id("tarmac"));
