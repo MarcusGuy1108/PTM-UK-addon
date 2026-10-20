@@ -212,6 +212,12 @@ def make_textures():
     TEX["desk_drawers"] = G.save(HT.door_front((176, 132, 84), wood=HT.timber((176, 132, 84)), split=3, h=56),
                                  P + "desk_drawers")
     make_shop_textures()
+    # added last, so the textures before them draw the same noise as they always have
+    TEX["clock"] = s(HT.clock_face(), P + "clock_face")
+    for theme in PICTURES:
+        TEX[f"art_{theme}"] = s(HT.art(theme), P + f"art_{theme}")
+    for colour, rgb in CURTAINS.items():
+        TEX[f"curtain_{colour}"] = s(HT.pleats(rgb), P + f"curtain_{colour}")
 
 
 # what's on each run of shelving: (rows of texture a, rows of texture b)
@@ -768,6 +774,53 @@ def bathroom_cabinet():
            front(2.1, 4.1, 13.9, 14.9, 12, "#mirror", "#white_gloss", d=0.5),
            bx((2.6, 3.4, 11.2), (13.4, 4.0, 12.0), "#white_gloss")]
     return els, {"white_gloss": t("white_gloss"), "mirror": t("mirror")}
+
+
+# ----------------------------------------------------------------- decoration
+
+PICTURES = {"landscape": "Rolling Hills", "seaside": "Seaside", "flowers": "Flowers in a Vase", "abstract": "Colour Blocks"}
+CURTAINS = {"cream": (226, 214, 188), "red": (150, 40, 44), "blue": (52, 74, 120), "green": (70, 104, 74)}
+
+
+def picture(theme):
+    """A framed painting on the wall, the long way across, standing a little proud of the wall."""
+    art = f"#art_{theme}"
+    els = [bx((2, 3.5, 15.4), (14, 12.5, 15.6), art, faces=("north",), uv={"north": [0, 2, 16, 14]}),
+           bx((1.4, 2.9, 15), (14.6, 3.5, 16), "#walnut"), bx((1.4, 12.5, 15), (14.6, 13.1, 16), "#walnut"),
+           bx((1.4, 3.5, 15), (2, 12.5, 16), "#walnut"), bx((14, 3.5, 15), (14.6, 12.5, 16), "#walnut")]
+    return els, {f"art_{theme}": t(f"art_{theme}"), "walnut": t("walnut")}
+
+
+def wall_clock():
+    els = [bx((4, 5, 15), (12, 13, 15.2), "#clock", faces=("north",), full=("north",)),
+           bx((4.6, 5.6, 15.2), (11.4, 12.4, 16), "#black", faces=("east", "west", "up", "down"))]
+    return els, {"clock": t("clock"), "black": t("black")}
+
+
+def wall_mirror():
+    els = [bx((3.4, 1.4, 15.4), (12.6, 14.6, 15.6), "#mirror", faces=("north",), full=("north",)),
+           bx((3, 1, 15.6), (13, 15, 16), "#chrome")]
+    return els, {"mirror": t("mirror"), "chrome": t("chrome")}
+
+
+def coat_hooks():
+    """A row of coat hooks on a board, with three coats hanging from it."""
+    els = [bx((1, 12.5, 15.2), (15, 14.5, 16), "#oak")]
+    for x in (3.5, 8, 12.5):
+        els.append(bx((x - 0.3, 12.8, 14.4), (x + 0.3, 13.4, 15.2), "#chrome"))
+    for x0, x1, coat in ((1.6, 5.6, "#sofa_navy"), (6.2, 9.8, "#sofa_green"), (10.4, 14.4, "#sofa_brown")):
+        els += [bx((x0, 3, 13.4), (x1, 12.8, 15), coat), bx((x0 + 0.8, 12.8, 13.8), (x1 - 0.8, 13.4, 14.6), coat)]
+    return els, {"oak": t("oak"), "chrome": t("chrome"), "sofa_navy": t("sofa_navy"), "sofa_green": t("sofa_green"),
+                 "sofa_brown": t("sofa_brown")}
+
+
+def curtains(colour):
+    """A curtain drawn back beside a window: folds hanging from a brass pole, nearly two blocks long."""
+    c = f"#curtain_{colour}"
+    lo = bx((3, 0, 13.4), (13, 16, 15.6), c, faces=("north", "east", "west", "down"), uv={"north": [0, 7.5, 16, 16]})
+    hi = bx((3, 16, 13.4), (13, 30, 15.6), c, faces=("north", "east", "west"), uv={"north": [0, 0, 16, 7.5]})
+    els = [lo, hi, bx((0, 30, 14.2), (16, 31, 15.2), "#brass"), bx((7.4, 29.6, 15.2), (8.6, 31.4, 16), "#brass")]
+    return els, {f"curtain_{colour}": t(f"curtain_{colour}"), "brass": t("brass")}
 
 
 # ----------------------------------------------------------------- bedroom and study
@@ -1508,6 +1561,17 @@ def _home():
         F("computer", "Computer", computer, "tabletop", (1.5, 0, 3, 14.5, 11.5, 12), light=4, effect="click",
           group="bedroom", sound="METAL"),
     ]
+    for theme, nice in PICTURES.items():
+        out.append(F(f"picture_{theme}", f"Framed Picture ({nice})", (lambda th=theme: lambda: picture(th))(),
+                     shape=(1.4, 2.9, 15, 14.6, 13.1, 16)))
+    out += [
+        F("wall_clock", "Wall Clock", wall_clock, shape=(4, 5, 15, 12, 13, 16), cutout=True),
+        F("wall_mirror", "Wall Mirror", wall_mirror, shape=(3, 1, 15.4, 13, 15, 16), group="bathroom", sound="GLASS"),
+        F("coat_hooks", "Coat Hooks", coat_hooks, shape=(1, 3, 13.4, 15, 14.5, 16)),
+    ]
+    for colour in CURTAINS:
+        out.append(F(f"curtains_{colour}", f"Curtains ({colour.capitalize()})", (lambda c=colour: lambda: curtains(c))(),
+                     "tall", (3, 0, 13.4, 13, 16, 15.6), sound="WOOL"))
     for kind in ("groceries", "drinks", "household", "snacks", "diy", "games", "pharmacy", "newsagent"):
         nice = "DIY" if kind == "diy" else kind.capitalize()
         out.append(F(f"shelves_{kind}", f"Supermarket Shelves ({nice})",

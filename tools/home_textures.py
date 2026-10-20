@@ -505,3 +505,79 @@ def halves(img):
     """Split a 1 x 2 tall face texture into its (lower, upper) square halves."""
     w, h = img.size
     return img.crop((0, h // 2, w, h)), img.crop((0, 0, w, h // 2))
+
+
+# ----------------------------------------------------------------- decoration
+
+def art(theme, size=S):
+    """A made-up painting for a picture frame: rolling hills, a beach with a boat, a vase of flowers or
+    soft colour blocks. Painterly: a little noise and blur, never a real artwork."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(float)
+    f = yy / size
+    if theme == "landscape":
+        rgb = np.array([150, 190, 230.0]) * (1 - f[..., None] * 0.3) + 30 * f[..., None]
+        for k, (h, amp, col) in enumerate(((0.52, 0.05, (120, 160, 90)), (0.64, 0.06, (88, 136, 70)),
+                                            (0.78, 0.04, (66, 112, 54)))):
+            ridge = size * (h + amp * np.sin(xx / size * math.pi * (2 + k) + k * 1.7))
+            rgb[yy > ridge] = col
+        cx, cy = size * 0.7, size * 0.58
+        rgb[(np.hypot(xx - cx, (yy - cy) * 1.3) < size * 0.07)] = (52, 92, 46)       # a tree
+        rgb[(abs(xx - cx) < size * 0.012) & (yy > cy) & (yy < cy + size * 0.1)] = (86, 60, 40)
+        rgb[np.hypot(xx - size * 0.2, yy - size * 0.18) < size * 0.07] = (250, 236, 180)   # the sun
+    elif theme == "seaside":
+        rgb = np.array([170, 205, 236.0]) + 0 * xx[..., None]
+        sea = size * 0.55 + np.sin(xx / size * math.pi * 3) * 0.6
+        rgb[yy > sea] = (54, 112, 160)
+        rgb[(yy > sea) & ((xx * 0.7 + yy * 2.3).astype(int) % 11 == 0)] = (220, 236, 246)
+        rgb[yy > size * 0.78 + np.sin(xx / size * math.pi) * size * 0.03] = (222, 202, 152)
+        bx, by = size * 0.38, size * 0.52
+        sail = (yy < by) & (yy > by - size * 0.22) & (xx > bx) & (xx < bx + (by - yy) * 0.6)
+        rgb[sail] = (246, 244, 236)
+        rgb[(yy >= by) & (yy < by + size * 0.04) & (abs(xx - bx - size * 0.06) < size * 0.1)] = (150, 60, 50)
+    elif theme == "flowers":
+        rgb = np.array([214, 200, 172.0]) * (1 - 0.15 * f[..., None])
+        rgb[yy > size * 0.8] = (150, 112, 80)                                       # the table
+        vase = (abs(xx - size / 2) < size * (0.09 + 0.05 * np.sin((yy / size - 0.55) * math.pi * 3))) & \
+               (yy > size * 0.55) & (yy < size * 0.82)
+        rgb[vase] = (60, 90, 140)
+        for ax, ay, col in ((0.38, 0.3, (200, 60, 70)), (0.5, 0.22, (240, 200, 70)), (0.62, 0.32, (220, 120, 160)),
+                            (0.44, 0.42, (240, 240, 236)), (0.58, 0.44, (200, 60, 70))):
+            # a stem from the vase's neck up to the flower head
+            t = np.clip((size * 0.6 - yy) / (size * 0.6 - ay * size), 0, 1)
+            rgb[(abs(xx - (size / 2 + (ax - 0.5) * size * t)) < 0.8) & (yy > ay * size) & (yy < size * 0.6)] = (70, 110, 60)
+            rgb[np.hypot(xx - ax * size, yy - ay * size) < size * 0.065] = col
+    else:                                                                            # abstract
+        rgb = np.array([236, 230, 218.0]) + 0 * xx[..., None]
+        for (x0, y0, x1, y1, col) in ((0.08, 0.1, 0.55, 0.45, (200, 90, 60)), (0.6, 0.1, 0.92, 0.3, (60, 90, 140)),
+                                       (0.6, 0.36, 0.92, 0.9, (226, 186, 80)), (0.08, 0.52, 0.52, 0.9, (90, 140, 120))):
+            m = (xx > x0 * size) & (xx < x1 * size) & (yy > y0 * size) & (yy < y1 * size)
+            rgb[m] = col
+        rgb[np.hypot(xx - size * 0.32, yy - size * 0.7) < size * 0.12] = (36, 40, 52)
+    rgb = rgb + noise((size, size, 1), 5)
+    return to_image(np.dstack([blur(rgb[..., i], 0.6) for i in range(3)]))
+
+
+def clock_face(size=32):
+    """A round wall clock: white face, black rim, hour marks and hands at ten past ten. Clear outside the rim."""
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c, r = size / 2 - 0.5, size / 2 - 0.5
+    d.ellipse([c - r, c - r, c + r, c + r], fill=(30, 30, 32, 255))
+    d.ellipse([c - r + 2, c - r + 2, c + r - 2, c + r - 2], fill=(246, 244, 238, 255))
+    for h in range(12):
+        a = h / 12 * 2 * math.pi
+        x0, y0 = c + math.sin(a) * (r - 4), c - math.cos(a) * (r - 4)
+        x1, y1 = c + math.sin(a) * (r - 6 - (h % 3 == 0)), c - math.cos(a) * (r - 6 - (h % 3 == 0))
+        d.line([(x0, y0), (x1, y1)], fill=(30, 30, 32, 255), width=1)
+    for a, ln, w in ((math.radians(305), r * 0.5, 2), (math.radians(60), r * 0.75, 1)):
+        d.line([(c, c), (c + math.sin(a) * ln, c - math.cos(a) * ln)], fill=(20, 20, 22, 255), width=w)
+    d.point((c, c), fill=(180, 40, 40, 255))
+    return img
+
+
+def pleats(colour, size=S):
+    """Curtain fabric hanging in soft vertical folds."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(float)
+    fold = np.sin(xx / size * math.pi * 6) * 16 + np.sin(xx / size * math.pi * 14) * 4
+    rgb = np.asarray(fabric(colour, size))[..., :3].astype(float) + fold[..., None] - (yy / size * 8)[..., None]
+    return to_image(rgb)

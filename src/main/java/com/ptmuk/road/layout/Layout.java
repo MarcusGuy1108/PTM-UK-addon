@@ -44,7 +44,9 @@ public final class Layout {
         ROUNDABOUT_AHEAD_SIGN,
         // on sites
         TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
-        ORDER_POINT, MENU_BOARD, PICNIC_TABLE
+        ORDER_POINT, MENU_BOARD, PICNIC_TABLE,
+        // in a town's green space
+        PARK_TREE
     }
 
     /** Something stood on the surface: x, z, the top of the surface under it and which way it faces (PTM2 rotation, 0 = south). */
@@ -2327,6 +2329,17 @@ public final class Layout {
                     kind[idx] = ISLAND;
                     top[idx] = n >= 0 ? (float) Math.ceil(top[n]) : level;
                     siteOwner[idx] = si;
+                }
+            }
+            // trees where the green opens out, clear of the gardens, houses and roads round it: about one to a 13 block
+            // square, nudged off the grid, and some left out
+            for (int gz = st.z0; gz <= st.z1; gz += 13) {
+                for (int gx = st.x0; gx <= st.x1; gx += 13) {
+                    int hash = (gx * 73856093) ^ (gz * 19349663);
+                    int x = gx + Math.floorMod(hash, 6), z = gz + Math.floorMod(hash >> 8, 6), idx = index(x, z);
+                    if (idx >= 0 && siteOwner[idx] == si && near.dist[idx] >= 9 && Math.floorMod(hash >> 16, 3) != 0) {
+                        fixtures.add(new Fixture(FixtureType.PARK_TREE, x, z, top[idx], 0, 0));
+                    }
                 }
             }
         }

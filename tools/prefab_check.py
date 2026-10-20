@@ -51,6 +51,8 @@ def passable(block):
 
 def full_cube(block):
     n = block.name
+    if n == "minecraft:sea_lantern":
+        return True                                          # a whole block, whatever "_lantern" suggests
     if n in PARTIAL or n.endswith(PARTIAL_SUFFIX) or passable(block):
         return False
     if n.startswith("ptmuk:") and not _ptmuk_full(n):

@@ -1,6 +1,8 @@
 package com.ptmuk.road;
 
 import com.ptmuk.road.layout.Layout;
+import com.ptmuk.town.TreeShape;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -23,6 +25,7 @@ final class SiteFixtures {
         BlockPos at = new BlockPos(f.x(), y0, f.z());
         switch (f.type()) {
             case TREE -> tree(level, at, pal, out);
+            case PARK_TREE -> parkTree(level, at, out);
             case EV_CHARGER -> out.set(at, facing(pal.get("ptmuk:ev_charger", "lightning_rod"), facing));
             case PAY_MACHINE -> out.set(at, facing(pal.get("ptmuk:pay_and_display", "lodestone"), facing));
             case BIN -> out.set(at, facing(pal.get("ptmuk:litter_bin", "composter"), facing));
@@ -82,6 +85,19 @@ final class SiteFixtures {
     }
 
     /** A young street tree: a trunk and a rounded crown, oak or birch. */
+    /** A tree in a town's green space: one of the Town Builder's, half grown, its kind picked by where it is. */
+    private static void parkTree(ServerLevel level, BlockPos at, Setter out) {
+        TreeShape.Species[] kinds = {TreeShape.Species.OAK, TreeShape.Species.LIME, TreeShape.Species.LONDON_PLANE,
+                TreeShape.Species.BIRCH, TreeShape.Species.CHERRY};
+        long seed = at.asLong();
+        for (Map.Entry<BlockPos, BlockState> e : TreeShape.tree(kinds[(int) Math.floorMod(seed, kinds.length)], 2, seed).entrySet()) {
+            BlockPos p = at.offset(e.getKey());
+            if (level.getBlockState(p).isAir()) {
+                out.set(p, e.getValue());
+            }
+        }
+    }
+
     private static void tree(ServerLevel level, BlockPos at, RoadBuilder.Palette pal, Setter out) {
         int hash = Math.floorMod(at.getX() * 31 + at.getZ() * 17, 7);
         boolean birch = hash % 2 == 0;

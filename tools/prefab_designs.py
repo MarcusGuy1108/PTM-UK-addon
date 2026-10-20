@@ -1386,6 +1386,7 @@ NOT_ENLARGED = {"multiplex_cinema", "superstore", "discount_supermarket", "car_d
 
 
 def all_prefabs():
+    import prefab_dress
     import prefab_furnish
     import prefab_stretch
     builds = [b if b.ident in NOT_ENLARGED or b.category in ("Estates", "Shopfronts") else prefab_stretch.enlarge(b)
@@ -1394,6 +1395,7 @@ def all_prefabs():
         b.fill_ground()
         b.frame_doors()
         prefab_furnish.furnish(b)
+        prefab_dress.dress(b)
     return builds
 
 

@@ -1,0 +1,34 @@
+{
+ "variants": {
+  "lit=false,facing=north": {
+   "model": "ptmuk:block/home/picture_landscape"
+  },
+  "lit=false,facing=east": {
+   "model": "ptmuk:block/home/picture_landscape",
+   "y": 90
+  },
+  "lit=false,facing=south": {
+   "model": "ptmuk:block/home/picture_landscape",
+   "y": 180
+  },
+  "lit=false,facing=west": {
+   "model": "ptmuk:block/home/picture_landscape",
+   "y": 270
+  },
+  "lit=true,facing=north": {
+   "model": "ptmuk:block/home/picture_landscape"
+  },
+  "lit=true,facing=east": {
+   "model": "ptmuk:block/home/picture_landscape",
+   "y": 90
+  },
+  "lit=true,facing=south": {
+   "model": "ptmuk:block/home/picture_landscape",
+   "y": 180
+  },
+  "lit=true,facing=west": {
+   "model": "ptmuk:block/home/picture_landscape",
+   "y": 270
+  }
+ }
+}
