@@ -46,6 +46,9 @@ def dress(b):
     pick = zlib.crc32(b.ident.encode())
     curtains = CURTAINS[pick % len(CURTAINS)]
     for i, r in enumerate(rooms):
+        if "garage" in r.tags and "shop" not in r.tags:
+            Dresser(b, g, out, r, pick + i).garage()
+            continue
         if r.tags & {"shop", "garage"} or not (r.tags & HOME_TAGS or len(r.cells) <= 30 and "loft" not in r.tags):
             continue
         d = Dresser(b, g, out, r, pick + i)
@@ -405,6 +408,14 @@ class Dresser:
         if doors and not self._has("coat_hooks"):
             self._wall_piece("coat_hooks", near=doors[0])
         self._picture()
+
+    def garage(self):
+        if not self._has("shelves_"):
+            self._place_floor("shelves_diy", tall=True, under_window=False)
+        if not self._has("tyre_stack"):
+            self._place_floor("tyre_stack", corner=True)
+        if not self._has("oil_drum"):
+            self._place_floor("oil_drum")
 
     # ------------------------------------------------------------------ helpers
 

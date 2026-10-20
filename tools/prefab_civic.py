@@ -5,6 +5,7 @@ name on them is made up. Coordinates as in prefab_lib (u across the front, y up 
 layer at 0, v from the front boundary back).
 """
 from prefab_lib import AIR, B, Build, light, slab, stairs
+import prefab_furnish as PF
 import prefab_parts as P
 from prefab_commercial import big_sign, car_park, fit, tall, wide
 from prefab_town import ceiling_lights, dining, RED_BRICK, STOCK
@@ -661,8 +662,8 @@ def bus_garage(ident="bus_garage", name="Bus Garage"):
 def village_hall(ident="village_hall", name="Village Hall"):
     W, D = 16, 20
     b = Build(ident, name, "Civic", W, 15, D,
-              "A brick village hall: a porch, a hall laid out with chairs facing a stage, a serving hatch from the "
-              "kitchen and toilets.")
+              "A brick village hall: a hall laid out with chairs facing a stage, a tea table by the door, and a kitchen "
+              "and a toilet behind the stage.")
     P.paving(b, 0, 0, W - 1, 2)
     b.fill(0, 0, 3, W - 1, 0, D - 2, "oak_planks")
     b.walls(0, 1, 3, W - 1, 4, D - 2, RED_BRICK)
@@ -680,11 +681,30 @@ def village_hall(ident="village_hall", name="Village Hall"):
         for v in range(6, 12, 2):
             if u not in (7, 8):
                 fit(b, "dining_chair", u, 1, v, "back")
-    b.fill(1, 1, 13, W - 2, 1, 15, slab("oak", "top"))
-    b.set(W // 2, 2, 14, B("lectern", facing="south", has_book=False, powered=False))
-    for u in (1, W - 2):
-        b.set(u, 2, 15, B("potted_azalea_bush"))
-    P.kitchen_run(b, 2, 6, 1, D - 3, "front", finish="white")
+    # the stage, with a way past it either side to the kitchen and the toilet behind
+    b.fill(3, 1, 12, W - 4, 1, 14, slab("oak", "top"))
+    b.set(W // 2, 2, 13, B("lectern", facing="south", has_book=False, powered=False))
+    for u in (3, W - 4):
+        b.set(u, 2, 14, B("potted_azalea_bush"))
+    b.fill(1, 1, 15, W - 2, 4, 15, "calcite")
+    b.door(2, 1, 15, "spruce", facing="back", hinge="left")
+    b.door(W - 3, 1, 15, "spruce", facing="back", hinge="right")
+    b.fill(10, 1, 16, 10, 4, D - 3, "calcite")                     # kitchen | toilet
+    P.kitchen_run(b, 1, 6, 1, D - 3, "front", finish="white")
+    fit(b, "washing_machine", 7, 1, D - 3, "front")
+    fit(b, "basin", 11, 1, D - 3, "front")
+    fit(b, "toilet", W - 2, 1, D - 3, "front")
+    fit(b, "towel_radiator", 12, 1, D - 3, "front")
+    # a tea table by the door, radiators under the side windows, pictures on the walls
+    for u in (1, 2):
+        b.set(u, 1, 4, PF.home("dining_table", north=False, south=False, east=u == 1, west=u == 2))
+    fit(b, "kettle", 1, 2, 4, "back", level="table")
+    for v in (7, 10):
+        fit(b, "radiator", 1, 1, v, "right")
+        fit(b, "radiator", W - 2, 1, v, "left")
+    fit(b, "picture_landscape", 1, 2, 8, "right")
+    fit(b, "picture_seaside", W - 2, 2, 8, "left")
+    fit(b, "wall_clock", W // 2, 3, 14, "front")
     b.light_grid(1, 4, W - 2, D - 3, 4, step=3, level=13)
     return b
 
