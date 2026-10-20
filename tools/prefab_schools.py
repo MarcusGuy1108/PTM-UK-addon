@@ -54,7 +54,7 @@ def classroom(b, u0, u1, v0, v1, y, kind, door_v):
         for v in range(v0, v1 + 1, 2):
             fit(b, "desk", u1, y, v, "left")
             fit(b, "computer", u1, y + 1, v, "left", level="table")
-            fit(b, "office_chair", u1 - 1, y, v, "left")
+            fit(b, "office_chair", u1 - 1, y, v, "right")
         for v in range(v0 + 1, v1, 2):
             fit(b, "desk", u0 + 3, y, v, "right")
             fit(b, "computer", u0 + 3, y + 1, v, "right", level="table")

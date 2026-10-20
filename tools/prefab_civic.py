@@ -432,8 +432,9 @@ def fire_station(ident="fire_station", name="Fire Station"):
 def gp_surgery(ident="gp_surgery", name="GP Surgery and Health Centre"):
     W, D = 24, 22
     b = Build(ident, name, "Civic", W, 9, D,
-              "A modern health centre: reception, a waiting room of chairs, consulting rooms with desks and couches off "
-              "a corridor, toilets and a car park. RIVERSIDE HEALTH CENTRE is a made-up name.")
+              "A modern health centre: reception, a waiting room of chairs, and consulting rooms off a corridor, each "
+              "with a desk and computer, a chair for the patient, a couch and a basin. RIVERSIDE HEALTH CENTRE is a "
+              "made-up name.")
     P.paving(b, 0, 0, W - 1, 3)
     b.fill(0, 0, 4, W - 1, 0, D - 1, "white_concrete")
     b.walls(0, 1, 4, W - 1, 4, D - 1, "ptmuk:white_render")
@@ -461,7 +462,9 @@ def gp_surgery(ident="gp_surgery", name="GP Surgery and Health Centre"):
         b.door(u0, 1, 14, "birch", facing="back", hinge="left")
         fit(b, "desk", u0 + 1, 1, D - 2, "front")
         fit(b, "computer", u0 + 1, 2, D - 2, "front", level="table")
-        fit(b, "office_chair", u0 + 1, 1, D - 3, "front")
+        fit(b, "office_chair", u0 + 1, 1, D - 3, "back")
+        fit(b, "dining_chair", u0 + 2, 1, D - 3, "back")
+        fit(b, "basin", u0 + 3, 1, D - 2, "front")
         P.bed(b, u1, 1, 15, "white", "front")
     b.light_grid(1, 5, W - 2, D - 2, 4, step=3, level=14)
     return b

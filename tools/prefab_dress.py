@@ -6,11 +6,17 @@ along its free walls: bedside tables and a lamp, a chest of drawers, a basin, mi
 rail, a washing machine, kettle, toaster and microwave, a coffee table, a lamp and a plant, a radiator
 under the window, pictures, a clock, coat hooks by the front door, curtains at the windows and a light
 in the ceiling if it has none. Nothing goes in front of a door, a piece of furniture or the stairs, or
-anywhere that would cut a room in two. Shops, bars and public rooms keep what they have."""
+anywhere that would cut a room in two. Shops, bars and public rooms keep what they have.
+
+A big floor left empty (the storeys of a block of flats, rooms over a pub) is fitted out first: cut
+into flat-sized rooms by partition walls, each wall with a doorway, and each room given a kitchen, a
+sofa (with a TV across from it), a bed, and a toilet, basin and bath."""
 import zlib
 
 import prefab_check as pc
+import prefab_furnish as PF
 from prefab_furnish import CW, CCW, OPP, VEC, home
+from prefab_lib import B
 
 HOME_TAGS = {"bed", "bath", "kitchen", "living", "dining"}
 TAGS = (("bed", ("_bed",)),
@@ -33,17 +39,33 @@ CURTAINS = ("curtains_cream", "curtains_red", "curtains_blue", "curtains_green")
 
 # the kinds of building people live in (or over)
 CATEGORIES = ("Houses", "Flats", "Estates", "Shops", "Food & Drink", "Pubs & Bars", "Hotels")
+# an empty room this big is fitted out as a home (if it's a block of flats, or upstairs), in rooms about FLAT big
+EMPTY, FLAT = 40, 110
+BEDS = ("white_bed", "light_blue_bed", "blue_bed", "red_bed", "green_bed", "gray_bed")
 
 
 def dress(b):
+    if b.category == "Offices":
+        offices(b)
+        return
     if b.category not in CATEGORIES:
         return
     g = pc.Grid(b)
     out = pc.outside(g)
     rooms = list(_rooms(b, g, out))
+    pick = zlib.crc32(b.ident.encode())
+    fitted = False
+    for i, r in enumerate(rooms):
+        if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2):
+            for j, part in enumerate(Dresser(b, g, out, r, pick + i).split(FLAT)):
+                Dresser(b, g, out, part, pick + i + j).fit_out()
+            fitted = True
+    if fitted:
+        PF.joins(b)                                          # the new sofas' ends and middles
+        PF.tvs(b)                                            # and a TV across from each
+        rooms = list(_rooms(b, g, out))
     if not any(r.tags & HOME_TAGS for r in rooms):
         return                                               # not a home, or no home in it
-    pick = zlib.crc32(b.ident.encode())
     curtains = CURTAINS[pick % len(CURTAINS)]
     for i, r in enumerate(rooms):
         if "garage" in r.tags and "shop" not in r.tags:
@@ -66,6 +88,18 @@ def dress(b):
             d.dining()
         if not r.tags & HOME_TAGS:
             d.hall()
+
+
+def offices(b):
+    """An office building's empty floors get desks with computers along their walls, plants and lights."""
+    g = pc.Grid(b)
+    out = pc.outside(g)
+    seed = zlib.crc32(b.ident.encode())
+    for i, r in enumerate(_rooms(b, g, out)):
+        if not r.tags and len(r.cells) >= EMPTY:
+            d = Dresser(b, g, out, r, seed + i)
+            d.office()
+            d.light()
 
 
 class Room:
@@ -267,7 +301,7 @@ class Dresser:
             if all(abs(p[0] - q[0]) + abs(p[2] - q[2]) >= 7 for q in placed):
                 self._put(p, "pendant_light", floor=False, facing="north", lit=True)
                 placed.append(p)
-            if len(placed) >= (1 if len(cells) < 40 else 2):
+            if len(placed) > len(cells) // 40:
                 break
 
     def curtains(self, name):
@@ -416,6 +450,147 @@ class Dresser:
             self._place_floor("tyre_stack", corner=True)
         if not self._has("oil_drum"):
             self._place_floor("oil_drum")
+
+    # ------------------------------------------------------------------ fitting out an empty floor
+
+    def _ceiling(self, u, v):
+        """How many blocks are clear over the floor at (u, v) (up to 8)."""
+        k = 0
+        while k < 8 and self._empty(u, self.y + k, v):
+            k += 1
+        return k
+
+    def split(self, limit):
+        """Cut the room into parts no bigger than about limit with partition walls up to the ceiling, the long
+        way across first; each wall keeps a doorway, never runs through the way to a door or the stairs, and
+        leaves both sides whole. Returns the parts, as rooms."""
+        todo, out = [set(self.r.cells)], []
+        while todo:
+            cells = todo.pop()
+            if len(cells) <= limit or not self._cut(cells, todo):
+                room = Room(cells, self.y)
+                out.append(room)
+        return out
+
+    def _cut(self, cells, todo):
+        us, vs = [c[0] for c in cells], [c[2] for c in cells]
+        across_u = max(us) - min(us) >= max(vs) - min(vs)          # a wall at one u, from front to back
+        lo, hi = (min(us), max(us)) if across_u else (min(vs), max(vs))
+        mid = (lo + hi) // 2
+        for m in sorted(range(lo + 3, hi - 2), key=lambda m: abs(m - mid)):
+            wall = sorted(c for c in cells if (c[0] if across_u else c[2]) == m)
+            if not wall or any(c in self.keep for c in wall):
+                continue
+            a = {c for c in cells if (c[0] if across_u else c[2]) < m}
+            z = {c for c in cells if (c[0] if across_u else c[2]) > m}
+            if len(a) < 20 or len(z) < 20 or not self._connected(a) or not self._connected(z):
+                continue
+            # the doorway: the wall cell nearest its middle with floor both sides
+            step = (1, 0, 0) if across_u else (0, 0, 1)
+            doors = [c for c in wall if (c[0] - step[0], c[1], c[2] - step[2]) in a and (c[0] + step[0], c[1], c[2] + step[2]) in z]
+            if not doors:
+                continue
+            door = doors[len(doors) // 2]
+            for (u, y, v) in wall:
+                for k in range(2 if (u, y, v) == door else 0, self._ceiling(u, v)):
+                    self.b.set(u, y + k, v, "calcite")
+            self.free -= set(wall) - {door}
+            self.keep.add(door)
+            todo += [a | {door}, z]
+            return True
+        return False
+
+    def fit_out(self):
+        """An empty room made a home: a kitchen along a wall, a sofa away from it, a bed away from both, and a
+        toilet, basin and bath, each where it leaves the way through clear."""
+        placed = []
+
+        def far(options, runs=True):
+            """The options furthest from what's been placed first (a run by its first cell)."""
+            def gap(o):
+                c = o[0][0] if runs else o[0]
+                return -min((abs(c[0] - p[0]) + abs(c[2] - p[2]) for p in placed), default=0)
+            return sorted(options, key=gap)
+
+        run = self._run(4) or self._run(3)
+        if run:
+            cells, f = run
+            PF.kitchen(self.b, [(c[0], c[2]) for c in cells], self.y, f, "white" if self.seed % 2 else "oak")
+            self._took(cells, placed)
+        run = next(iter(far(self._runs(2))), None)
+        if run:
+            cells, f = run
+            colour = ("grey", "navy", "green", "brown", "cream")[self.seed % 5]
+            for c in cells:
+                self.b.set(*c, home(f"sofa_{colour}", facing=f, lit=False, shape="single"))
+            self._took(cells, placed)
+        for c, f in far(self._spots(), runs=False):
+            foot = (c[0] + VEC[f][0], c[1], c[2] + VEC[f][1])
+            if foot in self.free and foot not in self.keep and self._can_take_all([c, foot]):
+                bed = BEDS[self.seed % len(BEDS)]                  # its head to the wall
+                self.b.set(*c, B(bed, facing=OPP[f], part="head", occupied=False))
+                self.b.set(*foot, B(bed, facing=OPP[f], part="foot", occupied=False))
+                self._took([c, foot], placed)
+                break
+        run = next(iter(far(self._runs(3))), None) or next(iter(far(self._runs(2))), None)
+        if run:
+            cells, f = run
+            self.b.set(*cells[0], home("toilet", facing=f, lit=False))
+            self.b.set(*cells[1], home("basin", facing=f, lit=False))
+            if len(cells) > 2:
+                self.b.set(*cells[2], home("towel_radiator", facing=f, lit=False))
+            self._took(cells, placed)
+            bath = next(iter(sorted(self._runs(2), key=lambda r: abs(r[0][0][0] - cells[0][0]) + abs(r[0][0][2] - cells[0][2]))),
+                        None)
+            if bath and abs(bath[0][0][0] - cells[0][0]) + abs(bath[0][0][2] - cells[0][2]) <= 4:
+                PF.bath(self.b, [(c[0], c[2]) for c in bath[0]], self.y)
+                self._took(bath[0], placed)
+
+    def office(self):
+        """Desks along the walls, two apart, each with a computer and a chair facing it, and plants in corners."""
+        desks, spots = [], []
+        for c in sorted(self.free - self.keep):                # against a wall or a window (glass offices)
+            for d, (du, dv) in VEC.items():
+                blk = self.g.get(c[0] + du, c[1], c[2] + dv)
+                if _wall(blk) or blk is not None and pc.is_pane(blk):
+                    spots.append((c, OPP[d]))
+                    break
+        for c, f in spots:
+            chair = (c[0] + VEC[f][0], c[1], c[2] + VEC[f][1])
+            if len(desks) >= len(self.r.cells) // 12 or any(abs(c[0] - p[0]) + abs(c[2] - p[2]) < 2 for p in desks):
+                continue
+            if chair in self.free and chair not in self.keep and self._can_take_all([c, chair]) \
+                    and self._empty(c[0], c[1] + 1, c[2]):
+                self.b.set(*c, home("desk", facing=f, lit=False))
+                self.b.set(c[0], c[1] + 1, c[2], home("computer", facing=f, lit=False, level="table"))
+                self.b.set(*chair, home("office_chair", facing=OPP[f], lit=False))
+                self.free -= {c, chair}
+                desks.append(c)
+        for _ in range(2):
+            self._place_floor("houseplant", corner=True)
+
+    def _took(self, cells, placed):
+        for c in cells:
+            self.free.discard(c)
+            placed.append(c)
+
+    def _can_take_all(self, cells):
+        return all(c in self.free and c not in self.keep for c in cells) and self._connected(self.free - set(cells))
+
+    def _runs(self, n):
+        """Every row of n free cells side by side along a wall, all backing onto it, that can be given up together."""
+        spots = dict(self._spots())
+        out = []
+        for c, f in sorted(spots.items()):
+            side = VEC[CW[f]]
+            cells = [(c[0] + side[0] * k, c[1], c[2] + side[1] * k) for k in range(n)]
+            if all(spots.get(x) == f for x in cells) and self._can_take_all(cells):
+                out.append((cells, f))
+        return out
+
+    def _run(self, n):
+        runs = self._runs(n)
+        return runs[self.seed % len(runs)] if runs else None
 
     # ------------------------------------------------------------------ helpers
 

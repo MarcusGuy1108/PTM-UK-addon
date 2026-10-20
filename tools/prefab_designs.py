@@ -721,6 +721,8 @@ def high_street_parade(ident="high_street_parade", name="Victorian High Street P
         # stairs up from the back room to the two flats over the shop
         P.flight(b, o + 2, 1, 10, 1, 0, 4, "oak")
         P.flight(b, o + 5, 5, 11, -1, 0, 4, "oak")
+        for y in (5, 9):
+            shop_flat(b, o, y, 9)
     # pilasters with console brackets between the shops
     for u in (0, 7, 14, 21):
         b.fill(u, 1, 1, u, 4, 1, stone)
@@ -795,7 +797,52 @@ def corner_pub(ident="corner_pub", name="Victorian Corner Pub"):
         b.set(u, 4, v, B("lantern", hanging=True, waterlogged=False))
     for (u, y, v) in ((4, 8, 4), (8, 8, 4), (6, 8, 9)):
         b.set(u, y, v, light(11))
+    landlords_flat(b)
     return b
+
+
+def shop_flat(b, o, y, last):
+    """A flat over a six-wide shop (u o+1..o+6, v 2..last, the stairs behind it): a sofa and the bed at the
+    front, a kitchen along the left wall, a table, and a bath and toilet across the back left (the right
+    of the back row is the way in from the stairs; the row behind them is left to the stairwell)."""
+    P.sofa(b, o + 1, o + 2, y, 2, "front", "spruce")
+    b.set(o + 6, y, 3, B("blue_bed", facing="east", part="head", occupied=False))
+    b.set(o + 5, y, 3, B("blue_bed", facing="east", part="foot", occupied=False))
+    P.kitchen_run(b, 5, 7, y, o + 1, "right", side=True)
+    P.table(b, o + 4, y, 6)
+    b.set(o + 3, y, 6, stairs("spruce", "right"))
+    b.set(o + 5, y, 6, stairs("spruce", "left"))
+    P.bath(b, o + 2, o + 3, y, last)
+    b.set(o + 1, y, last, B("quartz_stairs", facing="south", half="bottom", shape="straight", waterlogged=False))
+
+
+def landlords_flat(b):
+    """The flat over the corner pub (floor at y 5, the stairs up from behind the bar arriving at the
+    back by u 8): a living room and a bedroom at the front, a bathroom and a kitchen-diner behind."""
+    y = 6
+    b.fill(1, y, 6, 11, 9, 6, "calcite")                   # front rooms | back
+    b.fill(6, y, 6, 6, y + 1, 6, AIR)                     # past the end of the sofa
+    b.fill(9, y, 6, 9, y + 1, 6, AIR)
+    b.fill(7, y, 2, 7, 9, 5, "calcite")                    # living room | bedroom
+    # living room: a sofa against the partition facing a TV on the side wall
+    P.sofa(b, 2, 4, y, 5, "back", "spruce")
+    P.tv(b, 1, y, 3)
+    # bedroom: the bed's head to the front wall, a wardrobe by the door
+    b.set(10, y, 2, B("red_bed", facing="south", part="head", occupied=False))
+    b.set(10, y, 3, B("red_bed", facing="south", part="foot", occupied=False))
+    b.set(8, y, 5, B("barrel", facing="south", open=False))
+    b.set(8, y + 1, 5, "spruce_planks")
+    # bathroom in the back corner, through a doorway
+    b.fill(4, y, 7, 4, 9, 9, "calcite")
+    b.fill(1, y, 10, 3, 9, 10, "calcite")
+    b.fill(4, y, 8, 4, y + 1, 8, AIR)
+    P.bath(b, 1, 2, y, 7)
+    b.set(1, y, 9, B("quartz_stairs", facing="south", half="bottom", shape="straight", waterlogged=False))
+    # kitchen-diner: units along the back wall, a table clear of the top of the stairs
+    P.kitchen_run(b, 9, 11, y, 11, "front")
+    P.table(b, 10, y, 8)
+    b.set(9, y, 8, stairs("dark_oak", "right"))
+    b.set(11, y, 8, stairs("dark_oak", "left"))
 
 
 def cafe_takeaway(ident="cafe_takeaway", name="Cafe and Takeaway (Pair)"):
@@ -820,6 +867,7 @@ def cafe_takeaway(ident="cafe_takeaway", name="Cafe and Takeaway (Pair)"):
         b.set(o + 3, 7, 4, light(11))
         b.door(o + 3, 1, 11, "spruce", facing="front", hinge="left")
         P.flight(b, o + 2, 1, 9, 1, 0, 4, "oak")              # up to the flat from the back
+        shop_flat(b, o, 5, 7)
     P.flat_roof(b, 0, W - 1, 1, 11, 8, deck="gray_concrete", parapet=brick, coping=P.STONE)
     return b
 

@@ -144,6 +144,27 @@ def high_street_unit(ident, name, category, W, D, storeys, sign, desc, interior,
     return b
 
 
+def offices(b, u, y):
+    """Offices over the shop: rows of desks with computers facing the front windows, a meeting table
+    at the back, a kitchenette against the back wall, plants and lights."""
+    x0 = u.x0
+    for v in (4, 7):
+        for x in range(x0 + 1, u.core_u - 1, 3):
+            fit(b, "desk", x, y, v, "front")
+            fit(b, "computer", x, y + 1, v, "front", level="table")
+            fit(b, "office_chair", x, y, v - 1, "back")
+    kitchen_to = min(x0 + 2, u.core_u - 2)
+    P.kitchen_run(b, x0, kitchen_to, y, u.back - 1, "front", finish="white")
+    mid = (u.core_v + u.back) // 2
+    if kitchen_to + 3 < u.core_u - 1:
+        P.table(b, kitchen_to + 3, y, mid)
+        b.set(kitchen_to + 2, y, mid, stairs("birch", "left"))
+        b.set(kitchen_to + 4, y, mid, stairs("birch", "right"))
+    fit(b, "houseplant", x0, y, 2, "front")
+    fit(b, "houseplant", u.x1, y, 2, "front")
+    b.light_grid(x0, 2, u.x1, u.back - 1, y + 2, step=3, level=13)
+
+
 def dining(b, u0, u1, v0, v1, every=3, chair="dark_oak", y=1):
     """Tables for two with a chair either side, in rows across a dining room (a clear row
     between them)."""
@@ -304,7 +325,7 @@ def pharmacy():
         shelf_shop(b, u, "pharmacy", "pharmacy", counter_items={u.x0 + 1: "till", u.x0 + 2: "computer"})
         b.fill(u.x0, 1, u.core_v + 1, u.x0 + 2, 3, u.core_v + 1, "calcite")      # the dispensary behind the counter
         fit(b, "desk", u.x0 + 1, 1, u.back - 1, "front")
-        fit(b, "office_chair", u.x0 + 1, 1, u.back - 2, "front")
+        fit(b, "office_chair", u.x0 + 1, 1, u.back - 2, "back")
     return high_street_unit(
         "pharmacy", "Pharmacy", "Shops", 8, 17, 2,
         ("HEALTH FIRST", "Pharmacy • Prescriptions • Advice", 0xFF0E8A4A, WHITE),
@@ -421,7 +442,7 @@ def pound_shop():
         ("POUND PALACE", "Everything Cheaper • Groceries • Home • Toys", 0xFFE21F26, YELLOW),
         "A big discount variety store in a double shop unit: aisles of groceries, cleaning things, sweets and drinks, "
         "two checkouts and a stock room, with offices over it.", fitout, style="modern", roof="flat",
-        wall="light_gray_concrete", stall="red_terracotta", door_u=7, upper=None)
+        wall="light_gray_concrete", stall="red_terracotta", door_u=7, upper=offices)
 
 
 # ================================================================== restaurants

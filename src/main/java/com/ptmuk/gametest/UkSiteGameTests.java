@@ -127,6 +127,48 @@ public final class UkSiteGameTests {
     }
 
     /**
+     * A big winding town: traffic lights at several junctions, trees in its green spaces, and
+     * streets out into every part of it (nowhere much more than a street's gardens away from one).
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void bigTownHasLightsTreesAndFillsOut(GameTestHelper helper) {
+        int w = 900, d = 700;
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, w - 1, d - 1);
+        com.ptmuk.road.layout.TownLayout.layOut(plan, town, net.minecraft.util.RandomSource.create(1));
+        long lights = plan.nodes.stream().filter(n -> n.junction == RoadPlan.Junction.SIGNALS).count();
+        helper.assertTrue(lights >= 3, "only " + lights + " traffic light junctions in a big town");
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        long trees = l.fixtures.stream().filter(f -> f.type() == Layout.FixtureType.PARK_TREE).count();
+        helper.assertTrue(trees >= 50, "only " + trees + " trees in the green spaces");
+        boolean[] road = new boolean[w * d];
+        for (int z = 0; z < d; z++) {
+            for (int x = 0; x < w; x++) {
+                int idx = l.index(x, z);
+                road[z * w + x] = idx >= 0 && l.kind[idx] == Layout.ROAD;
+            }
+        }
+        int near = 0, all = 0;
+        for (int z = 0; z < d; z += 8) {
+            for (int x = 0; x < w; x += 8) {
+                all++;
+                search:
+                for (int dz = -60; dz <= 60; dz += 4) {
+                    for (int dx = -60; dx <= 60; dx += 4) {
+                        int xx = x + dx, zz = z + dz;
+                        if (xx >= 0 && zz >= 0 && xx < w && zz < d && dx * dx + dz * dz <= 3600 && road[zz * w + xx]) {
+                            near++;
+                            break search;
+                        }
+                    }
+                }
+            }
+        }
+        helper.assertTrue(near >= all * 0.9, "only " + near + " of " + all + " places in the town are near a street");
+        helper.succeed();
+    }
+
+    /**
      * Shops, houses and a church, pub and surgery, on named streets with a High Street; every
      * building inside the town, clear of the roads and of each other, each with its building; and
      * the town turned to a green space, so no ground inside it is left as it was.

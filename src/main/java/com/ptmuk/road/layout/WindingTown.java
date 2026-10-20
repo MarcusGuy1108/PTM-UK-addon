@@ -20,7 +20,9 @@ import net.minecraft.util.RandomSource;
  * off those. Streets keep far enough apart for two gardens back to back. Every street is lined
  * with buildings one plot each, facing the road and stepping round the bends as close behind the
  * pavement as they go: shops along the middle of the main road, a church, pub and surgery either
- * side of them, houses everywhere else (terraces near the main road, semis, then detached).
+ * side of them, houses everywhere else (terraces near the main road, semis, then detached). Last,
+ * streets are run into whatever big gaps are left. Traffic lights go where streets cross the main
+ * road; a big town gets more of them, mini roundabouts, deeper back streets and main roads out.
  */
 final class WindingTown {
     private static final double STEP_MIN = 30, STEP_MAX = 44;
