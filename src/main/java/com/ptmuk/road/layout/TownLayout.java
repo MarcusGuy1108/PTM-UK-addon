@@ -26,6 +26,8 @@ public final class TownLayout {
     /** Clear of a crossing road's pavement at a corner. */
     private static final int CLEAR = 8;
     private static final int MIN_ROW = 9;
+    /** A main road at least this long makes a big town: traffic lights at all its crossroads, and mini roundabouts. */
+    static final int BIG = 600;
 
     /** A road the long way: where it is across the town and how it looks. */
     private record Street(int c, RoadStyle style, String name, boolean spine) {
@@ -166,6 +168,19 @@ public final class TownLayout {
         for (int i = 0; i < along.size(); i++) {
             for (int k = 0; k < cross.size(); k++) {
                 at[i][k] = node(cross.get(k), along.get(i).c());
+            }
+        }
+        // traffic lights where the middle cross street crosses the main road and, in a big town, every other one, with
+        // mini roundabouts where the ones between cross the streets either side of it
+        boolean big = len >= BIG;
+        for (int i = 0; i < along.size(); i++) {
+            for (int k = 0; k < cross.size(); k++) {
+                boolean lit = (k - cross.size() / 2) % 2 == 0;
+                if (along.get(i).spine() && (k == cross.size() / 2 || big && lit)) {
+                    at[i][k].junction = RoadPlan.Junction.SIGNALS;
+                } else if (big && !lit && ringOf(along, i, mid) == 1) {
+                    at[i][k].junction = RoadPlan.Junction.MINI_ROUNDABOUT;
+                }
             }
         }
         // the streets the long way: the spine end to end, the others between the first and last cross streets

@@ -30,6 +30,8 @@ final class WindingTown {
     private static final double JUNCTION_GAP = 34;
     /** A plain point of a street this near where a junction would go becomes the junction. */
     private static final double SNAP = 10;
+    /** Traffic lights along a big town's main road about this far apart at least. */
+    private static final double SIGNALS_APART = 170;
 
     /** A point on a street; shared by the streets that meet there. */
     private static final class Pt {
@@ -91,8 +93,9 @@ final class WindingTown {
 
     void run() {
         spine();
-        // side streets off the main road, then shorter ones off those
-        for (int level = 1; level <= 2; level++) {
+        // side streets off the main road, then shorter ones off those (and in a big town off those too)
+        int levels = spine.length() >= 2 * TownLayout.BIG ? 4 : spine.length() >= TownLayout.BIG ? 3 : 2;
+        for (int level = 1; level <= levels; level++) {
             for (Street parent : new ArrayList<>(all)) {
                 if (parent.level != level - 1) {
                     continue;
@@ -101,7 +104,8 @@ final class WindingTown {
                 // Streets off side streets start far enough out for houses between them and the main road
                 double len = parent.length();
                 int side = rand.nextBoolean() ? 1 : -1;
-                double first = level == 1 ? JUNCTION_GAP + 10 + rand.nextDouble() * 20 : apart(spine, res) + 10 + rand.nextDouble() * 10;
+                double first = level == 1 ? JUNCTION_GAP + 10 + rand.nextDouble() * 20
+                        : (level == 2 ? spine.style : res).halfOuter() + res.halfOuter() + 2 * ROW + 10 + rand.nextDouble() * 10;
                 for (double s = first; s < len - JUNCTION_GAP - 6; s += 34 + rand.nextDouble() * 12) {
                     branch(parent, s, side, level, false);
                     if (rand.nextFloat() < 0.2f) {
@@ -113,8 +117,112 @@ final class WindingTown {
                 }
             }
         }
+        fill();
         roads();
         plots();
+    }
+
+    /**
+     * Streets into the big gaps the others left (where side streets fanned apart): off the street
+     * nearest the biggest gap, towards it, again and again until no gap is left that one fits.
+     */
+    private void fill() {
+        int cell = 6, gw = town.width() / cell + 1, gh = town.depth() / cell + 1;
+        double gap = 2 * res.halfOuter() + 2 * ROW;
+        boolean[] failed = new boolean[gw * gh];
+        for (int tries = 0; tries < 400; tries++) {
+            boolean[] road = new boolean[gw * gh];
+            for (Street st : all) {
+                for (int i = 0; i + 1 < st.pts.size(); i++) {
+                    Pt p = st.pts.get(i), q = st.pts.get(i + 1);
+                    int n = (int) Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / (cell / 2.0)) + 1;
+                    for (int k = 0; k <= n; k++) {
+                        int cx = (int) ((p.x + (q.x - p.x) * k / n - town.x0) / cell), cz = (int) ((p.z + (q.z - p.z) * k / n - town.z0) / cell);
+                        if (cx >= 0 && cz >= 0 && cx < gw && cz < gh) {
+                            road[cz * gw + cx] = true;
+                        }
+                    }
+                }
+            }
+            Distance d = Distance.of(road, gw, gh);
+            int best = -1;
+            for (int i = 0; i < gw * gh; i++) {
+                double x = town.x0 + (i % gw + 0.5) * cell, z = town.z0 + (i / gw + 0.5) * cell;
+                if (failed[i] || !inside(x, z, ROW) || keptAt(x, z)) {
+                    continue;
+                }
+                if (best < 0 || d.dist[i] > d.dist[best]) {
+                    best = i;
+                }
+            }
+            if (best < 0 || d.dist[best] * cell < gap) {
+                return;
+            }
+            double x = town.x0 + (best % gw + 0.5) * cell, z = town.z0 + (best / gw + 0.5) * cell;
+            Street near = null;
+            double[] q = null;
+            for (Street st : all) {
+                double[] n = nearest(st, x, z);
+                if (q == null || n[0] < q[0]) {
+                    q = n;
+                    near = st;
+                }
+            }
+            At a = at(near, q[1]);
+            int side = (x - a.x()) * a.tz() - (z - a.z()) * a.tx() > 0 ? 1 : -1;     // the gap's side of it (left is tz, -tx)
+            // a close that stops short of it carries on into it; otherwise a street off the nearest one, from as near
+            // it as there's room for a junction
+            int before = all.size();
+            double len = near.length();
+            if (q[1] > len - 1 && extend(near, x, z)) {
+                continue;
+            }
+            for (int k = 0; k < 9 && all.size() == before; k++) {
+                double ds = (k + 1) / 2 * 16.0 * (k % 2 == 0 ? 1 : -1);
+                branch(near, Math.max(JUNCTION_GAP + 1, Math.min(len - JUNCTION_GAP - 1, q[1] + ds)), side, Math.max(2, near.level + 1), false);
+            }
+            if (all.size() == before) {
+                int r = (int) Math.ceil(gap / cell);
+                for (int dz = -r; dz <= r; dz++) {
+                    for (int dx = -r; dx <= r; dx++) {
+                        int cx = best % gw + dx, cz = best / gw + dz;
+                        if (cx >= 0 && cz >= 0 && cx < gw && cz < gh && dx * dx + dz * dz <= r * r) {
+                            failed[cz * gw + cx] = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Carry a close on from its end, bending towards (gx, gz), until it comes near another street or the edge; whether it went on at all. */
+    private boolean extend(Street st, double gx, double gz) {
+        Pt end = st.pts.get(st.pts.size() - 1), prev = st.pts.get(st.pts.size() - 2);
+        if (st == spine || end.junction || end.out) {
+            return false;
+        }
+        double h = Math.atan2(end.z - prev.z, end.x - prev.x);
+        if (Math.cos(Math.atan2(gz - end.z, gx - end.x) - h) < 0.3) {
+            return false;                                    // it's not ahead
+        }
+        At leave = new At(end.x, end.z, Math.cos(h), Math.sin(h), st.pts.size() - 2, st.length());
+        int added = 0;
+        for (int k = 0; k < 4; k++) {
+            Pt cur = st.pts.get(st.pts.size() - 1);
+            double turn = Math.atan2(Math.sin(Math.atan2(gz - cur.z, gx - cur.x) - h), Math.cos(Math.atan2(gz - cur.z, gx - cur.x) - h));
+            h += Math.max(-0.35, Math.min(0.35, turn * 0.5 + (rand.nextDouble() - 0.5) * 0.3));
+            double step = STEP_MIN + rand.nextDouble() * (STEP_MAX - STEP_MIN), nx = cur.x + Math.cos(h) * step, nz = cur.z + Math.sin(h) * step;
+            if (!inside(nx, nz, res.halfOuter() + ROW * 0.7) || crowds(cur.x, cur.z, nx, nz, res, st, leave, 0, null) != null) {
+                break;
+            }
+            st.pts.add(new Pt(nx, nz));
+            added++;
+        }
+        return added > 0;
+    }
+
+    private boolean keptAt(double x, double z) {
+        return kept.stream().anyMatch(k -> x >= k.x0 && x <= k.x1 + 1 && z >= k.z0 && z <= k.z1 + 1);
     }
 
     // ------------------------------------------------------------------ the main road
@@ -328,7 +436,9 @@ final class WindingTown {
         double ontoS = 0;
         Pt endOn = null;
         boolean out = false, turned = false;
-        int steps = level == 1 ? 6 : 3;
+        // a side street off the main road can reach the edge of town; the rest are shorter
+        double wide = alongX ? town.depth() : town.width();
+        int steps = level == 1 ? Math.max(6, (int) Math.ceil(wide / 2 / STEP_MIN)) : level == 2 && wide > 500 ? 5 : 3;
         for (int k = 0; k < steps; k++) {
             double[] cur = path.get(path.size() - 1);
             double step = STEP_MIN + rand.nextDouble() * (STEP_MAX - STEP_MIN);
@@ -430,7 +540,8 @@ final class WindingTown {
                 boolean high = st == spine && town.highStreet && run + l / 2 > total * 0.25 && run + l / 2 < total * 0.75;
                 RoadPlan.Node na = nodes.computeIfAbsent(a, p -> plan.addNode(Math.floor(p.x), Math.floor(p.z)));
                 RoadPlan.Node nb = nodes.computeIfAbsent(b, p -> plan.addNode(Math.floor(p.x), Math.floor(p.z)));
-                RoadPlan.Segment seg = plan.addSegment(na.id, nb.id, high ? TownLayout.kerbed(RoadStyle.busyHighStreet(), town) : st.style);
+                RoadPlan.Segment seg = plan.addSegment(na.id, nb.id, high ? TownLayout.kerbed(RoadStyle.busyHighStreet(), town)
+                        : through(st) ? TownLayout.kerbed(RoadStyle.mainRoad(), town) : st.style);
                 seg.name = st.name;
                 streetOf.put(seg, st);
                 startOf.put(seg, run);
@@ -438,6 +549,36 @@ final class WindingTown {
             }
             streets++;
         }
+        // traffic lights on the main road: a small town's crossroads nearest the middle; a big town's crossroads and
+        // then its longest side streets, one set every SIGNALS_APART or so. Mini roundabouts where back streets cross
+        boolean big = spine.length() >= TownLayout.BIG;
+        Map<Pt, Double> side = new IdentityHashMap<>();
+        for (Street st : all) {
+            if (st.level == 1) {
+                side.merge(st.pts.get(0), st.length() + (plan.segmentsAt(nodes.get(st.pts.get(0)).id).size() >= 4 ? 10000 : 0), Math::max);
+            } else if (big && st.level == 2 && plan.segmentsAt(nodes.get(st.pts.get(0)).id).size() >= 4) {
+                nodes.get(st.pts.get(0)).junction = RoadPlan.Junction.MINI_ROUNDABOUT;
+            }
+        }
+        List<Pt> lights = new ArrayList<>(side.keySet());
+        double mid = spine.length() / 2;
+        lights.sort((a, b) -> big ? Double.compare(side.get(b), side.get(a))
+                : Double.compare(Math.abs(along(spine, spine.pts.indexOf(a)) - mid), Math.abs(along(spine, spine.pts.indexOf(b)) - mid)));
+        List<Double> chosen = new ArrayList<>();
+        for (Pt p : lights) {
+            double s = along(spine, spine.pts.indexOf(p));
+            if (big ? chosen.stream().allMatch(c -> Math.abs(c - s) >= SIGNALS_APART) : chosen.isEmpty() && side.get(p) >= 10000) {
+                chosen.add(s);
+                nodes.get(p).junction = RoadPlan.Junction.SIGNALS;
+            }
+        }
+    }
+
+    /** In a big town, a long side street off the main road that runs on out of town: a main road itself. */
+    private boolean through(Street st) {
+        double wide = alongX ? town.depth() : town.width();
+        return st.level == 1 && spine.length() >= TownLayout.BIG && st.style != spine.style && st.length() >= wide * 0.3
+                && st.pts.get(st.pts.size() - 1).out;
     }
 
     // ------------------------------------------------------------------ the buildings

@@ -152,6 +152,8 @@ public final class Layout {
         int cutA = -1, cutB = -1;
         /** Sample where the road meets the junction itself, or -1. */
         int mouthA = -1, mouthB = -1;
+        /** A major road at a give way junction (or a one-way road leaving one): the sample where it meets the junction, or -1. */
+        int entryA = -1, entryB = -1;
         boolean minorA, minorB;
     }
 
@@ -1238,16 +1240,49 @@ public final class Layout {
     /** Find where an arm runs into the junction and stop its lines a block before. */
     private void mouth(Jn j, Seg g, boolean atA) {
         Curve c = g.c;
-        int side = atA ? -1 : 1;                       // the lanes heading into the junction
-        double probe;
-        if (g.st.oneWay) {
-            probe = 0;
-            if (atA) {
-                return;                                  // one-way away from this junction
-            }
-        } else {
-            probe = side * (g.st.dual ? (g.halfRes + g.hc) / 2 : g.hc / 2);
+        if (g.st.oneWay && atA) {
+            return;                                      // one-way away from this junction
         }
+        int step = atA ? -1 : 1;
+        int i = edge(j, g, atA);
+        if (i < 0) {
+            return;
+        }
+        if (j.type == Junction.SIGNALS) {
+            // traffic lights: the crossing goes where the kerbs are still straight, the stop line before it
+            i = flareStart(g, atA, i);
+        }
+        double blocks = j.type == Junction.SIGNALS ? 6 : 1;
+        int back = (int) Math.round(blocks / Curve.STEP);
+        int cut = Math.max(0, Math.min(c.n - 1, i - step * back));
+        if (atA) {
+            g.cutA = cut;
+            g.mouthA = i;
+        } else {
+            g.cutB = cut;
+            g.mouthB = i;
+        }
+    }
+
+    /**
+     * Coming in along an arm, the first sample where either side's lanes reach the junction, or -1
+     * (one side only would put the far side of a T-junction, where no corner curves away, nearly in its middle).
+     */
+    private int edge(Jn j, Seg g, boolean atA) {
+        double lane = g.st.oneWay ? 0 : g.st.dual ? (g.halfRes + g.hc) / 2 : g.hc / 2;
+        int e = -1;
+        for (int side = -1; side <= 1; side += 2) {
+            int i = coreHit(j, g, atA, side * lane);
+            if (i >= 0 && (e < 0 || (atA ? i > e : i < e))) {
+                e = i;
+            }
+        }
+        return e;
+    }
+
+    /** Coming in along an arm, probe blocks left of its middle, the first sample that reaches the junction, or -1. */
+    private int coreHit(Jn j, Seg g, boolean atA, double probe) {
+        Curve c = g.c;
         int step = atA ? -1 : 1;
         int start = atA ? c.n - 1 : 0, end = atA ? 0 : c.n - 1;
         for (int i = start; i != end + step; i += step) {
@@ -1256,26 +1291,12 @@ public final class Layout {
                 continue;
             }
             // this junction's own island only: a roundabout at the far end isn't this junction
-            boolean hit = ((core[idx] || island[idx]) && coreOwner[idx] == j.index)
-                    || (toCore.dist[idx] <= 1.01 && toCore.nearest[idx] >= 0 && coreOwner[toCore.nearest[idx]] == j.index);
-            if (hit) {
-                if (j.type == Junction.SIGNALS) {
-                    // traffic lights: the crossing goes where the kerbs are still straight, the stop line before it
-                    i = flareStart(g, atA, i);
-                }
-                double blocks = j.type == Junction.SIGNALS ? 6 : 1;
-                int back = (int) Math.round(blocks / Curve.STEP);
-                int cut = Math.max(0, Math.min(c.n - 1, i - step * back));
-                if (atA) {
-                    g.cutA = cut;
-                    g.mouthA = i;
-                } else {
-                    g.cutB = cut;
-                    g.mouthB = i;
-                }
-                return;
+            if (((core[idx] || island[idx]) && coreOwner[idx] == j.index)
+                    || (toCore.dist[idx] <= 1.01 && toCore.nearest[idx] >= 0 && coreOwner[toCore.nearest[idx]] == j.index)) {
+                return i;
             }
         }
+        return -1;
     }
 
     /** Coming along an arm towards a junction, the sample where the kerb starts curving away round a corner. */
@@ -1818,6 +1839,25 @@ public final class Layout {
                         j.host.c.index((im + d) * Curve.STEP)));
             }
         }
+        // the major road's lanes (and a one-way road's leaving) stop where it runs into a junction, not in the middle
+        // of it, so turning off it is a turn ahead (not back from the middle) and straight on is one straight lane
+        for (Jn j : jns) {
+            if (j.type == Junction.ROUNDABOUT || j.type == Junction.MERGE) {
+                continue;
+            }
+            for (Seg g : j.arms) {
+                boolean atA = g.na.id == j.node.id;
+                if ((atA ? g.mouthA : g.mouthB) >= 0) {
+                    continue;
+                }
+                int e = edge(j, g, atA);
+                if (atA) {
+                    g.entryA = e;
+                } else {
+                    g.entryB = e;
+                }
+            }
+        }
         Map<SplitKey, Integer> splitPoints = new HashMap<>();
         Map<Integer, List<LaneEnd>> ins = new HashMap<>(), outs = new HashMap<>();
         for (Seg g : segs) {
@@ -1827,7 +1867,7 @@ public final class Layout {
                 Node from = ab ? g.na : g.nb, to = ab ? g.nb : g.na;
                 int i0 = laneStart(g, ab, degree), i1 = laneEnd(g, !ab, degree), step = ab ? 1 : -1;
                 if ((i1 - i0) * step < 4) {
-                    continue;
+                    i0 = i1 = (i0 + i1) / 2;                // junctions all but touching: one point between them joins them up
                 }
                 int count = (i1 - i0) * step + 1;
                 for (int k = 0; k < g.st.lanes; k++) {
@@ -1879,7 +1919,7 @@ public final class Layout {
                             splitPoints.put(new SplitKey(g, ab, k, i), p);
                         }
                     }
-                    if (first < 0 || first == prev) {
+                    if (first < 0) {
                         continue;
                     }
                     outs.computeIfAbsent(from.id, x -> new ArrayList<>())
@@ -1916,10 +1956,33 @@ public final class Layout {
             } else {
                 boolean deadEnd = j == null && degree.getOrDefault(id, 0) == 1, plain = j == null;
                 for (LaneEnd e : in) {
+                    LaneEnd gentlest = null;
+                    boolean any = false;
                     for (LaneEnd o : out) {
-                        if (deadEnd ? o.seg() == e.seg() && o.lane() == e.lane() : o.seg() != e.seg() && turns(e, o, plain)) {
+                        if (deadEnd ? o.seg() == e.seg() && o.lane() == e.lane() : o.seg() != e.seg() && turns(e, o, plain) && ahead(e, o)) {
                             link(e.point(), o.point());
+                            any = true;
+                        } else if (!deadEnd && o.seg() != e.seg() && (gentlest == null
+                                || e.dx() * o.dx() + e.dz() * o.dz() > e.dx() * gentlest.dx() + e.dz() * gentlest.dz())) {
+                            gentlest = o;
                         }
+                    }
+                    if (!any && gentlest != null) {
+                        link(e.point(), gentlest.point());       // no other way on: never leave cars stuck
+                    }
+                }
+                for (LaneEnd o : deadEnd ? List.<LaneEnd>of() : out) {   // and every road off it has a way in
+                    LaneEnd gentlest = null;
+                    boolean any = false;
+                    for (LaneEnd e : in) {
+                        any |= traffic.get(e.point()).next().contains(o.point());
+                        if (o.seg() != e.seg() && (gentlest == null
+                                || e.dx() * o.dx() + e.dz() * o.dz() > gentlest.dx() * o.dx() + gentlest.dz() * o.dz())) {
+                            gentlest = e;
+                        }
+                    }
+                    if (!any && gentlest != null) {
+                        link(gentlest.point(), o.point());
                     }
                 }
             }
@@ -1932,11 +1995,26 @@ public final class Layout {
         if (plain || dot > 0.7) {
             return o.lane() == Math.min(e.lane(), o.lanes() - 1);
         }
-        if (dot < -0.85) {
-            return false;                                   // straight back the way it came
+        if (dot < -0.4) {
+            return false;                                   // back the way it came, or a hairpin PTM2 would loop round
         }
         boolean left = o.dx() * e.dz() - o.dz() * e.dx() > 0;
         return left ? e.lane() == 0 && o.lane() == 0 : e.lane() == e.lanes() - 1 && o.lane() == o.lanes() - 1;
+    }
+
+    /**
+     * Whether the lane turned into starts ahead of the one coming in, both ways the points face
+     * (PTM2 loops back round to one behind; it goes by the points' eight directions, not the road's).
+     */
+    private boolean ahead(LaneEnd e, LaneEnd o) {
+        TrafficPoint p = traffic.get(e.point()), q = traffic.get(o.point());
+        double dx = q.x() - p.x(), dz = q.z() - p.z(), len = Math.hypot(dx, dz);
+        return len < 1e-6 || facing(dx, dz, p.rot8()) / len > -0.2 && facing(dx, dz, q.rot8()) / len > -0.2;
+    }
+
+    /** How far (dx, dz) goes the way rot8 faces. */
+    private static double facing(double dx, double dz, int rot8) {
+        return -dx * Math.sin(rot8 * Math.PI / 4) + dz * Math.cos(rot8 * Math.PI / 4);
     }
 
     /** Round a roundabout clockwise: a ring of points, joined from every way in and to every way out. */
@@ -1995,13 +2073,19 @@ public final class Layout {
 
     /** The sample where lanes leaving one end of a road start: the edge of the junction, or turning room in from a dead end. */
     private int laneStart(Seg g, boolean atA, Map<Integer, Integer> degree) {
-        int mouth = atA ? g.mouthA : g.mouthB;
-        return mouth >= 0 ? mouth : end(g, atA, degree);
+        int mouth = atA ? g.mouthA : g.mouthB, entry = atA ? g.entryA : g.entryB;
+        return mouth >= 0 ? mouth : entry >= 0 ? entry : end(g, atA, degree);
     }
 
     /** The sample where lanes coming into one end of a road stop: a block short of the give way or stop line. */
     private int laneEnd(Seg g, boolean atA, Map<Integer, Integer> degree) {
-        int cut = atA ? g.cutA : g.cutB, back = (int) Math.round(1 / Curve.STEP);
+        int cut = atA ? g.cutA : g.cutB, entry = atA ? g.entryA : g.entryB, back = (int) Math.round(1 / Curve.STEP);
+        if (cut < 0 && entry >= 0) {
+            cut = entry;
+        } else if (cut < 0 && !jnByNode.containsKey((atA ? g.na : g.nb).id) && degree.getOrDefault((atA ? g.na : g.nb).id, 0) == 2) {
+            // a plain bend: stop short of the lane carrying on from the same spot, or rounding to blocks can put it a block behind
+            return g.c.index(atA ? 2 : g.c.length - 2);
+        }
         return cut >= 0 ? Math.max(0, Math.min(g.c.n - 1, cut + (atA ? back : -back))) : end(g, atA, degree);
     }
 

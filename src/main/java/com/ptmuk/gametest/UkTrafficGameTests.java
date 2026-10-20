@@ -3,6 +3,7 @@ package com.ptmuk.gametest;
 import com.ptmuk.PtmUk;
 import com.ptmuk.road.layout.Layout;
 import com.ptmuk.road.layout.Terrain;
+import com.ptmuk.road.layout.TownLayout;
 import com.ptmuk.road.plan.RoadPlan;
 import com.ptmuk.road.plan.RoadStyle;
 import java.util.ArrayDeque;
@@ -13,6 +14,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.util.RandomSource;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
@@ -53,9 +55,9 @@ public final class UkTrafficGameTests {
         int out = nearest(helper, t, p -> p.rot8() == 4 && Math.abs(p.x() - 100) < 10 && p.z() > 3, 100, 0);
         helper.assertTrue(goesTo(t, out, 2), "can't turn left out of the side road");
         helper.assertTrue(goesTo(t, out, 6), "can't turn right out of the side road");
-        helper.assertTrue(goesTo(t, nearest(helper, t, p -> p.rot8() == 2 && p.z() > 0 && p.z() < 10, 100, 0), 0),
+        helper.assertTrue(goesTo(t, nearest(helper, t, p -> p.rot8() == 2 && p.z() > 0 && p.z() < 10 && p.x() > 100, 100, 0), 0),
                 "can't turn left into the side road");
-        helper.assertTrue(goesTo(t, nearest(helper, t, p -> p.rot8() == 6 && p.z() < 0 && p.z() > -10, 100, 0), 0),
+        helper.assertTrue(goesTo(t, nearest(helper, t, p -> p.rot8() == 6 && p.z() < 0 && p.z() > -10 && p.x() < 100, 100, 0), 0),
                 "can't turn right into the side road");
         // PTM2 junction areas (no cars start off in them): the give way junction and the roundabout, marked as one
         helper.assertTrue(layout.junctionZones.size() == 2, "expected 2 junction areas, got " + layout.junctionZones.size());
@@ -78,6 +80,36 @@ public final class UkTrafficGameTests {
             }
         }
         helper.assertTrue(rings >= 8, "no ring round the roundabout");
+        helper.succeed();
+    }
+
+    /**
+     * Round a winding town every lane can be got into and goes somewhere, and every link goes on
+     * ahead: none back to a point behind (PTM2 loops round to reach it, which looked like a U-turn
+     * at junctions), except turning round at a dead end.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void trafficOnlyTurnsRoundAtDeadEnds(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 519, 419);
+        TownLayout.layOut(plan, town, RandomSource.create(5));
+        List<Layout.TrafficPoint> t = Layout.of(plan, Terrain.flat(64)).traffic;
+        helper.assertTrue(t.size() > 200, "too few traffic points: " + t.size());
+        Set<Integer> reached = new HashSet<>();
+        t.forEach(p -> reached.addAll(p.next()));
+        helper.assertTrue(reached.size() == t.size(), (t.size() - reached.size()) + " lanes no car can get into");
+        for (Layout.TrafficPoint p : t) {
+            helper.assertTrue(!p.next().isEmpty(), "cars would run out of road at " + p.x() + ", " + p.z());
+            for (int n : p.next()) {
+                Layout.TrafficPoint q = t.get(n);
+                double dx = q.x() - p.x(), dz = q.z() - p.z(), len = Math.hypot(dx, dz);
+                double ahead = Math.min(dx * -Math.sin(p.rot8() * Math.PI / 4) + dz * Math.cos(p.rot8() * Math.PI / 4),
+                        dx * -Math.sin(q.rot8() * Math.PI / 4) + dz * Math.cos(q.rot8() * Math.PI / 4)) / len;
+                int turn = Math.abs(Math.floorMod(q.rot8() - p.rot8() + 4, 8) - 4);
+                helper.assertTrue(ahead > -0.2 || turn >= 3 && len < 10,
+                        "a link back from " + p.x() + ", " + p.z() + " to " + q.x() + ", " + q.z());
+            }
+        }
         helper.succeed();
     }
 
