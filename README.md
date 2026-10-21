@@ -352,6 +352,7 @@ In the **UK Buses & Cars** tab. These are PTM2 vehicles, so they drive, take rou
 With PTM2's left-hand traffic setting on, the buses have their doors on the left, as in the UK. All of them have:
 
 - Working upper decks and stairs.
+- Front doors whose two leaves swing into the bus, as on a London bus. The Enviro400 and OmniCity exit doors are plug doors that push out and slide along the side.
 - Destination blinds (front, side and rear) and inside next-stop screens.
 - Lights that glow at night.
 - Working mirrors.

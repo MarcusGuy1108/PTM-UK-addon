@@ -1164,7 +1164,7 @@ def interior():
         solid("Interior", (xb - 0.04, LOWER_FLOOR + h - 0.02, -0.3), (xb, LOWER_FLOOR + h + 0.002, 0.3), "yellow")
     # raised floors under the seats over the rear axle and the engine (they floated before)
     for (xa, xb, h) in ((-3.7, -2.0, 0.42), (X0 + 0.1, -4.3, 0.3)):
-        for za, zb in ((ZN + 0.05, -0.3), (0.3, ZO - 0.05)):
+        for za, zb in ((ZN + 0.07, -0.3), (0.3, ZO - 0.07)):   # clear of the tyres
             cube("Interior", (xa, LOWER_FLOOR, za), (xb, LOWER_FLOOR + h, zb),
                  {"up": "carpet", "north": "wall_dark", "south": "wall_dark", "east": "yellow", "west": "wall_dark"})
     # lower deck poles and bells
@@ -1183,7 +1183,7 @@ def interior():
     for i in range(n):
         xa = STAIRS[0] + i * run
         top = LOWER_FLOOR + (i + 1) * rise
-        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1]),
+        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1] - 0.02),   # clear of the tyre
              {"up": "carpet", "west": "yellow", "north": "wall_dark", "south": "wall_dark", "east": "wall_dark"})
     # lower deck: a solid wall right across the back end of the stairs (the seats behind see a
     # panel, not the steps); on the gangway side the bottom three steps are open to step on,
@@ -1266,14 +1266,14 @@ def interior():
 
 
 def doors():
-    """Two-leaf glazed doors; each leaf folds inwards and slides towards its frame in the animation."""
+    """Two-leaf glazed doors filling their openings; each leaf swings inwards about its outer edge."""
     for bone_pair, (a, b) in ((("Right", "Left"), DOOR1), (("Right2", "Left2"), DOOR2)):
         mid = (a + b) / 2
         group = "FrontDoors" if bone_pair[0] == "Right" else "MiddleDoors"
         bone(group)
         for name, (xa, xb) in zip(bone_pair, ((mid, b), (a, mid))):
             bone(name, group, (xb if name.startswith("Right") else xa, LOWER_FLOOR, ZN + 0.02))
-            cube(name, (xa + 0.01, LOWER_FLOOR + 0.02, ZN + 0.005), (xb - 0.01, DOOR_TOP - 0.02, ZN + 0.035),
+            cube(name, (xa, LOWER_FLOOR + 0.005, ZN + 0.005), (xb, DOOR_TOP, ZN + 0.035),
                  {"north": "door_leaf", "south": "door_leaf", "east": "black", "west": "black", "up": "black", "down": "black"},
                  parent=group)
 
@@ -1289,8 +1289,8 @@ def lights():
         bone(name, "Blinkers")
     hz, hy, hs = HEADLAMP
     iz, iy, iw = INDICATOR
-    xf = X1 + 0.003                       # unlit lenses just proud of the panel
-    xl = X1 - 0.012                       # lit ones hidden in the panel until pushed out
+    xf = X1 + 0.01                        # unlit lenses 1 cm proud of the panel
+    xl = X1 - 0.027                       # lit ones hidden in the panel until pushed out
     for sz in (1, -1):
         # round headlamps in recessed pods near the corners, small amber indicators above
         cube("Body", (xf, hy - hs / 2, sz * hz - hs / 2), (xf + 0.002, hy + hs / 2, sz * hz + hs / 2), {"east": "headlamp"})
@@ -1298,21 +1298,21 @@ def lights():
              parent="Blinkers")
         cube("Body", (xf, iy - 0.032, sz * iz - iw / 2), (xf + 0.002, iy + 0.032, sz * iz + iw / 2), {"east": "indicator"})
         rz = sz * 0.857
-        cube("StopLights", (X0 + 0.008, 1.22, rz - 0.07), (X0 + 0.02, 1.45, rz + 0.07), {"west": "brake_on"}, parent="Blinkers")
-        cube("BackLights", (X0 + 0.008, 0.88, rz - 0.07), (X0 + 0.02, 1.0, rz + 0.07), {"west": "lamp_on"}, parent="Blinkers")
+        cube("StopLights", (X0 + 0.025, 1.22, rz - 0.07), (X0 + 0.037, 1.45, rz + 0.07), {"west": "brake_on"}, parent="Blinkers")
+        cube("BackLights", (X0 + 0.025, 0.88, rz - 0.07), (X0 + 0.037, 1.0, rz + 0.07), {"west": "lamp_on"}, parent="Blinkers")
     # high level brake lamps light with the main stop lights
     for z, y, r in ((HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2]), (-HIGH_BRAKE[0], HIGH_BRAKE[1], HIGH_BRAKE[2])):
-        cube("StopLights", (X0 + 0.008, y - r, z - r), (X0 + 0.02, y + r, z + r), {"west": "brake_round_on"}, parent="Blinkers")
+        cube("StopLights", (X0 + 0.025, y - r, z - r), (X0 + 0.037, y + r, z + r), {"west": "brake_round_on"}, parent="Blinkers")
     for name, sz in (("FrontLeftTurnSignal", 1), ("FrontRightTurnSignal", -1)):
         bone(name, "Blinkers")
         cube(name, (xl, iy - 0.032, sz * iz - iw / 2), (xl + 0.002, iy + 0.032, sz * iz + iw / 2), {"east": "indicator_on"}, parent="Blinkers")
     for name, z in (("BackLeftTurnSignal", 0.857), ("BackRightTurnSignal", -0.857)):
         bone(name, "Blinkers")
-        cube(name, (X0 + 0.008, 1.02, z - 0.07), (X0 + 0.02, 1.2, z + 0.07), {"west": "amber_on"}, parent="Blinkers")
+        cube(name, (X0 + 0.025, 1.02, z - 0.07), (X0 + 0.037, 1.2, z + 0.07), {"west": "amber_on"}, parent="Blinkers")
     # side repeaters just ahead of the front wheels, hidden in the panel until they flash
     for name, z, face in (("LeftTurnSignal", ZO, "south"), ("RightTurnSignal", ZN, "north")):
         bone(name, "Blinkers", (3.405, 0.5, z))
-        za, zb = (z - 0.02, z - 0.008) if z > 0 else (z + 0.008, z + 0.02)
+        za, zb = (z - 0.037, z - 0.025) if z > 0 else (z + 0.025, z + 0.037)
         cube(name, (3.37, 0.47, za), (3.44, 0.53, zb), {face: "amber_on"}, parent="Blinkers")
 
 
@@ -1335,18 +1335,21 @@ def details():
     # the little raised boss above the rear route box
     bz, by, br = HIGH_BRAKE_MID
     solid("Body", (X0 - 0.015, by - br * 0.8, bz - br * 0.8), (X0 + 0.005, by + br * 0.8, bz + br * 0.8), grad_name(X0))
-    # side adverts as thin decals just proud of the panels
+    # side adverts as thin decals 2 cm proud of the panels (closer ones flickered from a distance)
     xa, xb = ADVERTS["near"]
-    cube("Body", (xa, ADVERT_Y[0], ZN - 0.006), (xb, ADVERT_Y[1], ZN - 0.002), {"north": face_uv("advert_near")})
+    cube("Body", (xa, ADVERT_Y[0], ZN - 0.02), (xb, ADVERT_Y[1], ZN - 0.016), {"north": face_uv("advert_near")})
     xa, xb = ADVERTS["off"]
-    cube("Body", (xa, ADVERT_Y[0], ZO + 0.002), (xb, ADVERT_Y[1], ZO + 0.006), {"south": face_uv("advert_off", flip_u=ADVERT_OFF_FLIP)})
+    cube("Body", (xa, ADVERT_Y[0], ZO + 0.016), (xb, ADVERT_Y[1], ZO + 0.02), {"south": face_uv("advert_off", flip_u=ADVERT_OFF_FLIP)})
     # "bunny ear" mirrors: an arm forward from the top of each windscreen corner, then down
     bone("Mirrors")
     for name, z, s in (("LeftMirror", ZO, 1), ("RightMirror", ZN, -1)):
         bone(name, "Mirrors", (X1 + 0.2, 1.9, z + s * 0.1))
         solid(name, (X1 - 0.32, 2.3, z + s * 0.01), (X1 + 0.21, 2.34, z + s * 0.04), "black", parent="Mirrors")
         solid(name, (X1 + 0.17, 2.0, z + s * 0.01), (X1 + 0.21, 2.34, z + s * 0.04), "black", parent="Mirrors")
-        solid(name, (X1 + 0.14, 1.64, z - s * 0.02), (X1 + 0.22, 2.02, z + s * 0.15), "black", parent="Mirrors")
+        # the head has no back: the glass (and PTM2's live mirror view, drawn on the biggest
+        # rear face) would flicker against it
+        solid(name, (X1 + 0.14, 1.64, z - s * 0.02), (X1 + 0.22, 2.02, z + s * 0.15), "black",
+              faces=("north", "south", "east", "up", "down"), parent="Mirrors")
         cube(name, (X1 + 0.135, 1.67, min(z - s * 0.01, z + s * 0.14)), (X1 + 0.14, 1.99, max(z - s * 0.01, z + s * 0.14)),
              {"west": "glass_door"}, parent="Mirrors")
     # wipers, parked along the bottom of the windscreen
@@ -1368,7 +1371,7 @@ def anim(length=None, loop=None, bones=None):
 
 
 def door_anim(right, left, open_):
-    """Leaves swing in a little then fold towards their frame edges."""
+    """Each leaf swings into the bus about its outer edge, as on a London bus front door."""
     def key(rot, pos):
         return {"rotation": {"0.0": {"vector": [0, 0, 0] if open_ else rot}, "1.0": {"vector": rot if open_ else [0, 0, 0]}},
                 "position": {"0.0": {"vector": [0, 0, 0] if open_ else pos}, "1.0": {"vector": pos if open_ else [0, 0, 0]}}}
@@ -1376,7 +1379,7 @@ def door_anim(right, left, open_):
 
 
 def write_animations():
-    out = 0.025 * PX
+    out = 0.05 * PX
     anims = {
         "alx400.door1_open": door_anim("Right", "Left", True),
         "alx400.door1_close": door_anim("Right", "Left", False),

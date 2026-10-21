@@ -136,7 +136,7 @@ def tx(m):
     return int(round(m * TPM))
 
 
-ADVERTS = {"near": (-3.6, DOOR1[0] - 0.4), "off": (-3.9, 1.6)}     # x span of the side adverts
+ADVERTS = {"near": (-3.6, DOOR1[0] - 0.55), "off": (-3.9, 1.6)}     # x span of the side adverts
 ADVERT_Y = (2.08, 2.56)
 # regions holding text: mirrored in place in the _left texture, because PTM2 mirrors the whole
 # bus in left-hand traffic worlds and loads <texture>_left.png if there is one
@@ -850,7 +850,7 @@ def interior():
     for i in range(n):
         xa = STAIRS[0] + i * run
         top = LOWER_FLOOR + (i + 1) * rise
-        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1]),
+        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1] - 0.02),   # clear of the tyre
              {"up": "carpet", "west": "yellow", "north": "wall_dark", "south": "wall_dark", "east": "wall_dark"})
     # lower deck: a solid wall right across the back end of the stairs (the seats behind see a
     # panel, not the steps); on the gangway side the bottom three steps are open to step on,
@@ -931,14 +931,14 @@ def interior():
 
 
 def doors():
-    """Two-leaf doors; each leaf folds inwards and slides towards its frame in the animation."""
+    """Two-leaf doors filling their openings; each leaf swings inwards about its outer edge."""
     for bone_pair, (a, b) in ((("Right", "Left"), DOOR1), (("Right2", "Left2"), DOOR2)):
         mid = (a + b) / 2
         group = "FrontDoors" if bone_pair[0] == "Right" else "MiddleDoors"
         bone(group)
         for name, (xa, xb) in zip(bone_pair, ((mid, b), (a, mid))):
             bone(name, group, (xb if name.startswith("Right") else xa, LOWER_FLOOR, ZN + 0.02))
-            cube(name, (xa + 0.01, LOWER_FLOOR + 0.02, ZN + 0.005), (xb - 0.01, DOOR_TOP - 0.02, ZN + 0.035),
+            cube(name, (xa, LOWER_FLOOR + 0.005, ZN + 0.005), (xb, DOOR_TOP, ZN + 0.035),
                  {"north": "door_leaf", "south": "door_leaf", "east": "black", "west": "black", "up": "black", "down": "black"},
                  parent=group)
 
@@ -950,21 +950,22 @@ def lights():
         bone(name, "Blinkers")
     for side in (1, -1):
         zz = side * HEADLIGHT_Z
-        cube("FrontLights", (X1 - 0.02, HEADLIGHT_Y - 0.07, zz - 0.07), (X1 - 0.008, HEADLIGHT_Y + 0.07, zz + 0.07), {"east": "lamp_on"},
+        cube("FrontLights", (X1 - 0.037, HEADLIGHT_Y - 0.07, zz - 0.07), (X1 - 0.025, HEADLIGHT_Y + 0.07, zz + 0.07), {"east": "lamp_on"},
              parent="Blinkers")
         rz = side * 0.77
-        cube("StopLights", (X0 + 0.008, 1.2, rz - 0.085), (X0 + 0.02, 1.47, rz + 0.085), {"west": "brake_on"}, parent="Blinkers")
-        cube("BackLights", (X0 + 0.008, 0.82, rz - 0.085), (X0 + 0.02, 0.98, rz + 0.085), {"west": "lamp_on"}, parent="Blinkers")
-    for name, x, z, face in (("FrontLeftTurnSignal", X1 - 0.02, HEADLIGHT_Z - 0.2, "east"), ("FrontRightTurnSignal", X1 - 0.02, -(HEADLIGHT_Z - 0.2), "east"),
-                             ("BackLeftTurnSignal", X0 + 0.008, 0.77, "west"), ("BackRightTurnSignal", X0 + 0.008, -0.77, "west")):
+        cube("StopLights", (X0 + 0.025, 1.2, rz - 0.085), (X0 + 0.037, 1.47, rz + 0.085), {"west": "brake_on"}, parent="Blinkers")
+        cube("BackLights", (X0 + 0.025, 0.82, rz - 0.085), (X0 + 0.037, 0.98, rz + 0.085), {"west": "lamp_on"}, parent="Blinkers")
+    for name, x, z, face in (("FrontLeftTurnSignal", X1 - 0.037, HEADLIGHT_Z - 0.2, "east"), ("FrontRightTurnSignal", X1 - 0.037, -(HEADLIGHT_Z - 0.2), "east"),
+                             ("BackLeftTurnSignal", X0 + 0.025, 0.77, "west"), ("BackRightTurnSignal", X0 + 0.025, -0.77, "west")):
         bone(name, "Blinkers")
         y = 0.58 if name.startswith("Front") else 1.09
         xa, xb = (x, x + 0.012) if face == "east" else (x, x + 0.012)
         cube(name, (xa, y - 0.06, z - 0.07), (xb, y + 0.06, z + 0.07), {face: "amber_on"}, parent="Blinkers")
-    # side repeaters
-    for name, z, face in (("LeftTurnSignal", ZO + 0.008, "south"), ("RightTurnSignal", ZN - 0.008, "north")):
+    # side repeaters, hidden in the panel until they flash (outside it they glowed all the time)
+    for name, z, face in (("LeftTurnSignal", ZO, "south"), ("RightTurnSignal", ZN, "north")):
         bone(name, "Blinkers", (3.4, 0.75, z))
-        cube(name, (3.35, 0.72, min(z, z + 0.01)), (3.45, 0.78, max(z, z + 0.01)), {face: "amber_on"}, parent="Blinkers")
+        za, zb = (z - 0.037, z - 0.025) if z > 0 else (z + 0.025, z + 0.037)
+        cube(name, (3.35, 0.72, za), (3.45, 0.78, zb), {face: "amber_on"}, parent="Blinkers")
 
 
 def details():
@@ -983,11 +984,11 @@ def details():
     bone("PlateFront", "Vehicle", (X1 + 0.014, 0.36, 0))
     bone("FrontID", "Vehicle", (X1 + 0.014, 0.88, 0))
     bone("PlateBack", "Vehicle", (X0 - 0.014, 1.385, 0))
-    # side adverts as thin decals just proud of the panels
+    # side adverts as thin decals 2 cm proud of the panels (closer ones flickered from a distance)
     xa, xb = ADVERTS["near"]
-    cube("Body", (xa, ADVERT_Y[0], ZN - 0.006), (xb, ADVERT_Y[1], ZN - 0.002), {"north": face_uv("advert_near")})
+    cube("Body", (xa, ADVERT_Y[0], ZN - 0.02), (xb, ADVERT_Y[1], ZN - 0.016), {"north": face_uv("advert_near")})
     xa, xb = ADVERTS["off"]
-    cube("Body", (xa, ADVERT_Y[0], ZO + 0.002), (xb, ADVERT_Y[1], ZO + 0.006), {"south": face_uv("advert_off", flip_u=ADVERT_OFF_FLIP)})
+    cube("Body", (xa, ADVERT_Y[0], ZO + 0.016), (xb, ADVERT_Y[1], ZO + 0.02), {"south": face_uv("advert_off", flip_u=ADVERT_OFF_FLIP)})
     # "bunny ear" mirrors hanging from the front upper corners
     bone("Mirrors")
     for name, z, s in (("LeftMirror", ZO, 1), ("RightMirror", ZN, -1)):
@@ -995,7 +996,10 @@ def details():
         # arm from the front corner, curving forward and down, then the mirror head
         solid(name, (X1 - 0.25, 2.47, z + s * 0.01), (X1 + 0.22, 2.51, z + s * 0.04), "black", parent="Mirrors")
         solid(name, (X1 + 0.19, 2.02, z + s * 0.01), (X1 + 0.23, 2.5, z + s * 0.04), "black", parent="Mirrors")
-        solid(name, (X1 + 0.16, 1.66, z - s * 0.02), (X1 + 0.24, 2.04, z + s * 0.14), "black", parent="Mirrors")
+        # the head has no back: the glass (and PTM2's live mirror view, drawn on the biggest
+        # rear face) would flicker against it
+        solid(name, (X1 + 0.16, 1.66, z - s * 0.02), (X1 + 0.24, 2.04, z + s * 0.14), "black",
+              faces=("north", "south", "east", "up", "down"), parent="Mirrors")
         cube(name, (X1 + 0.155, 1.69, min(z - s * 0.01, z + s * 0.13)), (X1 + 0.16, 2.01, max(z - s * 0.01, z + s * 0.13)),
              {"west": "glass_door"}, parent="Mirrors")
     # wipers
@@ -1017,7 +1021,7 @@ def anim(length=None, loop=None, bones=None):
 
 
 def door_anim(right, left, open_):
-    """Leaves swing in a little then fold towards their frame edges."""
+    """Each leaf swings into the bus about its outer edge, as on a London bus front door."""
     def key(rot, pos):
         return {"rotation": {"0.0": {"vector": [0, 0, 0] if open_ else rot}, "1.0": {"vector": rot if open_ else [0, 0, 0]}},
                 "position": {"0.0": {"vector": [0, 0, 0] if open_ else pos}, "1.0": {"vector": pos if open_ else [0, 0, 0]}}}
@@ -1025,7 +1029,7 @@ def door_anim(right, left, open_):
 
 
 def write_animations():
-    out = 0.025 * PX
+    out = 0.05 * PX
     anims = {
         "ukdd.door1_open": door_anim("Right", "Left", True),
         "ukdd.door1_close": door_anim("Right", "Left", False),
