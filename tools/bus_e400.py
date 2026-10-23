@@ -8,6 +8,7 @@ Writes: geo model, texture atlas, animations, item icon and E400Layout.java (sea
 floors, display positions) so the Java side always matches the model.
 """
 import json
+import sys
 import math
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 import bus_extras
 
 import livery
+import bus_shared
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/ptmuk"
@@ -942,21 +944,6 @@ def shell():
                              (STAIRS[0], STAIRS[0] + STAIR_COVER, STAIR_Z[0], ZO - T)):
         slab("Floor", xa, xb, za, zb, LOWER_CEIL, UPPER_FLOOR, {"up": "carpet", "down": "ceiling", **walls})
     slab("Floor", X0 + 0.12, X1 - 0.12, ZN + 0.12, ZO - 0.12, 0.18, 0.30, {f: "black" for f in ALL})
-    # wheel arch housings inside
-    # wheel arch housings inside: a hump over each wheel and an inner wall beyond the tyres,
-    # kept clear of the wheels (boxes through the tyres flickered on them)
-    for ax, depth in ((FRONT_AXLE, 0.42), (REAR_AXLE, 0.6)):
-        for side in (-1, 1):
-            if ax == FRONT_AXLE and side > 0:
-                continue       # the offside front arch is under the stairs (it poked up through a step)
-            edge = ZN + T if side < 0 else ZO - T
-            inner = edge - side * depth
-            za, zb = sorted((edge, inner))
-            cube("Interior", (ax - 0.64, 1.04, za), (ax + 0.64, 1.14, zb),
-                 {"up": "wall_dark", "down": "black", "east": "black", "west": "black", "north": "black", "south": "black"})
-            wa, wb = sorted((inner, inner - side * 0.03))
-            cube("Interior", (ax - 0.64, LOWER_FLOOR, wa), (ax + 0.64, 1.14, wb),
-                 {f: ("black" if f in ("east", "west", "down", "north" if side < 0 else "south") else "wall_dark") for f in ALL})
 
 
 def wheels():
@@ -978,13 +965,14 @@ def wheels():
         if twin:   # groove between the two tyres
             solid(name, (ax - r - 0.002, r - 0.06, z - 0.01), (ax + r + 0.002, r + 0.06, z + 0.01), "black", parent="Wheels")
         face_z = z + side * zw / 2
-        # rim (octagonal steel disc), recessed hub, 8 studs
+        # rim (octagonal steel disc), recessed hub, 8 studs; the rim stands 2.5 cm off the tyre
+        # (1.2 cm flickered against the tyre's face from a distance)
         rr = 0.27
         rp = rr * math.tan(math.radians(22.5)) * 1.02
         for rot in (0, 45, 90, 135):
-            cube(name, (ax - rr, r - rp, min(face_z, face_z + side * 0.012)), (ax + rr, r + rp, max(face_z, face_z + side * 0.012)),
+            cube(name, (ax - rr, r - rp, min(face_z, face_z + side * 0.025)), (ax + rr, r + rp, max(face_z, face_z + side * 0.025)),
                  {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
-        hz = face_z + side * 0.012
+        hz = face_z + side * 0.025
         hp = 0.12 * math.tan(math.radians(22.5)) * 1.02
         for rot in (0, 45, 90, 135):
             cube(name, (ax - 0.12, r - hp, min(hz, hz + side * 0.03)), (ax + 0.12, r + hp, max(hz, hz + side * 0.03)),
@@ -1115,7 +1103,7 @@ def interior():
             add_seat(x, z, LOWER_FLOOR + (0.42 if -3.5 < x < -2.2 else 0.3 if x < -4.5 else 0.0))
     # raised floors under the seats over the rear axle and the engine (they floated before)
     for (xa, xb, h) in ((-3.7, -2.0, 0.42), (X0 + 0.1, -4.3, 0.3)):
-        for za, zb in ((ZN + 0.07, -0.3), (0.3, ZO - 0.07)):   # clear of the tyres
+        for za, zb in ((ZN + T, -0.3), (0.3, ZO - T)):
             cube("Interior", (xa, LOWER_FLOOR, za), (xb, LOWER_FLOOR + h, zb),
                  {"up": "carpet", "north": "wall_dark", "south": "wall_dark", "east": "yellow", "west": "wall_dark"})
     # lower deck poles and bells
@@ -1134,7 +1122,7 @@ def interior():
     for i in range(n):
         xa = STAIRS[0] + i * run
         top = LOWER_FLOOR + (i + 1) * rise
-        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1] - 0.02),   # clear of the tyre
+        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1]),
              {"up": "carpet", "west": "yellow", "north": "wall_dark", "south": "wall_dark", "east": "wall_dark"})
     # lower deck: a solid wall right across the back end of the stairs (the seats behind see a
     # panel, not the steps); on the gangway side the bottom three steps are open to step on,
@@ -1411,11 +1399,13 @@ def sort_bones(bones):
 def write_texture(suffix=""):
     path = ASSETS / f"textures/entity/bus/e400{suffix}.png"
     path.parent.mkdir(parents=True, exist_ok=True)
+    bus_shared.bleed(ATL.img, ATL.regions)
     ATL.img.save(path)
     left = ATL.img.copy()
     for name in TEXT_REGIONS:
         x, y, w, h = ATL.regions[name]
         left.paste(left.crop((x, y, x + w, y + h)).transpose(Image.Transpose.FLIP_LEFT_RIGHT), (x, y))
+    bus_shared.bleed(left, ATL.regions)
     left.save(ASSETS / f"textures/entity/bus/e400{suffix}_left.png")
 
 
@@ -1578,6 +1568,8 @@ def main():
     doors()
     lights()
     details()
+    bus_shared.wheel_wells(sys.modules[__name__], T)
+    bus_shared.trim_to_body(sys.modules[__name__], 0.035)
     write_geo()
     write_texture()
     write_livery("len")

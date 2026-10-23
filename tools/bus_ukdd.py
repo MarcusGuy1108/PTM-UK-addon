@@ -9,12 +9,14 @@ floors, display positions) so the Java side always matches the model.
 """
 import json
 import math
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 import bus_extras
+import bus_shared
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/ptmuk"
@@ -669,22 +671,8 @@ def shell():
                              (STAIRS[0], STAIRS[0] + STAIR_COVER, STAIR_Z[0], ZO - t)):
         cube("Floor", (xa, LOWER_CEIL, za), (xb, UPPER_FLOOR, zb), {"up": "carpet", "down": "ceiling", "north": "wall_dark",
                                                                       "south": "wall_dark", "east": "wall_dark", "west": "wall_dark"})
-    # chassis underneath, wheel arch housings inside
+    # chassis underneath
     solid("Floor", (X0 + 0.1, 0.18, ZN + 0.1), (X1 - 0.1, 0.30, ZO - 0.1), "black")
-    # wheel arch housings inside: a hump over each wheel and an inner wall beyond the tyres,
-    # kept clear of the wheels (boxes through the tyres flickered on them)
-    for ax, depth in ((FRONT_AXLE, 0.42), (REAR_AXLE, 0.6)):
-        for side in (-1, 1):
-            if ax == FRONT_AXLE and side > 0:
-                continue       # the offside front arch is under the stairs (it poked up through a step)
-            edge = ZN + t if side < 0 else ZO - t
-            inner = edge - side * depth
-            za, zb = sorted((edge, inner))
-            cube("Interior", (ax - 0.64, 1.04, za), (ax + 0.64, 1.14, zb),
-                 {"up": "wall_dark", "down": "black", "east": "black", "west": "black", "north": "black", "south": "black"})
-            wa, wb = sorted((inner, inner - side * 0.03))
-            cube("Interior", (ax - 0.64, LOWER_FLOOR, wa), (ax + 0.64, 1.14, wb),
-                 {f: ("black" if f in ("east", "west", "down", "north" if side < 0 else "south") else "wall_dark") for f in ALL})
 
 
 def wheels():
@@ -706,13 +694,14 @@ def wheels():
         if twin:   # groove between the two tyres
             solid(name, (ax - r - 0.002, r - 0.06, z - 0.01), (ax + r + 0.002, r + 0.06, z + 0.01), "black", parent="Wheels")
         face_z = z + side * zw / 2
-        # rim (octagonal steel disc), recessed hub, 8 studs
+        # rim (octagonal steel disc), recessed hub, 8 studs; the rim stands 2.5 cm off the tyre
+        # (1.2 cm flickered against the tyre's face from a distance)
         rr = 0.27
         rp = rr * math.tan(math.radians(22.5)) * 1.02
         for rot in (0, 45, 90, 135):
-            cube(name, (ax - rr, r - rp, min(face_z, face_z + side * 0.012)), (ax + rr, r + rp, max(face_z, face_z + side * 0.012)),
+            cube(name, (ax - rr, r - rp, min(face_z, face_z + side * 0.025)), (ax + rr, r + rp, max(face_z, face_z + side * 0.025)),
                  {f: "rim" for f in ALL}, rotation=[0, 0, rot], pivot=(ax, r, z), parent="Wheels")
-        hz = face_z + side * 0.012
+        hz = face_z + side * 0.025
         hp = 0.12 * math.tan(math.radians(22.5)) * 1.02
         for rot in (0, 45, 90, 135):
             cube(name, (ax - 0.12, r - hp, min(hz, hz + side * 0.03)), (ax + 0.12, r + hp, max(hz, hz + side * 0.03)),
@@ -850,7 +839,7 @@ def interior():
     for i in range(n):
         xa = STAIRS[0] + i * run
         top = LOWER_FLOOR + (i + 1) * rise
-        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1] - 0.02),   # clear of the tyre
+        cube("Stairs", (xa, LOWER_FLOOR, STAIR_Z[0]), (xa + run, top, STAIR_Z[1]),
              {"up": "carpet", "west": "yellow", "north": "wall_dark", "south": "wall_dark", "east": "wall_dark"})
     # lower deck: a solid wall right across the back end of the stairs (the seats behind see a
     # panel, not the steps); on the gangway side the bottom three steps are open to step on,
@@ -1107,11 +1096,13 @@ def sort_bones(bones):
 def write_texture():
     path = ASSETS / "textures/entity/bus/ukdd.png"
     path.parent.mkdir(parents=True, exist_ok=True)
+    bus_shared.bleed(ATL.img, ATL.regions)
     ATL.img.save(path)
     left = ATL.img.copy()
     for name in TEXT_REGIONS:
         x, y, w, h = ATL.regions[name]
         left.paste(left.crop((x, y, x + w, y + h)).transpose(Image.Transpose.FLIP_LEFT_RIGHT), (x, y))
+    bus_shared.bleed(left, ATL.regions)
     left.save(ASSETS / "textures/entity/bus/ukdd_left.png")
 
 
@@ -1233,6 +1224,8 @@ def main():
     doors()
     lights()
     details()
+    bus_shared.wheel_wells(sys.modules[__name__], 0.035)
+    bus_shared.trim_to_body(sys.modules[__name__], 0.035)
     write_geo()
     write_texture()
     write_animations()
