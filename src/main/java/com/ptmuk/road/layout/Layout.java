@@ -2273,11 +2273,12 @@ public final class Layout {
             int si = sites.size();
             sites.add(sl);
             int level = siteLevel(st.id);
+            boolean[] in = st.mask();              // a town drawn round, not yet laid out, shows only its shape
             for (int v = 0; v < sl.d; v++) {
                 for (int u = 0; u < sl.w; u++) {
                     int i = sl.at(u, v);
-                    int idx = index(frame.x(u, v), frame.z(u, v));
-                    if (idx < 0 || carriage[idx]) {
+                    int x = frame.x(u, v), z = frame.z(u, v), idx = index(x, z);
+                    if (idx < 0 || carriage[idx] || !in[(z - st.z0) * st.width() + (x - st.x0)]) {
                         continue;
                     }
                     kind[idx] = sl.kind[i];
@@ -2319,10 +2320,11 @@ public final class Layout {
             int si = sites.size();
             sites.add(new SiteLayout(st, new SiteFrame(st.x0, st.z0, st.x1, st.z1, 0), List.of()));
             float level = siteLevel(st.id) + 1;
+            boolean[] in = st.mask();              // a drawn town's green stays inside its outline
             for (int z = st.z0; z <= st.z1; z++) {
                 for (int x = st.x0; x <= st.x1; x++) {
                     int idx = index(x, z);
-                    if (idx < 0 || built[idx] || keep[idx] || kind[idx] != NONE) {
+                    if (idx < 0 || built[idx] || keep[idx] || kind[idx] != NONE || !in[(z - st.z0) * st.width() + (x - st.x0)]) {
                         continue;
                     }
                     int n = near.nearest[idx];

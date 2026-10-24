@@ -23,6 +23,8 @@ import net.minecraft.util.RandomSource;
  * side of them, houses everywhere else (terraces near the main road, semis, then detached). Last,
  * streets are run into whatever big gaps are left. Traffic lights go where streets cross the main
  * road; a big town gets more of them, mini roundabouts, deeper back streets and main roads out.
+ * A town drawn as an outline fills that shape: its main road runs down the middle of it the long
+ * way (whichever way that is), and nothing goes outside it.
  */
 final class WindingTown {
     private static final double STEP_MIN = 30, STEP_MAX = 44;
@@ -74,7 +76,10 @@ final class WindingTown {
     private final RoadPlan plan;
     private final RoadPlan.Site town;
     private final RandomSource rand;
-    private final boolean alongX;
+    /** The town's own frame: (a, c), along it the long way and across it, is the world point o + a u + c v. */
+    private final double ox, oz, ux, uz, vx, vz, len, wide;
+    /** A drawn town: how far each block of its box is inside the outline (0 outside it); null for a plain box. */
+    private final double[] room;
     private final RoadStyle res;
     private final List<Street> all = new ArrayList<>();
     private final Set<String> names = new HashSet<>();
@@ -83,18 +88,85 @@ final class WindingTown {
     private static final Street KEPT = new Street(RoadStyle.residential(), -1);
     private Street spine;
     int streets, plots;
+    /** False when a drawn outline has nowhere wide enough for the main road and its houses (nothing is laid then). */
+    boolean fits = true;
 
     WindingTown(RoadPlan plan, RoadPlan.Site town, RandomSource rand) {
         this.plan = plan;
         this.town = town;
         this.rand = rand;
-        this.alongX = town.width() >= town.depth();
         this.res = TownLayout.kerbed(RoadStyle.residential(), town);
         this.kept = TownLayout.kept(plan, town);
+        if (town.outline == null) {
+            boolean alongX = town.width() >= town.depth();
+            ox = town.x0;
+            oz = town.z0;
+            ux = alongX ? 1 : 0;
+            uz = alongX ? 0 : 1;
+            vx = uz;
+            vz = ux;
+            len = alongX ? town.width() : town.depth();
+            wide = alongX ? town.depth() : town.width();
+            room = null;
+            return;
+        }
+        // the long way is the outline's main axis (its points are spaced evenly round it, so they weigh it fairly)
+        int[] o = town.outline;
+        int n = o.length / 2;
+        double cx = 0, cz = 0;
+        for (int i = 0; i < n; i++) {
+            cx += o[2 * i];
+            cz += o[2 * i + 1];
+        }
+        cx /= n;
+        cz /= n;
+        double sxx = 0, szz = 0, sxz = 0;
+        for (int i = 0; i < n; i++) {
+            double dx = o[2 * i] - cx, dz = o[2 * i + 1] - cz;
+            sxx += dx * dx;
+            szz += dz * dz;
+            sxz += dx * dz;
+        }
+        double th = 0.5 * Math.atan2(2 * sxz, sxx - szz);
+        ux = Math.cos(th);
+        uz = Math.sin(th);
+        vx = -uz;
+        vz = ux;
+        double amin = Double.MAX_VALUE, amax = -Double.MAX_VALUE, cmin = Double.MAX_VALUE, cmax = -Double.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            double dx = o[2 * i] - cx, dz = o[2 * i + 1] - cz, a = dx * ux + dz * uz, c = dx * vx + dz * vz;
+            amin = Math.min(amin, a);
+            amax = Math.max(amax, a);
+            cmin = Math.min(cmin, c);
+            cmax = Math.max(cmax, c);
+        }
+        ox = cx + amin * ux + cmin * vx;
+        oz = cz + amin * uz + cmin * vz;
+        len = amax - amin;
+        wide = cmax - cmin;
+        // how far in each block is: the distance to the nearest block outside (round the box, everything is)
+        int w = town.width(), h = town.depth(), pw = w + 2;
+        boolean[] in = town.mask(), out = new boolean[pw * (h + 2)];
+        java.util.Arrays.fill(out, true);
+        for (int z = 0; z < h; z++) {
+            for (int x = 0; x < w; x++) {
+                out[(z + 1) * pw + x + 1] = !in[z * w + x];
+            }
+        }
+        Distance d = Distance.of(out, pw, h + 2);
+        room = new double[w * h];
+        for (int z = 0; z < h; z++) {
+            for (int x = 0; x < w; x++) {
+                room[z * w + x] = d.dist[(z + 1) * pw + x + 1];
+            }
+        }
     }
 
     void run() {
         spine();
+        if (!fits) {
+            return;
+        }
         // side streets off the main road, then shorter ones off those (and in a big town off those too)
         int levels = spine.length() >= 2 * TownLayout.BIG ? 4 : spine.length() >= TownLayout.BIG ? 3 : 2;
         for (int level = 1; level <= levels; level++) {
@@ -146,18 +218,20 @@ final class WindingTown {
                     }
                 }
             }
-            Distance d = Distance.of(road, gw, gh);
+            // how far each cell is from a street: straight across a box, the way round inside a drawn outline
+            int[] from = room == null ? null : new int[gw * gh];
+            double[] dist = room == null ? Distance.of(road, gw, gh).dist : wayRound(road, gw, gh, cell, from);
             int best = -1;
             for (int i = 0; i < gw * gh; i++) {
                 double x = town.x0 + (i % gw + 0.5) * cell, z = town.z0 + (i / gw + 0.5) * cell;
-                if (failed[i] || !inside(x, z, ROW) || keptAt(x, z)) {
+                if (failed[i] || !inside(x, z, ROW) || keptAt(x, z) || Double.isInfinite(dist[i])) {
                     continue;
                 }
-                if (best < 0 || d.dist[i] > d.dist[best]) {
+                if (best < 0 || dist[i] > dist[best]) {
                     best = i;
                 }
             }
-            if (best < 0 || d.dist[best] * cell < gap) {
+            if (best < 0 || dist[best] * cell < gap) {
                 return;
             }
             double x = town.x0 + (best % gw + 0.5) * cell, z = town.z0 + (best / gw + 0.5) * cell;
@@ -183,6 +257,9 @@ final class WindingTown {
                 double ds = (k + 1) / 2 * 16.0 * (k % 2 == 0 ? 1 : -1);
                 branch(near, Math.max(JUNCTION_GAP + 1, Math.min(len - JUNCTION_GAP - 1, q[1] + ds)), side, Math.max(2, near.level + 1), false);
             }
+            if (all.size() == before && from != null) {
+                wayStreet(best, from, gw, cell);             // round a corner of the outline: along the way there
+            }
             if (all.size() == before) {
                 int r = (int) Math.ceil(gap / cell);
                 for (int dz = -r; dz <= r; dz++) {
@@ -195,6 +272,136 @@ final class WindingTown {
                 }
             }
         }
+    }
+
+    /**
+     * A drawn town: how far each cell is from a street going round inside the outline (cells, not
+     * blocks; infinite where it can't be reached), and in `from` the next cell on the way back to
+     * the street (-1 on one). The last stretch along the edge costs more, so ways keep off it.
+     */
+    private double[] wayRound(boolean[] road, int gw, int gh, int cell, int[] from) {
+        double[] dist = new double[gw * gh];
+        java.util.Arrays.fill(dist, Double.POSITIVE_INFINITY);
+        java.util.Arrays.fill(from, -1);
+        java.util.PriorityQueue<double[]> open = new java.util.PriorityQueue<>((p, q) -> Double.compare(p[0], q[0]));
+        for (int i = 0; i < gw * gh; i++) {
+            if (road[i]) {
+                dist[i] = 0;
+                open.add(new double[]{0, i});
+            }
+        }
+        double edge = res.halfOuter() + ROW * 0.7;
+        while (!open.isEmpty()) {
+            double[] top = open.poll();
+            int i = (int) top[1];
+            if (top[0] > dist[i]) {
+                continue;
+            }
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    int cx = i % gw + dx, cz = i / gw + dz, j = cz * gw + cx;
+                    if ((dx == 0 && dz == 0) || cx < 0 || cz < 0 || cx >= gw || cz >= gh) {
+                        continue;
+                    }
+                    double x = town.x0 + (cx + 0.5) * cell, z = town.z0 + (cz + 0.5) * cell;
+                    if (!inside(x, z, 1)) {
+                        continue;
+                    }
+                    double d = top[0] + (dx != 0 && dz != 0 ? Math.sqrt(2) : 1) * (inside(x, z, edge) ? 1 : 4);
+                    if (d < dist[j]) {
+                        dist[j] = d;
+                        from[j] = i;
+                        open.add(new double[]{d, j});
+                    }
+                }
+            }
+        }
+        return dist;
+    }
+
+    /**
+     * A street to the cell `best` from the street nearest it the way round inside a drawn town's
+     * outline, along that way: on from the end of a close there, or off the street as a side road.
+     */
+    private void wayStreet(int best, int[] from, int gw, int cell) {
+        List<double[]> way = new ArrayList<>();
+        for (int i = best; i >= 0; i = from[i]) {
+            way.add(new double[]{town.x0 + (i % gw + 0.5) * cell, town.z0 + (i / gw + 0.5) * cell});
+        }
+        java.util.Collections.reverse(way);                     // from the street to the gap
+        if (way.size() < 4) {
+            return;
+        }
+        List<double[]> pts = new ArrayList<>();
+        for (int k = 5; k < way.size() - 2; k += 5) {
+            pts.add(way.get(k));
+        }
+        pts.add(way.get(way.size() - 1));
+        double[] start = way.get(0);
+        Street near = null;
+        double[] q = null;
+        for (Street st : all) {
+            double[] n = nearest(st, start[0], start[1]);
+            if (q == null || n[0] < q[0]) {
+                q = n;
+                near = st;
+            }
+        }
+        double len = near.length();
+        Pt end = q[1] < len / 2 ? near.pts.get(0) : near.pts.get(near.pts.size() - 1);
+        boolean onEnd = near != spine && !end.junction && !end.out && Math.hypot(end.x - start[0], end.z - start[1]) < SNAP + cell;
+        double s = onEnd ? (q[1] < len / 2 ? 0 : len) : q[1];
+        if (!onEnd) {
+            // a junction where there's room for one, as near as can be
+            double found = Double.NaN;
+            for (int k = 0; k < 9 && Double.isNaN(found); k++) {
+                double t = q[1] + (k + 1) / 2 * 16.0 * (k % 2 == 0 ? 1 : -1);
+                if (room(near, t, false)) {
+                    found = t;
+                }
+            }
+            if (Double.isNaN(found)) {
+                return;
+            }
+            s = found;
+        }
+        At leave = at(near, s);
+        int sideSign = side(leave, pts.get(0)[0], pts.get(0)[1]) > 0 ? 1 : -1;
+        List<double[]> kept = new ArrayList<>();
+        double[] cur = {leave.x(), leave.z()};
+        for (double[] p : pts) {
+            if (crowds(cur[0], cur[1], p[0], p[1], res, near, leave, sideSign, null) != null) {
+                break;
+            }
+            kept.add(p);
+            cur = p;
+        }
+        double length = 0;
+        double[] prev = {leave.x(), leave.z()};
+        for (double[] p : kept) {
+            length += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+            prev = p;
+        }
+        if (length < STEP_MIN) {
+            return;
+        }
+        if (onEnd) {
+            for (double[] p : kept) {
+                if (end == near.pts.get(0)) {
+                    near.pts.add(0, new Pt(p[0], p[1]));
+                } else {
+                    near.pts.add(new Pt(p[0], p[1]));
+                }
+            }
+            return;
+        }
+        Street st = new Street(res, Math.max(2, near.level + 1));
+        st.name = StreetNames.pick(rand, names);
+        st.pts.add(join(near, s));
+        for (double[] p : kept) {
+            st.pts.add(new Pt(p[0], p[1]));
+        }
+        all.add(st);
     }
 
     /** Carry a close on from its end, bending towards (gx, gz), until it comes near another street or the edge; whether it went on at all. */
@@ -231,34 +438,109 @@ final class WindingTown {
 
     /** Town coordinates (along its length, across it) to the world. */
     private double wx(double a, double c) {
-        return alongX ? town.x0 + a : town.x0 + c;
+        return ox + a * ux + c * vx;
     }
 
     private double wz(double a, double c) {
-        return alongX ? town.z0 + c : town.z0 + a;
+        return oz + a * uz + c * vz;
+    }
+
+    /**
+     * The middle of the town across it at a, and how wide it is there: the whole width of a box;
+     * for a drawn town, the stretch across the outline that c is in (or the widest), null if none.
+     */
+    private double[] across(double a, double c) {
+        if (room == null) {
+            return new double[]{wide / 2, wide};
+        }
+        double[] best = null;
+        double start = Double.NaN;
+        for (double cc = 0; cc <= wide + 2; cc += 2) {
+            boolean in = cc <= wide && inside(wx(a, cc), wz(a, cc), 1);
+            if (in && Double.isNaN(start)) {
+                start = cc;
+            } else if (!in && !Double.isNaN(start)) {
+                double[] span = {(start + cc - 2) / 2, cc - 2 - start};
+                boolean holds = c >= start && c <= cc - 2;
+                if (best == null || holds || best[2] == 0 && span[1] > best[1]) {
+                    best = new double[]{span[0], span[1], holds ? 1 : 0};
+                }
+                start = Double.NaN;
+            }
+        }
+        return best;
     }
 
     private void spine() {
-        double len = alongX ? town.width() : town.depth(), wide = alongX ? town.depth() : town.width();
         spine = new Street(TownLayout.kerbed(town.mainRoad ? RoadStyle.mainRoad() : RoadStyle.residential(), town), 0);
         spine.name = town.highStreet ? "High Street" : StreetNames.pick(rand, names);
         names.add("High Street");
-        double a = 0, c = wide / 2 + (rand.nextDouble() - 0.5) * wide * 0.16, heading = (rand.nextDouble() - 0.5) * 0.4;
+        // a drawn town's main road runs between where the shape is first and last wide enough for it
+        double a0 = 0, a1 = len - 1, minWide = 2 * (res.halfOuter() + ROW);
+        if (room != null) {
+            while (a0 < len && (across(a0, wide / 2) == null || across(a0, wide / 2)[1] < minWide)) {
+                a0 += 2;
+            }
+            while (a1 > a0 && (across(a1, wide / 2) == null || across(a1, wide / 2)[1] < minWide)) {
+                a1 -= 2;
+            }
+        }
+        if (room != null && a1 - a0 < STEP_MIN) {
+            fits = false;
+            return;
+        }
+        double[] mid0 = across(a0, wide / 2);
+        if (mid0 == null) {
+            mid0 = new double[]{wide / 2, wide};
+        }
+        double a = a0, c = mid0[0] + (rand.nextDouble() - 0.5) * mid0[1] * 0.16, heading = (rand.nextDouble() - 0.5) * 0.4;
         spine.pts.add(new Pt(wx(a, c), wz(a, c)));
-        while (a < len - 1) {
+        while (a < a1) {
             double step = STEP_MIN + rand.nextDouble() * (STEP_MAX - STEP_MIN);
             heading += (rand.nextDouble() - 0.5) * 0.35;
             // drift back towards the middle, never far off the long way
-            heading -= Math.signum(c - wide / 2) * Math.max(0, Math.abs(c - wide / 2) - wide * 0.12) / wide;
-            heading = Math.max(-0.38, Math.min(0.38, heading));
-            if (a + step * Math.cos(heading) > len - 1 - STEP_MIN * 0.6) {
-                c += (len - 1 - a) * Math.tan(heading);
-                a = len - 1;
-            } else {
-                a += step * Math.cos(heading);
-                c += step * Math.sin(heading);
+            double[] mid = across(a, c);
+            if (mid == null) {
+                break;
             }
+            heading -= Math.signum(c - mid[0]) * Math.max(0, Math.abs(c - mid[0]) - mid[1] * 0.12) / mid[1];
+            heading = Math.max(-0.38, Math.min(0.38, heading));
+            double na, nc;
+            if (a + step * Math.cos(heading) > a1 - STEP_MIN * 0.6) {
+                nc = c + (a1 - a) * Math.tan(heading);
+                na = a1;
+            } else {
+                na = a + step * Math.cos(heading);
+                nc = c + step * Math.sin(heading);
+            }
+            if (room != null && !inside(wx(na, nc), wz(na, nc), res.halfOuter() + 2)) {
+                break;                                        // a neck in the outline: the main road ends here
+            }
+            a = na;
+            c = nc;
             spine.pts.add(new Pt(wx(a, c), wz(a, c)));
+        }
+        if (room != null) {
+            // run on to the edge of the outline at both ends, ready to carry on out of town
+            for (int end = 0; end < 2; end++) {
+                Pt tip = end == 0 ? spine.pts.get(0) : spine.pts.get(spine.pts.size() - 1);
+                Pt next = end == 0 ? spine.pts.get(Math.min(1, spine.pts.size() - 1)) : spine.pts.get(Math.max(0, spine.pts.size() - 2));
+                double dx = tip.x - next.x, dz = tip.z - next.z, l = Math.hypot(dx, dz);
+                if (l < 1e-6) {
+                    dx = end == 0 ? -ux : ux;
+                    dz = end == 0 ? -uz : uz;
+                    l = 1;
+                }
+                double t = 0;
+                while (t < 200 && inside(tip.x + dx / l * (t + 1), tip.z + dz / l * (t + 1), spine.style.halfOuter())) {   // the whole road stays inside
+                    t++;
+                }
+                if (t >= 6) {
+                    Pt p = new Pt(tip.x + dx / l * t, tip.z + dz / l * t);
+                    p.out = true;
+                    spine.pts.add(end == 0 ? 0 : spine.pts.size(), p);
+                }
+            }
         }
         all.add(spine);
     }
@@ -266,11 +548,23 @@ final class WindingTown {
     // ------------------------------------------------------------------ side streets
 
     private boolean inside(double x, double z, double margin) {
-        return x >= town.x0 + margin && x <= town.x1 + 1 - margin && z >= town.z0 + margin && z <= town.z1 + 1 - margin;
+        if (room == null) {
+            return x >= town.x0 + margin && x <= town.x1 + 1 - margin && z >= town.z0 + margin && z <= town.z1 + 1 - margin;
+        }
+        int cx = (int) Math.floor(x) - town.x0, cz = (int) Math.floor(z) - town.z0;
+        return cx >= 0 && cz >= 0 && cx < town.width() && cz < town.depth() && room[cz * town.width() + cx] >= Math.max(margin, 1);
     }
 
     /** Where the way from (x0, z0) towards (x1, z1) crosses the edge of town (if it's far enough to be worth going), or null. */
     private double[] leaves(double x0, double z0, double x1, double z1) {
+        if (room != null) {
+            // a drawn town's edge: the last point along the way with the whole road still inside the outline
+            double l = Math.hypot(x1 - x0, z1 - z0), t = 0;
+            while (t + 1 <= l && inside(x0 + (x1 - x0) * (t + 1) / l, z0 + (z1 - z0) * (t + 1) / l, res.halfOuter())) {
+                t++;
+            }
+            return t < 10 ? null : new double[]{x0 + (x1 - x0) * t / l, z0 + (z1 - z0) * t / l};
+        }
         double t = 1;
         double[][] edges = {{town.x0, x1 - x0, x0}, {town.x1 + 1, x1 - x0, x0}, {town.z0, z1 - z0, z0}, {town.z1 + 1, z1 - z0, z0}};
         for (double[] e : edges) {
@@ -439,7 +733,6 @@ final class WindingTown {
         Pt endOn = null;
         boolean out = false, turned = false;
         // a side street off the main road can reach the edge of town; the rest are shorter
-        double wide = alongX ? town.depth() : town.width();
         int steps = level == 1 ? Math.max(6, (int) Math.ceil(wide / 2 / STEP_MIN)) : level == 2 && wide > 500 ? 5 : 3;
         for (int k = 0; k < steps; k++) {
             double[] cur = path.get(path.size() - 1);
@@ -578,7 +871,6 @@ final class WindingTown {
 
     /** In a big town, a long side street off the main road that runs on out of town: a main road itself. */
     private boolean through(Street st) {
-        double wide = alongX ? town.depth() : town.width();
         return st.level == 1 && spine.length() >= TownLayout.BIG && st.style != spine.style && st.length() >= wide * 0.3
                 && st.pts.get(st.pts.size() - 1).out;
     }
@@ -651,6 +943,9 @@ final class WindingTown {
                 }
             }
         }
+        for (int c = 0; room != null && c < size; c++) {
+            blocked[c] |= room[c] < 1;                       // outside a drawn town
+        }
         for (RoadPlan.Site o : plan.sites) {
             if (o != town && o.type.ground()) {
                 for (int z = o.z0; z <= o.z1; z++) {
@@ -703,7 +998,6 @@ final class WindingTown {
 
     /** How far out from the main road (0 on it, 3 the edge of town), for which houses go where. */
     private int ring(double x, double z) {
-        double wide = alongX ? town.depth() : town.width();
         double f = nearest(spine, x, z)[0] / (wide / 2);
         return f < 0.4 ? 1 : f < 0.75 ? 2 : 3;
     }

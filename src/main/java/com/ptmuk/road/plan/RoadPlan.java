@@ -111,6 +111,8 @@ public final class RoadPlan {
         public int houses = 3;
         /** Town: kerbs on its roads, and winding streets (else a grid). */
         public boolean kerbs = true, winding = true;
+        /** A town drawn as an outline: its corners as x, z, x, z... (the site's box is round it); null for the box itself. */
+        public int[] outline;
         public boolean built;
 
         public int width() {
@@ -123,6 +125,64 @@ public final class RoadPlan {
 
         public boolean contains(double x, double z) {
             return x >= x0 && x < x1 + 1 && z >= z0 && z < z1 + 1;
+        }
+
+        /** In the site: inside its outline if it has one, else in its box. */
+        public boolean inOutline(double x, double z) {
+            if (outline == null) {
+                return contains(x, z);
+            }
+            boolean in = false;
+            for (int i = 0, j = outline.length - 2; i < outline.length; j = i, i += 2) {
+                double xi = outline[i], zi = outline[i + 1], xj = outline[j], zj = outline[j + 1];
+                if ((zi > z) != (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) {
+                    in = !in;
+                }
+            }
+            return in;
+        }
+
+        /** Which blocks of the box are in the outline (each block by its middle), row by row; all of them without one. */
+        public boolean[] mask() {
+            int w = width(), h = depth();
+            boolean[] m = new boolean[w * h];
+            if (outline == null) {
+                java.util.Arrays.fill(m, true);
+                return m;
+            }
+            double[] xs = new double[outline.length / 2];
+            for (int z = 0; z < h; z++) {
+                double zc = z0 + z + 0.5;
+                int k = 0;
+                for (int i = 0, j = outline.length - 2; i < outline.length; j = i, i += 2) {
+                    double xi = outline[i], zi = outline[i + 1], xj = outline[j], zj = outline[j + 1];
+                    if ((zi > zc) != (zj > zc)) {
+                        xs[k++] = xi + (zc - zi) * (xj - xi) / (zj - zi);
+                    }
+                }
+                java.util.Arrays.sort(xs, 0, k);
+                for (int p = 0; p + 1 < k; p += 2) {
+                    int a = Math.max(0, (int) Math.ceil(xs[p] - 0.5 - x0)), b = Math.min(w - 1, (int) Math.floor(xs[p + 1] - 0.5 - x0));
+                    for (int x = a; x <= b; x++) {
+                        m[z * w + x] = true;
+                    }
+                }
+            }
+            return m;
+        }
+
+        /** Move the site (and its outline) by dx, dz. */
+        public void shift(int dx, int dz) {
+            x0 += dx;
+            x1 += dx;
+            z0 += dz;
+            z1 += dz;
+            if (outline != null) {
+                for (int i = 0; i < outline.length; i += 2) {
+                    outline[i] += dx;
+                    outline[i + 1] += dz;
+                }
+            }
         }
     }
 
@@ -191,6 +251,9 @@ public final class RoadPlan {
         }
     }
 
+    /** Most corners a drawn outline keeps (it's checked for every block of a town). */
+    public static final int MAX_OUTLINE = 400;
+
     public RoadPlan copy() {
         return fromJson(toJson());
     }
@@ -214,6 +277,9 @@ public final class RoadPlan {
             st.x1 = bx;
             st.z0 = az;
             st.z1 = bz;
+            if (st.outline != null && (st.outline.length < 6 || st.outline.length % 2 != 0 || st.outline.length > 2 * MAX_OUTLINE)) {
+                st.outline = null;
+            }
             nextId = Math.max(nextId, st.id + 1);
         }
         segments.removeIf(s -> s == null || node(s.a) == null || node(s.b) == null || s.a == s.b);

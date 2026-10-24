@@ -79,9 +79,12 @@ public final class TownLayout {
             return "A town needs at least 120 x 80 blocks";
         }
         String said;
-        if (town.winding) {
+        if (town.winding || town.outline != null) {            // a drawn outline takes winding streets: a grid doesn't follow a shape
             WindingTown t = new WindingTown(plan, town, rand);
             t.run();
+            if (!t.fits) {
+                return "The shape is too narrow for a town: draw it at least 80 blocks across";
+            }
             said = "Laid out " + t.streets + " streets and " + t.plots + " buildings. Press Build.";
         } else {
             TownLayout t = new TownLayout(plan, town, rand);

@@ -169,6 +169,60 @@ public final class UkSiteGameTests {
     }
 
     /**
+     * A town drawn as an L: everything in it inside the L (no building, street or pavement out in
+     * the corner it leaves, only the usual slope of ground at the edge), streets out into both arms,
+     * and a shape too thin for a town says so and is left as it was.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void fillsADrawnOutline(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 599, 599);
+        town.outline = new int[]{0, 0, 600, 0, 600, 200, 220, 200, 220, 600, 0, 600};
+        String said = com.ptmuk.road.layout.TownLayout.layOut(plan, town, net.minecraft.util.RandomSource.create(1));
+        helper.assertTrue(said.startsWith("Laid out") && town.type == RoadPlan.SiteType.GREEN, said);
+        long houses = plan.sites.stream().filter(st -> st.type == RoadPlan.SiteType.TERRACES || st.type == RoadPlan.SiteType.SEMIS
+                || st.type == RoadPlan.SiteType.DETACHED).count();
+        helper.assertTrue(houses >= 20, "only " + houses + " lots of houses");
+        boolean[] in = town.mask();
+        int w = town.width();
+        for (RoadPlan.Site a : plan.sites) {
+            for (int z = a.z0; a != town && z <= a.z1; z++) {
+                for (int x = a.x0; x <= a.x1; x++) {
+                    helper.assertTrue(x >= 0 && z >= 0 && x < w && z < town.depth() && in[z * w + x], "a " + a.type + " outside the outline at " + x + "," + z);
+                }
+            }
+        }
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        int near = 0, all = 0;
+        for (int z = 0; z < town.depth(); z++) {
+            for (int x = 0; x < w; x++) {
+                int idx = l.index(x, z);
+                byte k = idx < 0 ? Layout.NONE : l.kind[idx];
+                helper.assertTrue(in[z * w + x] || k == Layout.NONE || k == Layout.BLEND, "kind " + k + " outside the outline at " + x + "," + z);
+                if (in[z * w + x] && x % 8 == 0 && z % 8 == 0) {
+                    all++;
+                    search:
+                    for (int dz = -60; dz <= 60; dz += 4) {
+                        for (int dx = -60; dx <= 60; dx += 4) {
+                            int j = l.index(x + dx, z + dz);
+                            if (dx * dx + dz * dz <= 3600 && j >= 0 && l.kind[j] == Layout.ROAD) {
+                                near++;
+                                break search;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        helper.assertTrue(near >= all * 0.9, "only " + near + " of " + all + " places in the outline are near a street");
+        RoadPlan.Site thin = plan.addSite(RoadPlan.SiteType.TOWN, 1000, 0, 1399, 399);
+        thin.outline = new int[]{1000, 0, 1400, 400, 1390, 400, 1000, 10};
+        said = com.ptmuk.road.layout.TownLayout.layOut(plan, thin, net.minecraft.util.RandomSource.create(1));
+        helper.assertTrue(said.contains("too narrow") && thin.type == RoadPlan.SiteType.TOWN, "a thin shape: " + said);
+        helper.succeed();
+    }
+
+    /**
      * Shops, houses and a church, pub and surgery, on named streets with a High Street; every
      * building inside the town, clear of the roads and of each other, each with its building; and
      * the town turned to a green space, so no ground inside it is left as it was.

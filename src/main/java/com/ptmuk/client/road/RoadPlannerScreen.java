@@ -95,11 +95,13 @@ public class RoadPlannerScreen extends Screen {
     // sites: the one selected, what a new one will be, and dragging one out, along or by a corner
     private Integer selSite;
     private static SiteType newSiteType = SiteType.CAR_PARK;
-    private int siteDrag;               // 0 none, 1 marking out a new one, 2 moving, 3 resizing
+    private int siteDrag;               // 0 none, 1 marking out a new one, 2 moving, 3 resizing, 4 drawing round a town
     private int siteCorner;             // bit 0: the east side, bit 1: the south side
     private int dragX0, dragZ0, dragX1, dragZ1;
     private double grabX, grabZ;
     private int[] siteStart;
+    private static boolean drawTown;    // a new town is drawn round by hand, not marked out as a box
+    private final List<int[]> lasso = new ArrayList<>();
 
     // a real map: the files to pick from, one being read (and what to do with it), its buildings drawn over the map
     private List<String> mapFiles;
@@ -612,7 +614,11 @@ public class RoadPlannerScreen extends Screen {
             button(y, () -> "New site: " + newSiteType.title, b -> {
                 SiteType[] all = SiteType.values();
                 newSiteType = all[(newSiteType.ordinal() + 1) % all.length];
+                rebuildPanel();
             });
+            if (newSiteType == SiteType.TOWN) {
+                button(y + ROW, () -> "Shape: " + (drawTown ? "draw round it" : "box"), b -> drawTown = !drawTown);
+            }
             return;
         }
         Consumer<Runnable> edit = r -> {
@@ -624,6 +630,9 @@ public class RoadPlannerScreen extends Screen {
         button(y, () -> "Type: " + st.type.title, b -> edit.accept(() -> {
             SiteType[] all = SiteType.values();
             st.type = all[(st.type.ordinal() + 1) % all.length];
+            if (st.type != SiteType.TOWN && st.type != SiteType.GREEN) {
+                st.outline = null;                    // only a town (and the green it leaves) keeps a drawn shape
+            }
             siteDefaults(st);
         }));
         y += ROW;
@@ -640,7 +649,13 @@ public class RoadPlannerScreen extends Screen {
             y += ROW;
             button(y, () -> "Church, pub etc: " + (st.civic ? "yes" : "no"), b -> edit.accept(() -> st.civic = !st.civic));
             y += ROW;
-            halfButtons(y, () -> "Streets: " + (st.winding ? "winding" : "grid"), b -> edit.accept(() -> st.winding = !st.winding),
+            halfButtons(y, () -> "Streets: " + (st.winding || st.outline != null ? "winding" : "grid"), b -> {
+                        if (st.outline != null) {
+                            flash("A drawn town's streets wind to follow its shape");
+                        } else {
+                            edit.accept(() -> st.winding = !st.winding);
+                        }
+                    },
                     () -> "Kerbs: " + (st.kerbs ? "yes" : "no"), b -> edit.accept(() -> st.kerbs = !st.kerbs));
             y += ROW;
             button(y, () -> "Lay out the town", b -> {
@@ -755,7 +770,7 @@ public class RoadPlannerScreen extends Screen {
     private Site siteAt(double sx, double sy) {
         double wx = worldX(sx), wz = worldZ(sy);
         for (int i = plan.sites.size() - 1; i >= 0; i--) {
-            if (plan.sites.get(i).contains(wx, wz)) {
+            if (plan.sites.get(i).inOutline(wx, wz)) {
                 return plan.sites.get(i);
             }
         }
@@ -764,6 +779,9 @@ public class RoadPlannerScreen extends Screen {
 
     /** Which corner of a site is under the mouse (bit 0: east, bit 1: south), or -1. */
     private int cornerAt(Site st, double sx, double sy) {
+        if (st.outline != null) {
+            return -1;                                // a drawn town is redrawn, not resized
+        }
         for (int k = 0; k < 4; k++) {
             double cx = screenX((k & 1) != 0 ? st.x1 + 1 : st.x0), cy = screenY((k & 2) != 0 ? st.z1 + 1 : st.z0);
             if (Math.hypot(cx - sx, cy - sy) < 7) {
@@ -1143,6 +1161,13 @@ public class RoadPlannerScreen extends Screen {
             return;
         }
         selSite = null;
+        if (newSiteType == SiteType.TOWN && drawTown) {
+            siteDrag = 4;
+            lasso.clear();
+            lasso.add(new int[]{(int) Math.round(worldX(mx)), (int) Math.round(worldZ(my))});
+            rebuildPanel();
+            return;
+        }
         siteDrag = 1;
         dragX0 = dragX1 = (int) Math.floor(worldX(mx));
         dragZ0 = dragZ1 = (int) Math.floor(worldZ(my));
@@ -1323,14 +1348,22 @@ public class RoadPlannerScreen extends Screen {
         } else if (siteDrag == 1) {
             dragX1 = (int) Math.floor(worldX(mx));
             dragZ1 = (int) Math.floor(worldZ(my));
+        } else if (siteDrag == 4) {
+            int wx = (int) Math.round(worldX(mx)), wz = (int) Math.round(worldZ(my));
+            int[] last = lasso.get(lasso.size() - 1);
+            if (Math.hypot(wx - last[0], wz - last[1]) >= Math.max(2, 6 / zoom)) {     // a corner every few pixels
+                lasso.add(new int[]{wx, wz});
+                if (lasso.size() > RoadPlan.MAX_OUTLINE) {
+                    for (int i = lasso.size() - 2; i > 0; i -= 2) {
+                        lasso.remove(i);                    // too many corners: drop every other one, keeping both ends
+                    }
+                }
+            }
         } else if (siteDrag >= 2 && selSite != null && plan.site(selSite) != null) {
             Site st = plan.site(selSite);
             if (siteDrag == 2) {
                 int ox = (int) Math.round(worldX(mx) - grabX), oz = (int) Math.round(worldZ(my) - grabZ);
-                st.x0 = siteStart[0] + ox;
-                st.z0 = siteStart[1] + oz;
-                st.x1 = siteStart[2] + ox;
-                st.z1 = siteStart[3] + oz;
+                st.shift(siteStart[0] + ox - st.x0, siteStart[1] + oz - st.z0);
             } else {
                 int wx = (int) Math.round(worldX(mx)), wz = (int) Math.round(worldZ(my));
                 if ((siteCorner & 1) != 0) {
@@ -1387,7 +1420,29 @@ public class RoadPlannerScreen extends Screen {
             return true;
         }
         if (siteDrag != 0) {
-            if (siteDrag == 1) {
+            if (siteDrag == 4) {
+                int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+                for (int[] p : lasso) {
+                    x0 = Math.min(x0, p[0]);
+                    z0 = Math.min(z0, p[1]);
+                    x1 = Math.max(x1, p[0]);
+                    z1 = Math.max(z1, p[1]);
+                }
+                if (lasso.size() >= 3 && x1 - x0 >= MIN_SITE && z1 - z0 >= MIN_SITE) {
+                    remember();
+                    Site st = plan.addSite(SiteType.TOWN, x0, z0, x1 - 1, z1 - 1);   // the corners are block edges
+                    st.outline = new int[lasso.size() * 2];
+                    for (int i = 0; i < lasso.size(); i++) {
+                        st.outline[2 * i] = lasso.get(i)[0];
+                        st.outline[2 * i + 1] = lasso.get(i)[1];
+                    }
+                    selSite = st.id;
+                    changed();
+                } else if (moved) {
+                    flash("Draw right round where the town goes");
+                }
+                lasso.clear();
+            } else if (siteDrag == 1) {
                 int w = Math.abs(dragX1 - dragX0) + 1, d = Math.abs(dragZ1 - dragZ0) + 1;
                 if (w >= MIN_SITE && d >= MIN_SITE) {
                     remember();
@@ -1674,7 +1729,8 @@ public class RoadPlannerScreen extends Screen {
                 : mode == Mode.MAP
                 ? (plan.map == null ? "Move the map to where its middle goes, then pick a file." : "Click two points to measure.")
                 : mode == Mode.SITES
-                ? "Drag out a site; drag it to move, a corner to resize."
+                ? (selSite == null && newSiteType == SiteType.TOWN && drawTown ? "Hold the left button and draw round where the town goes."
+                : "Drag out a site; drag it to move, a corner to resize.")
                 : mode == Mode.DRAW && tracing
                 ? "Click old roads to follow them to their junctions and ends. Click the button again to stop."
                 : mode == Mode.DRAW
@@ -1763,12 +1819,20 @@ public class RoadPlannerScreen extends Screen {
             boolean sel = mode == Mode.SITES && selSite != null && selSite == st.id;
             SiteLayout sl = siteLayout(st.id);
             if (sl == null || pending != null || siteDrag >= 2) {
-                g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), 0x40707478);
+                if (st.outline != null) {
+                    fillPolygon(g, st.outline, 0x40707478);
+                } else {
+                    g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), 0x40707478);
+                }
             }
             if (st.type == SiteType.KEEP_CLEAR) {
                 g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), 0x50E04040);
             }
-            rect(g, st.x0, st.z0, st.x1 + 1, st.z1 + 1, sel ? 2 : 1, sel ? 0xFFFFD24A : st.type == SiteType.KEEP_CLEAR ? 0xC0FF6060 : 0xA0FFFFFF);
+            if (st.outline != null) {
+                polygon(g, st.outline, sel ? 2 : 1, sel ? 0xFFFFD24A : 0xA0FFFFFF);
+            } else {
+                rect(g, st.x0, st.z0, st.x1 + 1, st.z1 + 1, sel ? 2 : 1, sel ? 0xFFFFD24A : st.type == SiteType.KEEP_CLEAR ? 0xC0FF6060 : 0xA0FFFFFF);
+            }
             if (!st.type.ground()) {
                 siteLabel(g, st, sel);
                 continue;
@@ -1792,6 +1856,50 @@ public class RoadPlannerScreen extends Screen {
             g.fill((int) screenX(x0), (int) screenY(z0), (int) screenX(x1), (int) screenY(z1), ok ? 0x40FFD24A : 0x40FF5050);
             rect(g, x0, z0, x1, z1, 1, ok ? 0xFFFFD24A : 0xFFFF5050);
             g.drawString(font, newSiteType.title + "  " + (x1 - x0) + " x " + (z1 - z0), (int) mouseX + 8, (int) mouseY - 4, 0xFFFFD24A);
+        }
+        if (siteDrag == 4 && !lasso.isEmpty()) {
+            int[] pts = new int[lasso.size() * 2];
+            for (int i = 0; i < lasso.size(); i++) {
+                pts[2 * i] = lasso.get(i)[0];
+                pts[2 * i + 1] = lasso.get(i)[1];
+            }
+            if (pts.length >= 6) {
+                fillPolygon(g, pts, 0x40FFD24A);
+            }
+            polygon(g, pts, 1, 0xFFFFD24A);
+            g.drawString(font, "Draw round the town, then let go", (int) mouseX + 8, (int) mouseY - 4, 0xFFFFD24A);
+        }
+    }
+
+    /** A drawn outline's edges, back round to the start. */
+    private void polygon(GuiGraphics g, int[] pts, float thick, int colour) {
+        for (int i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+            line(g, screenX(pts[j]), screenY(pts[j + 1]), screenX(pts[i]), screenY(pts[i + 1]), thick, colour);
+        }
+    }
+
+    /** A drawn outline filled in, a row of the screen at a time. */
+    private void fillPolygon(GuiGraphics g, int[] pts, int colour) {
+        double top = Double.MAX_VALUE, bottom = -Double.MAX_VALUE;
+        for (int i = 1; i < pts.length; i += 2) {
+            top = Math.min(top, screenY(pts[i]));
+            bottom = Math.max(bottom, screenY(pts[i]));
+        }
+        double[] xs = new double[pts.length / 2];
+        for (int y = Math.max(TOP, (int) top); y < Math.min(height, Math.ceil(bottom)); y++) {
+            double yc = y + 0.5;
+            int k = 0;
+            for (int i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+                double yi = screenY(pts[i + 1]), yj = screenY(pts[j + 1]);
+                if ((yi > yc) != (yj > yc)) {
+                    double xi = screenX(pts[i]), xj = screenX(pts[j]);
+                    xs[k++] = xi + (yc - yi) * (xj - xi) / (yj - yi);
+                }
+            }
+            java.util.Arrays.sort(xs, 0, k);
+            for (int p = 0; p + 1 < k; p += 2) {
+                g.fill((int) Math.round(xs[p]), y, (int) Math.round(xs[p + 1]), y + 1, colour);
+            }
         }
     }
 
@@ -1862,7 +1970,7 @@ public class RoadPlannerScreen extends Screen {
         }
         int shops = countShops(sl);
         boolean row = st.type == SiteType.PARADE || SiteLayout.units(st.type) != SiteLayout.PARADE_UNITS;
-        String what = st.type == SiteType.TOWN ? "A town, laid out to fit"
+        String what = st.type == SiteType.TOWN ? (st.outline != null ? "A town, laid out to fill the shape" : "A town, laid out to fit")
                 : st.type == SiteType.PARADE ? shops + " shop" + (shops == 1 ? "" : "s") + paradeNames(sl)
                 : row ? shops + " building" + (shops == 1 ? "" : "s") + paradeNames(sl)
                 : sl.bayCount() + " parking bays" + (shops == 0 ? "" : ", " + shops + " building" + (shops == 1 ? "" : "s"));
