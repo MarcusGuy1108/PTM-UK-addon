@@ -13,8 +13,10 @@ import net.minecraft.world.item.ItemStack;
 /** A road plan packed small (deflated JSON) for the item it's saved on and the packets that carry it. */
 public final class RoadPlans {
     public static final String TAG = "road_plan";
-    /** Packets from the client are capped at 32 KB, so plans are too. */
+    /** Packets from the client are capped at 32 KB, so a plan goes in pieces this big. */
     public static final int MAX_BYTES = 30000;
+    /** Biggest plan (packed) the server takes: well under the 2 MB an item's data may be when it's sent. */
+    public static final int MAX_PLAN = 512 * 1024;
 
     private RoadPlans() {
     }

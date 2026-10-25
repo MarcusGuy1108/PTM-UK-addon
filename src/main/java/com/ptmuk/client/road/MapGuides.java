@@ -84,6 +84,10 @@ public final class MapGuides {
             if (Math.abs(xs[0] + mi.nudgeX - player.getX()) > reach || Math.abs(zs[0] + mi.nudgeZ - player.getZ()) > reach) {
                 continue;
             }
+            double[] mid = com.ptmuk.road.MapBuildings.middle(o, mi);
+            if (mi.buildingsBuilt(mid[0], mid[1])) {
+                continue;                                   // built: the real thing's there now
+            }
             // stood on the lowest ground under its corners, so the rings stay flat
             int base = Integer.MAX_VALUE;
             for (int i = 0; i < xs.length; i++) {

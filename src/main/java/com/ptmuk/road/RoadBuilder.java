@@ -59,6 +59,8 @@ public final class RoadBuilder {
     private static final int MAX_FILL = 64;
     private static final int MAX_CELLS = 2_500_000;
     private static final int TRAFFIC_PER_TICK = 32;
+    /** A map's buildings built a tick: about this many columns' worth of blocks. */
+    private static final int MAP_BUILDING_WORK = 40_000;
     private static final int FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
     /** A block as it was before a build, to put back. */
@@ -74,6 +76,8 @@ public final class RoadBuilder {
         ServerLevel level;
         Layout layout;
         RoadPlan plan;
+        /** When the plan was too big to build in one go: all of it (plan is then the part round the player). */
+        RoadPlan full;
         int[] cells;
         int next;
         List<Saved> saved = new ArrayList<>();
@@ -89,6 +93,8 @@ public final class RoadBuilder {
         boolean[] trafficPlaced;
         int connecting;
         int nextBuilding;
+        /** The real map's buildings round the player, when the planner sent them. */
+        MapBuildings mapBuildings;
         /** What's on the map round the build (for the direction signs), once looked up. */
         MapData around;
     }
@@ -111,12 +117,18 @@ public final class RoadBuilder {
     // ------------------------------------------------------------------ starting a build
 
     public static void start(ServerPlayer player, InteractionHand hand, RoadPlan plan) {
+        MapBuildings.Batch buildings = MapBuildings.take(player.getUUID());
         if (busy(player.getUUID())) {
             player.displayClientMessage(Component.literal("Still building your last road..."), true);
             return;
         }
         ServerLevel level = player.serverLevel();
         nameStreets(plan, level.getRandom());
+        RoadPlan full = null;
+        if (plan.tooBig()) {
+            full = plan;
+            plan = plan.part(player.getX(), player.getZ(), RoadPlan.PART);
+        }
         // node heights come from the ground once, then stay put so later edits don't shift built roads
         Terrain terrain = new LoadingTerrain(level, (int) Math.floor(player.getY()));
         Layout first = Layout.of(plan, terrain);
@@ -141,8 +153,10 @@ public final class RoadBuilder {
                 cells.add(i);
             }
         }
-        if (cells.isEmpty()) {
-            player.displayClientMessage(Component.literal("Nothing new to build - draw some roads or sites first"), true);
+        MapBuildings mapBuildings = buildings == null ? null : new MapBuildings(buildings, layout, full != null ? full : plan);
+        if (cells.isEmpty() && (mapBuildings == null || mapBuildings.done())) {
+            player.displayClientMessage(Component.literal(full != null ? "Nothing new to build round here - go to another part of the map and Build there"
+                    : "Nothing new to build - draw some roads or sites first"), true);
             return;
         }
         // footprint first, then the blending margin, so slopes meet finished edges
@@ -153,10 +167,13 @@ public final class RoadBuilder {
         job.level = level;
         job.layout = layout;
         job.plan = plan;
+        job.full = full;
+        job.mapBuildings = mapBuildings;
         job.cells = cells.stream().mapToInt(Integer::intValue).toArray();
         job.palette = new Palette();
         JOBS.add(job);
-        player.displayClientMessage(Component.literal("Building roads: " + job.cells.length + " columns..."), true);
+        player.displayClientMessage(Component.literal(job.cells.length > 0 ? "Building roads: " + job.cells.length + " columns..."
+                : "Building " + mapBuildings.count() + " buildings..."), true);
     }
 
     /**
@@ -226,6 +243,12 @@ public final class RoadBuilder {
                 RoadPlan.Site st = job.plan.site(b.siteId());
                 if (st != null && !st.built) {
                     SiteBuildings.build(out(job), b, job.palette);
+                }
+            } else if (job.fixturesDone && job.mapBuildings != null && !job.mapBuildings.done()) {
+                job.mapBuildings.step(out(job), job.palette, MAP_BUILDING_WORK);
+                if (player != null) {
+                    player.displayClientMessage(Component.literal("Building the map's buildings: " + job.mapBuildings.built() + " of "
+                            + job.mapBuildings.count()), true);
                 }
             } else if (job.fixturesDone) {
                 finish(job, player);
@@ -369,12 +392,22 @@ public final class RoadBuilder {
         for (RoadPlan.Site s : job.plan.sites) {
             s.built = true;
         }
+        if (job.full != null) {
+            job.full.builtFrom(job.plan);
+        }
+        RoadPlan done = job.full != null ? job.full : job.plan;
+        if (job.mapBuildings != null && done.map != null) {
+            done.map.builtAreas.add(job.mapBuildings.box);
+        }
         if (player != null) {
             ItemStack stack = player.getItemInHand(job.hand);
             if (stack.getItem() instanceof RoadPlannerItem) {
-                RoadPlans.write(stack, job.plan);
+                RoadPlans.write(stack, done);
             }
-            player.displayClientMessage(Component.literal("Roads built (" + job.changed + " blocks changed)"), true);
+            boolean more = job.full != null && job.full.segments.stream().anyMatch(sg -> !sg.built);
+            player.displayClientMessage(Component.literal((job.mapBuildings != null ? "Roads and " + job.mapBuildings.count() + " buildings built (" : "Roads built (")
+                    + job.changed + " blocks changed)"
+                    + (more ? " - the map's too big for one go: go to the next part and Build again" : "")), true);
             if (job.trafficAt != null && !Ptm2Traffic.leftHanded(job.level)) {
                 player.sendSystemMessage(Component.literal("PTM2 has its traffic on the right in this world, so cars on these roads keep right. "
                         + "To drive on the left, open a PTM2 Computer, go to Traffic and set Left traffic to Yes: PTM2 turns every lane round, these too."));

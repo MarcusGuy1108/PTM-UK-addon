@@ -4,7 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A road network drawn in the Road Planner: points (nodes) joined by roads (segments). A node
@@ -204,6 +206,19 @@ public final class RoadPlan {
         public int nudgeX, nudgeZ;
         public int firstId, lastId;
         public boolean guides = true;
+        /** Build the map's buildings (from their outlines) along with the roads. */
+        public boolean buildings;
+        /** Squares (x0, z0, x1, z1) whose buildings are built: a building is in the one its middle is in. */
+        public List<int[]> builtAreas = new ArrayList<>();
+
+        public boolean buildingsBuilt(double x, double z) {
+            for (int[] a : builtAreas) {
+                if (a != null && a.length == 4 && x >= a[0] && x < a[2] && z >= a[1] && z < a[3]) {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         private double perLat() {
             double p = Math.toRadians(lat0);
@@ -255,6 +270,142 @@ public final class RoadPlan {
 
     /** Most corners a drawn outline keeps (it's checked for every block of a town). */
     public static final int MAX_OUTLINE = 400;
+    /** A plan reaching further than this either way is laid out (previewed and built) a part at a time. */
+    public static final int WHOLE = 1400;
+    /** Half the width of a part: the Road Planner's map round you. */
+    public static final int PART = 392;
+    /** How far the roads past a part's own come along with it. */
+    private static final double STUB = 48;
+
+    /** In a part: the roads and points it builds (the rest is there for their junctions). Null in a whole plan. */
+    public transient Set<Integer> ownSegments, ownNodes;
+
+    /** Whether the plan reaches too far to lay out in one go. */
+    public boolean tooBig() {
+        double x0 = Double.MAX_VALUE, z0 = Double.MAX_VALUE, x1 = -Double.MAX_VALUE, z1 = -Double.MAX_VALUE;
+        for (Node n : nodes) {
+            x0 = Math.min(x0, n.x);
+            z0 = Math.min(z0, n.z);
+            x1 = Math.max(x1, n.x);
+            z1 = Math.max(z1, n.z);
+        }
+        for (Site st : sites) {
+            x0 = Math.min(x0, st.x0);
+            z0 = Math.min(z0, st.z0);
+            x1 = Math.max(x1, st.x1);
+            z1 = Math.max(z1, st.z1);
+        }
+        return x1 - x0 > WHOLE || z1 - z0 > WHOLE;
+    }
+
+    /**
+     * The part of the plan round (cx, cz), half each way, as a plan of its own (a copy, ids kept):
+     * every point inside with all its roads, and the sites reaching in. The far ends of those roads
+     * and the first stretch of the other roads meeting there come too (open ends, so they stop
+     * short without a kerb across them), so the junctions are laid out right, but count as built:
+     * they're built with their own part.
+     */
+    public RoadPlan part(double cx, double cz, double half) {
+        Set<Integer> inner = new HashSet<>(), own = new HashSet<>(), ends = new HashSet<>(), context = new HashSet<>();
+        for (Node n : nodes) {
+            if (Math.abs(n.x + 0.5 - cx) <= half && Math.abs(n.z + 0.5 - cz) <= half) {
+                inner.add(n.id);
+            }
+        }
+        for (Segment sg : segments) {
+            if (inner.contains(sg.a) || inner.contains(sg.b)) {
+                own.add(sg.id);
+                ends.add(sg.a);
+                ends.add(sg.b);
+            }
+        }
+        for (Segment sg : segments) {
+            if (!own.contains(sg.id) && (ends.contains(sg.a) && !inner.contains(sg.a) || ends.contains(sg.b) && !inner.contains(sg.b))) {
+                context.add(sg.id);
+            }
+        }
+        RoadPlan p = new RoadPlan();
+        p.map = map;
+        p.nextId = nextId;
+        Set<Integer> keep = new HashSet<>(ends);
+        for (Segment sg : segments) {
+            if (own.contains(sg.id) || context.contains(sg.id)) {
+                p.segments.add(sg);
+                keep.add(sg.a);
+                keep.add(sg.b);
+            }
+        }
+        for (Node n : nodes) {
+            if (keep.contains(n.id) || inner.contains(n.id)) {
+                p.nodes.add(n);
+            }
+        }
+        for (Site st : sites) {
+            if (st.x1 >= cx - half && st.x0 <= cx + half && st.z1 >= cz - half && st.z0 <= cz + half) {
+                p.sites.add(st);
+            }
+        }
+        RoadPlan c = p.copy();
+        for (Node n : c.nodes) {
+            n.built |= !inner.contains(n.id);
+        }
+        for (Segment sg : c.segments) {
+            sg.built |= context.contains(sg.id);
+            int far = ends.contains(sg.a) ? sg.b : sg.a;
+            if (context.contains(sg.id) && !ends.contains(far)) {
+                // cut short: its far point would have only some of its roads here and be laid out wrong
+                Node near = c.node(far == sg.b ? sg.a : sg.b), f = c.node(far);
+                double k = Math.min(1, STUB / Math.max(1, Math.hypot(f.x - near.x, f.z - near.z)));
+                Node stub = c.addNode(Math.floor(near.x + (f.x - near.x) * k), Math.floor(near.z + (f.z - near.z) * k));
+                stub.open = true;
+                stub.built = true;
+                if (far == sg.b) {
+                    sg.b = stub.id;
+                } else {
+                    sg.a = stub.id;
+                }
+                sg.bend = 0;
+            }
+        }
+        Set<Integer> used = new HashSet<>();
+        for (Segment sg : c.segments) {
+            used.add(sg.a);
+            used.add(sg.b);
+        }
+        c.nodes.removeIf(n -> !used.contains(n.id) && !inner.contains(n.id));
+        c.ownSegments = own;
+        c.ownNodes = inner;
+        return c;
+    }
+
+    /** What a part (see part) has built, marked built here too, with the heights it fixed. */
+    public void builtFrom(RoadPlan part) {
+        for (Node n : part.nodes) {
+            Node m = node(n.id);
+            if (m != null && Double.isNaN(m.y)) {
+                m.y = n.y;
+            }
+            if (m != null && part.ownNodes.contains(n.id)) {
+                m.built = true;
+            }
+        }
+        for (Segment sg : part.segments) {
+            Segment m = segment(sg.id);
+            if (m != null && part.ownSegments.contains(sg.id)) {
+                m.built = true;
+            }
+        }
+        for (Site st : part.sites) {
+            Site m = site(st.id);
+            if (m != null) {
+                m.built = true;
+                m.y = Double.isNaN(m.y) ? st.y : m.y;
+            }
+        }
+        if (map != null && part.map != null) {
+            map.builtAreas = part.map.builtAreas;
+        }
+    }
 
     public RoadPlan copy() {
         return fromJson(toJson());
@@ -264,6 +415,9 @@ public final class RoadPlan {
     public RoadPlan tidy() {
         if (nodes == null) {
             nodes = new ArrayList<>();
+        }
+        if (map != null && map.builtAreas == null) {
+            map.builtAreas = new ArrayList<>();
         }
         if (segments == null) {
             segments = new ArrayList<>();

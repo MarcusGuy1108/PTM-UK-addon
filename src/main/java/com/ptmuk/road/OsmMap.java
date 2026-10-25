@@ -29,7 +29,8 @@ import javax.xml.stream.XMLStreamReader;
  */
 public final class OsmMap {
     /** One building: its outline in blocks (before any nudge) and how tall it is. */
-    public record Outline(double[] x, double[] z, int height) {
+    /** A building: its corners (the first again at the end), blocks tall, and what OSM says it is (its building and roof:shape tags, and floors). */
+    public record Outline(double[] x, double[] z, int height, String kind, String roof, int floors) {
     }
 
     private record Way(long id, long[] nodes, Map<String, String> tags) {
@@ -51,6 +52,8 @@ public final class OsmMap {
     private static final Set<String> MAJOR = Set.of("motorway", "trunk", "primary", "secondary", "tertiary");
     /** A real storey, floor to floor. */
     private static final double STOREY_M = 2.8;
+    /** Longest stretch of road between two points (blocks). */
+    private static final double MAX_STRETCH = 96;
 
     private final Map<Long, double[]> nodes = new HashMap<>();          // lat, lon
     private final Map<Long, String> pointHighway = new HashMap<>();     // traffic_signals, mini_roundabout
@@ -197,7 +200,10 @@ public final class OsmMap {
             x[i] = mi.x(ll[1]);
             z[i] = mi.z(ll[0]);
         }
-        out.add(new Outline(x, z, height(tags, mi.scale)));
+        int height = height(tags, mi.scale);
+        double levels = metres(tags.get("building:levels"));
+        int floors = Double.isNaN(levels) ? (int) Math.max(1, Math.round(height / (STOREY_M * mi.scale))) : (int) Math.max(1, levels);
+        out.add(new Outline(x, z, height, tags.getOrDefault("building", "yes"), tags.getOrDefault("roof:shape", ""), floors));
     }
 
     /** Blocks tall: from its height, or its floors, or a guess from what kind of building it is. */
@@ -388,7 +394,15 @@ public final class OsmMap {
             if (prev != null && prev != node) {
                 String key = Math.min(prev.id, node.id) + "-" + Math.max(prev.id, node.id);
                 if (done.add(key)) {
-                    plan.addSegment(prev.id, node.id, st).name = w.tag("name");
+                    // a long straight stretch gets points along it, so a part of a big map doesn't reach far past its edge
+                    int pieces = (int) Math.ceil(Math.hypot(node.x - prev.x, node.z - prev.z) / MAX_STRETCH);
+                    Node from = prev;
+                    for (int i = 1; i < pieces; i++) {
+                        Node mid = plan.addNode(Math.floor(prev.x + (node.x - prev.x) * i / pieces), Math.floor(prev.z + (node.z - prev.z) * i / pieces));
+                        plan.addSegment(from.id, mid.id, st).name = w.tag("name");
+                        from = mid;
+                    }
+                    plan.addSegment(from.id, node.id, st).name = w.tag("name");
                     count++;
                 }
             }

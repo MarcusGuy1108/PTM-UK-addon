@@ -159,8 +159,17 @@ Build a real place without measuring: the Road Planner's **Map** mode (the Map b
 3. Open the planner, move the map so its middle is where the middle of the real area should go, choose **Map** and click the file.
 
 - **Scale:** 1.8 blocks to a metre, so a real 3.3 m lane is one of the planner's 6-block lanes and real roads come out the size of your roads. Buildings and distances use the same scale, so everything lines up. Change it with Scale - and +.
-- **Roads** come in as ordinary planner roads you can edit, in the nearest UK style (main road, wide main road, residential, one-way, each side of a dual carriageway, slip roads) with the lane count from the map. Roundabouts, mini roundabouts and traffic lights become those junctions. Pavements are widened or narrowed to meet the building fronts. Only what the planner's map reaches is brought in (about 380 blocks each way); move along and import again for more.
+- **Roads** come in as ordinary planner roads you can edit, in the nearest UK style (main road, wide main road, residential, one-way, each side of a dual carriageway, slip roads) with the lane count from the map. Roundabouts, mini roundabouts and traffic lights become those junctions. Pavements are widened or narrowed to meet the building fronts. The whole map comes in, however big. A map more than about 1,400 blocks across is previewed and built a part at a time: the preview shows the part round where you're standing, and **Build** builds the roads round you (about 390 blocks each way). Go to the next part and press **Build** again. Roads that cross from one part to the next join up. A planner holds up to 512 KB of plan, which is a good few kilometres of town; if a map is bigger than that, the planner says so when you import it.
 - **Buildings** show as orange outlines on the planner map, and in the world (at their real size and height from their number of floors) while you hold the planner, to build over. **Guides in world** turns that off. If the buildings sit a little off the roads in the map data, **Nudge** them into line.
+- **Building them:** set **Buildings: build them** and **Build** also builds the map's buildings round you (those whose middle is within about 390 blocks), each from its outline:
+  - **Walls:** brick, render or stone, sitting level with the ground.
+  - **Windows** storey by storey, and a **front door** on the side nearest a road.
+  - **Floors** inside.
+  - **Roofs:** houses get a hipped tiled roof with a chimney. Houses joined wall to wall share one roof, so a terrace is roofed as one row. Shops, offices, flats, schools and sheds get a flat roof behind a parapet.
+  - What each building is comes from the map (house, terrace, retail, industrial, church and so on). Where the map just says "building", it goes by the building's size.
+  - Anything over a road or pavement is left out.
+  - Built buildings drop out of the orange guides, and pressing Build there again doesn't build them twice. **Undo build** takes them away with the roads.
+  - Buildings over 250 blocks across are skipped. The insides are empty floors with no stairs between them.
 - **Measure:** in Map mode click two points to see the distance in blocks and in real metres, to check against Google Maps.
 
 Map data © OpenStreetMap contributors (ODbL). The import never goes online: it only reads the file you saved.

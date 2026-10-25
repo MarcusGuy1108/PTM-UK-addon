@@ -12,6 +12,7 @@ import com.ptmuk.network.RoadPlannerMessage;
 import com.ptmuk.network.TraceResultMessage;
 import com.ptmuk.network.TraceRoadMessage;
 import com.ptmuk.road.BlockSwap;
+import com.ptmuk.road.MapBuildings;
 import com.ptmuk.road.OsmMap;
 import com.ptmuk.road.RoadPlannerItem;
 import com.ptmuk.road.RoadPlans;
@@ -70,7 +71,7 @@ public class RoadPlannerScreen extends Screen {
 
     private final InteractionHand hand;
     private RoadPlan plan;
-    private final List<String> history = new ArrayList<>();
+    private final List<byte[]> history = new ArrayList<>();
     private PlannerMap map;
     private Layout lines;
     private Layout preview;
@@ -416,6 +417,8 @@ public class RoadPlannerScreen extends Screen {
         y += ROW;
         button(y, () -> "Guides in world: " + (mi.guides ? "on" : "off"), b -> mi.guides = !mi.guides);
         y += ROW;
+        button(y, () -> "Buildings: " + (mi.buildings ? "build them" : "outlines only"), b -> mi.buildings = !mi.buildings);
+        y += ROW;
         button(y, () -> "Remove map", b -> {
             remember();
             removeMapRoads();
@@ -558,13 +561,13 @@ public class RoadPlannerScreen extends Screen {
         osm = m;
         RoadPlan.MapImport mi = plan.map;
         List<OsmMap.Outline> b = m.buildings(mi);
-        // only what the planner's map reaches: the rest can't be seen or levelled yet
-        double x0 = map == null ? mi.x - 400 : map.originX, z0 = map == null ? mi.z - 400 : map.originZ;
-        double size = map == null ? 800 : map.size;
-        int roads = m.roads(plan, mi, b, x0, z0, x0 + size, z0 + size);
+        // all of it: a big map is previewed and built a part at a time, round where you are
+        int roads = m.roads(plan, mi, b, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
         showOutlines();
         changed();
-        flash(roads + " roads and " + b.size() + " buildings from " + mi.file);
+        int kb = RoadPlans.pack(plan).length / 1024;
+        flash(kb > RoadPlans.MAX_PLAN / 1024 ? "That map's too big for one planner (" + kb + " KB of " + RoadPlans.MAX_PLAN / 1024 + ") - export a smaller area"
+                : roads + " roads and " + b.size() + " buildings from " + mi.file);
     }
 
     /** Take out the map's roads that haven't been built (and points left with no roads). */
@@ -922,7 +925,7 @@ public class RoadPlannerScreen extends Screen {
     // ------------------------------------------------------------------ plan changes
 
     private void remember() {
-        history.add(plan.toJson());
+        history.add(RoadPlans.pack(plan));                 // packed: a whole city's plan is megabytes of JSON
         if (history.size() > 60) {
             history.remove(0);
         }
@@ -933,7 +936,7 @@ public class RoadPlannerScreen extends Screen {
             flash("Nothing to undo");
             return;
         }
-        plan = RoadPlan.fromJson(history.remove(history.size() - 1));
+        plan = RoadPlans.unpack(history.remove(history.size() - 1));
         chainLast = null;
         selNode = selSeg = null;
         selSite = null;
@@ -985,23 +988,39 @@ public class RoadPlannerScreen extends Screen {
             return;
         }
         byte[] data = RoadPlans.pack(plan);
-        if (data.length > RoadPlans.MAX_BYTES) {
-            flash("The plan is too big to send in one go - clear the built roads and carry on with a new plan");
+        if (data.length > RoadPlans.MAX_PLAN) {
+            flash("The plan is too big (" + data.length / 1024 + " KB of " + RoadPlans.MAX_PLAN / 1024 + ") - remove the map or some roads");
             return;
         }
-        PtmUkNetwork.CHANNEL.sendToServer(new RoadPlannerMessage(RoadPlannerMessage.Action.BUILD, data, hand == InteractionHand.OFF_HAND));
+        RoadPlan.MapImport mi = plan.map;
+        if (mi != null && mi.buildings) {
+            if (outlines == null) {
+                flash("The map's still loading - try again in a moment");
+                return;
+            }
+            // the buildings round you go first: the server builds them with the roads
+            var player = Minecraft.getInstance().player;
+            MapBuildings.Batch batch = MapBuildings.around(outlines, mi, player.getX(), player.getZ(), RoadPlan.PART);
+            byte[] packed = batch == null ? null : MapBuildings.pack(batch);
+            if (packed != null && packed.length <= RoadPlans.MAX_PLAN) {
+                RoadPlannerMessage.send(RoadPlannerMessage.Action.BUILDINGS, packed, hand == InteractionHand.OFF_HAND);
+            }
+        }
+        RoadPlannerMessage.send(RoadPlannerMessage.Action.BUILD, data, hand == InteractionHand.OFF_HAND);
         Minecraft.getInstance().setScreen(null);
     }
 
     private void send(RoadPlannerMessage.Action action) {
-        PtmUkNetwork.CHANNEL.sendToServer(new RoadPlannerMessage(action, new byte[0], hand == InteractionHand.OFF_HAND));
+        RoadPlannerMessage.send(action, new byte[0], hand == InteractionHand.OFF_HAND);
     }
 
     @Override
     public void removed() {
         byte[] data = RoadPlans.pack(plan);
-        if (data.length <= RoadPlans.MAX_BYTES && stack() != null) {
-            PtmUkNetwork.CHANNEL.sendToServer(new RoadPlannerMessage(RoadPlannerMessage.Action.SAVE, data, hand == InteractionHand.OFF_HAND));
+        if (data.length > RoadPlans.MAX_PLAN) {
+            Minecraft.getInstance().gui.setOverlayMessage(Component.literal("Road plan too big to save - your changes are lost"), false);
+        } else if (stack() != null) {
+            RoadPlannerMessage.send(RoadPlannerMessage.Action.SAVE, data, hand == InteractionHand.OFF_HAND);
         }
         if (map != null) {
             map.close();
@@ -1623,7 +1642,8 @@ public class RoadPlannerScreen extends Screen {
         if (previewStale && pending == null && !draggingNode && !draggingBend && siteDrag == 0 && map != null) {
             previewStale = false;
             tilesSinceLevel = 0;
-            RoadPlan copy = plan.copy();
+            // a big plan: just the part round the map, as the server builds it
+            RoadPlan copy = plan.tooBig() ? plan.part(map.originX + map.size / 2.0, map.originZ + map.size / 2.0, RoadPlan.PART) : plan.copy();
             var terrain = map.terrain();
             pending = CompletableFuture.supplyAsync(() -> Layout.of(copy, terrain));
         }
