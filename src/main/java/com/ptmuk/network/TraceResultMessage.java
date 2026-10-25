@@ -6,8 +6,8 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
-/** Server -> client: an old road followed down its middle (empty if there wasn't one). */
-public record TraceResultMessage(double[] x, double[] z, int[] width, boolean[] junction, int pavement) {
+/** Server -> client: an old road followed down its middle (empty if there wasn't one), and which ends it carries on past. */
+public record TraceResultMessage(double[] x, double[] z, int[] width, boolean[] junction, int pavement, boolean openStart, boolean openEnd) {
     /** Two followings of 250 steps, and the start. */
     private static final int MAX_POINTS = 502;
 
@@ -20,6 +20,8 @@ public record TraceResultMessage(double[] x, double[] z, int[] width, boolean[] 
             buf.writeBoolean(msg.junction[i]);
         }
         buf.writeVarInt(msg.pavement);
+        buf.writeBoolean(msg.openStart);
+        buf.writeBoolean(msg.openEnd);
     }
 
     public static TraceResultMessage decode(FriendlyByteBuf buf) {
@@ -33,7 +35,7 @@ public record TraceResultMessage(double[] x, double[] z, int[] width, boolean[] 
             w[i] = buf.readVarInt();
             j[i] = buf.readBoolean();
         }
-        return new TraceResultMessage(x, z, w, j, buf.readVarInt());
+        return new TraceResultMessage(x, z, w, j, buf.readVarInt(), buf.readBoolean(), buf.readBoolean());
     }
 
     public static void handle(TraceResultMessage msg, Supplier<NetworkEvent.Context> ctx) {

@@ -139,6 +139,7 @@ public final class Layout {
     private final float[] resD;
     private final int[] siteOwner;      // index into sites, or -1
     private final int[] blendFrom;      // BLEND cells: the edge cell they slope down (or up) to
+    private final boolean[] beyond;     // past a road's open end, where an old road carries on: left alone
     private boolean[] keep;             // inside a keep-clear site: the ground is left alone
     private Distance toRoad, toCore;
 
@@ -246,6 +247,7 @@ public final class Layout {
         resD = new float[size];
         siteOwner = new int[size];
         blendFrom = new int[size];
+        beyond = new boolean[size];
         java.util.Arrays.fill(siteOwner, -1);
         java.util.Arrays.fill(blendFrom, -1);
         java.util.Arrays.fill(bestM, Float.MAX_VALUE);
@@ -717,6 +719,52 @@ public final class Layout {
         }
     }
 
+    /**
+     * Where a road stops at an old road that carries on (its end point is open): the kerb, pavement
+     * and sloped ground don't wrap round the end, so the old road past it is left as it is.
+     */
+    private void openEnds() {
+        Map<Integer, Integer> degree = new HashMap<>();
+        for (Seg g : segs) {
+            degree.merge(g.na.id, 1, Integer::sum);
+            degree.merge(g.nb.id, 1, Integer::sum);
+        }
+        for (Seg g : segs) {
+            for (int e = 0; e < 2 && g.c.n >= 2; e++) {
+                Node n = e == 0 ? g.na : g.nb;
+                if (!n.open || degree.get(n.id) != 1 || jnByNode.containsKey(n.id)) {
+                    continue;
+                }
+                int i = e == 0 ? 0 : g.c.n - 1, j = e == 0 ? 1 : g.c.n - 2;
+                double tx = g.c.x[i] - g.c.x[j], tz = g.c.z[i] - g.c.z[j], tl = Math.hypot(tx, tz);
+                if (tl < 1e-9) {
+                    continue;
+                }
+                tx /= tl;
+                tz /= tl;
+                double ahead = 2 + g.st.verge + g.st.footway() + BLEND_WIDTH, side = g.hc + ahead;
+                int r = (int) Math.ceil(Math.hypot(ahead, side)), cx = (int) Math.floor(g.c.x[i]), cz = (int) Math.floor(g.c.z[i]);
+                for (int z = cz - r; z <= cz + r; z++) {
+                    for (int x = cx - r; x <= cx + r; x++) {
+                        int idx = index(x, z);
+                        if (idx < 0 || carriage[idx]) {
+                            continue;
+                        }
+                        double ox = x + 0.5 - g.c.x[i], oz = z + 0.5 - g.c.z[i], along = ox * tx + oz * tz;
+                        int near = toRoad.nearest[idx];
+                        if (along > 0 && along <= ahead && Math.abs(oz * tx - ox * tz) <= side && near >= 0 && owner[near] == g.index) {
+                            beyond[idx] = true;
+                            if (kind[idx] == KERB || kind[idx] == VERGE || kind[idx] == FOOTWAY) {
+                                kind[idx] = NONE;
+                                top[idx] = Float.NaN;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private boolean insideIsland(Jn j, int idx) {
         if (j == null || j.type != Junction.ROUNDABOUT) {
             return false;
@@ -923,6 +971,7 @@ public final class Layout {
                 top[idx] = base + (st.kerbs ? 0.5f : 0f);
             }
         }
+        openEnds();
         applySites();
         // the band round the outside where the ground is cut or built up to meet the road
         boolean[] foot = new boolean[size];
@@ -931,7 +980,7 @@ public final class Layout {
         }
         Distance toFoot = Distance.of(foot, w, h);
         for (int idx = 0; idx < size; idx++) {
-            if (!foot[idx] && !keep[idx] && toFoot.dist[idx] <= BLEND_WIDTH && toFoot.nearest[idx] >= 0) {
+            if (!foot[idx] && !keep[idx] && !beyond[idx] && toFoot.dist[idx] <= BLEND_WIDTH && toFoot.nearest[idx] >= 0) {
                 kind[idx] = BLEND;
                 top[idx] = (float) Math.ceil(top[toFoot.nearest[idx]]);
                 blendDist[idx] = (float) toFoot.dist[idx];
@@ -1144,8 +1193,8 @@ public final class Layout {
             int kerbDir = -1;
             for (int k = 0; k < 4; k++) {
                 int nx = x + nb[k][0], nz = z + nb[k][1];
-                if (nx < 0 || nz < 0 || nx >= w || nz >= h) {
-                    continue;
+                if (nx < 0 || nz < 0 || nx >= w || nz >= h || beyond[nz * w + nx]) {
+                    continue;                              // past an open end the old road carries on: no edge there
                 }
                 byte nk = kind[nz * w + nx];
                 if (nk == ISLAND_KERB || nk == RESERVATION || nk == BARRIER) {
@@ -1956,7 +2005,8 @@ public final class Layout {
                     }
                 }
             } else {
-                boolean deadEnd = j == null && degree.getOrDefault(id, 0) == 1, plain = j == null;
+                Node node = plan.node(id);
+                boolean deadEnd = j == null && degree.getOrDefault(id, 0) == 1 && (node == null || !node.open), plain = j == null;
                 for (LaneEnd e : in) {
                     LaneEnd gentlest = null;
                     boolean any = false;
@@ -2093,7 +2143,7 @@ public final class Layout {
 
     private int end(Seg g, boolean atA, Map<Integer, Integer> degree) {
         Node n = atA ? g.na : g.nb;
-        if (!jnByNode.containsKey(n.id) && degree.getOrDefault(n.id, 0) == 1 && !g.st.oneWay) {
+        if (!jnByNode.containsKey(n.id) && degree.getOrDefault(n.id, 0) == 1 && !g.st.oneWay && !n.open) {   // an open end's lanes run on to it
             return g.c.index(atA ? TURN : g.c.length - TURN);
         }
         return atA ? 0 : g.c.n - 1;

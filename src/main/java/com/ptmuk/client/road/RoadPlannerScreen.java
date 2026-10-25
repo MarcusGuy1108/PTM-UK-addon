@@ -135,6 +135,10 @@ public class RoadPlannerScreen extends Screen {
     private EditBox swapEdit;
     /** Draw mode: a click follows the old road there instead of starting a new one. */
     private boolean tracing;
+    /** Following only a piece of old road round the click (to join a new road to it), not all of it. */
+    private static boolean tracePiece;
+    /** How far each way a piece goes: room for a junction's corners and markings. */
+    private static final int PIECE = 40;
 
     public static void open(InteractionHand hand) {
         Minecraft.getInstance().setScreen(new RoadPlannerScreen(hand));
@@ -283,6 +287,15 @@ public class RoadPlannerScreen extends Screen {
                 button(y, () -> "Main road: " + (n.majorA < 0 ? "auto" : "set"), b -> cycleMajor(n));
                 y += ROW;
             }
+            if (arms == 1) {
+                button(y, () -> "Road end: " + (n.open ? "old road carries on" : "ends here"), b -> {
+                    remember();
+                    n.open = !n.open;
+                    plan.touch(n.id);
+                    changed();
+                });
+                y += ROW;
+            }
             button(y, () -> "Delete point", b -> deleteSelection());
             return;
         }
@@ -370,7 +383,11 @@ public class RoadPlannerScreen extends Screen {
             button(y, () -> tracing ? "Following old roads: on" : "Follow an old road", b -> {
                 tracing = !tracing;
                 chainLast = null;
+                rebuildPanel();
             });
+            if (tracing) {
+                button(y + ROW, () -> tracePiece ? "Follow: just " + PIECE + " blocks each way" : "Follow: the whole road", b -> tracePiece = !tracePiece);
+            }
         }
     }
 
@@ -1176,7 +1193,7 @@ public class RoadPlannerScreen extends Screen {
 
     private void drawClick(double mx, double my) {
         if (tracing) {
-            PtmUkNetwork.CHANNEL.sendToServer(new TraceRoadMessage((int) Math.floor(worldX(mx)), (int) Math.floor(worldZ(my))));
+            PtmUkNetwork.CHANNEL.sendToServer(new TraceRoadMessage((int) Math.floor(worldX(mx)), (int) Math.floor(worldZ(my)), tracePiece ? PIECE : 0));
             flash("Following the road...");
             return;
         }
@@ -1270,6 +1287,7 @@ public class RoadPlannerScreen extends Screen {
                 joined++;
             } else {
                 node = plan.addNode(Math.floor(r.x()[i]), Math.floor(r.z()[i]));
+                node.open = i == 0 && r.openStart() || i == n - 1 && r.openEnd();    // only followed this far: build nothing across it
             }
             if (prev != null && prev.id != node.id) {
                 plan.addSegment(prev.id, node.id, st);
@@ -1732,7 +1750,8 @@ public class RoadPlannerScreen extends Screen {
                 ? (selSite == null && newSiteType == SiteType.TOWN && drawTown ? "Hold the left button and draw round where the town goes."
                 : "Drag out a site; drag it to move, a corner to resize.")
                 : mode == Mode.DRAW && tracing
-                ? "Click old roads to follow them to their junctions and ends. Click the button again to stop."
+                ? (tracePiece ? "Click an old road where a new road will join it: it follows " + PIECE + " blocks each way, ready for the junction."
+                : "Click old roads to follow them to their junctions and ends. Click the button again to stop.")
                 : mode == Mode.DRAW
                 ? (chainLast == null ? "Click to start a road. Right-drag: move map. Scroll: zoom."
                 : "Click: next point. End on a road to join it (Shift: slip road). Right-click: finish.")

@@ -66,7 +66,7 @@ public final class BlockSwap {
      * ground's surface (the first full block under anything thin, or MIN_VALUE if the column is
      * under a roof or a bridge). Null if there's no natural ground at all.
      */
-    private static int[] heights(ServerLevel level, int x, int z) {
+    static int[] heights(ServerLevel level, int x, int z) {
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
         int min = level.getMinBuildHeight();
         int top = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;

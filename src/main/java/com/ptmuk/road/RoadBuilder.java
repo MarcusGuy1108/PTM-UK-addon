@@ -375,6 +375,10 @@ public final class RoadBuilder {
                 RoadPlans.write(stack, job.plan);
             }
             player.displayClientMessage(Component.literal("Roads built (" + job.changed + " blocks changed)"), true);
+            if (job.trafficAt != null && !Ptm2Traffic.leftHanded(job.level)) {
+                player.sendSystemMessage(Component.literal("PTM2 has its traffic on the right in this world, so cars on these roads keep right. "
+                        + "To drive on the left, open a PTM2 Computer, go to Traffic and set Left traffic to Yes: PTM2 turns every lane round, these too."));
+            }
         }
     }
 

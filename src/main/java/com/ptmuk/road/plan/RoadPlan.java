@@ -43,6 +43,8 @@ public final class RoadPlan {
         public int radius;
         /** Give way / stop junctions: the two roads that carry straight on (segment ids), or -1 to choose. */
         public int majorA = -1, majorB = -1;
+        /** A road's end where an old road carries on as it is (followed only this far): nothing is built across or past it. */
+        public boolean open;
         public boolean built;
     }
 
