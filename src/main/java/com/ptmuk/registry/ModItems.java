@@ -86,6 +86,9 @@ public final class ModItems {
         STREET_ITEMS.add(item("fuel_price_sign", ModBlocks.FUEL_PRICE_SIGN));
         STREET_ITEMS.add(item("street_nameplate", ModBlocks.NAMEPLATE));
         STREET_ITEMS.add(item("car_wash", ModBlocks.CAR_WASH));
+        for (RegistryObject<Block> car : ModBlocks.DISPLAY_CARS) {
+            STREET_ITEMS.add(item(car.getId().getPath(), car));
+        }
         // the stop furniture shows in the buses tab as well
         for (RegistryObject<Item> item : List.copyOf(STREET_ITEMS)) {
             if (java.util.Set.of("bus_shelter", "bus_shelter_london", "bus_stop_flag").contains(item.getId().getPath())) {

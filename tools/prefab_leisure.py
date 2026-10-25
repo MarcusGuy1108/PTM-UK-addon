@@ -77,6 +77,14 @@ def town_pub(ident="town_pub", name="Big Town Centre Pub"):
     b.window(11, 3, 2, 2, 1, SASH)
     windows(b, (2, 4, 6, 8, 11, 12, 15, 17, 19, 21), 5, 2)
     P.flat_roof(b, 0, W - 1, 2, 23, 8, deck="gray_concrete", parapet=stone, coping="smooth_stone")
+    b.fill(0, 8, 2, W - 1, 8, 2, stone)
+    # stone pilasters standing out between the bays, a ledge between the floors and a cornice under the name
+    for u in (1, 10, 13, 22):
+        P.pilaster(b, u, 1, 1, 6, stone)
+    for u in range(W):
+        if b.get(u, 4, 1).name == "minecraft:air":
+            b.set(u, 4, 1, slab(stone, "top"))
+        b.set(u, 7, 1, stairs(stone, "back", "top"))
     big_sign(b, 6, 17, 8, 9, 1, "THE CORN EXCHANGE", "Pub • Food Served All Day", 0xFF14213D, GOLD)
     # the island bar: counters round a square, the staff inside, stools round it
     for u in range(9, 15):

@@ -102,11 +102,13 @@ def high_street_unit(ident, name, category, W, D, storeys, sign, desc, interior,
     # the floors over the shop: windows, string courses, a cornice
     for k in range(1, storeys):
         y = STOREY * k + 1
-        for x in window_cols(W):
+        cols = window_cols(W)
+        for x in cols:
             if style == "victorian":
                 P.sash(b, x, y, 1)
-            else:
-                b.window(x, y, 1, 1, 2, "ptmuk:upvc_window")
+            else:                                          # wide modern windows, a pier between them
+                w = 2 if x + 1 <= W - 2 and x + 1 not in cols else 1
+                b.window(x, y, 1, w, STOREY - 1, "ptmuk:grey_framed_window")
         if style == "victorian" and k > 1:
             b.fill(0, STOREY * k, 1, W - 1, STOREY * k, 1, P.STONE)
     if storeys > 1 and style == "victorian":
@@ -127,6 +129,7 @@ def high_street_unit(ident, name, category, W, D, storeys, sign, desc, interior,
         b.chimney(0, (2 + back) // 2 - 1, top, top + half + 1, wall, w=1, d=2, pots=2)
     else:
         P.flat_roof(b, 0, W - 1, 1, back, top, deck="gray_concrete", parapet=wall, coping="smooth_stone")
+        b.fill(0, top, 1, W - 1, top, 1, wall)            # the deck's edge doesn't show as a stripe on the front
     interior(b, u)
     if storeys > 1:
         ceiling_lights(b, 1, 2, W - 2, back - 1, STOREY)
@@ -248,7 +251,7 @@ def pizza_takeaway():
         "over the shop.",
         lambda b, u: takeaway_fit(b, u, {2: "till", 3: "till"}, {1: "pizza_oven", 2: "pizza_oven", 3: "pizza_oven",
                                                                  4: "bottle_fridge"}, seats="bench"),
-        style="modern", roof="flat", wall="white_concrete", stall="green_terracotta")
+        style="modern", roof="flat", wall="ptmuk:white_render", stall="green_terracotta")
 
 
 def bakery():
@@ -330,7 +333,7 @@ def pharmacy():
         "pharmacy", "Pharmacy", "Shops", 8, 17, 2,
         ("HEALTH FIRST", "Pharmacy • Prescriptions • Advice", 0xFF0E8A4A, WHITE),
         "A chemist's: shelves of medicines and toiletries, a prescription counter and dispensary, a flat over the top.",
-        fitout, style="modern", roof="flat", wall="white_concrete", stall="lime_terracotta")
+        fitout, style="modern", roof="flat", wall="ptmuk:white_render", stall="lime_terracotta")
 
 
 def newsagent():
@@ -375,7 +378,7 @@ def launderette():
         "launderette", "Launderette", "Shops", 8, 17, 2,
         ("BUBBLES", "Launderette • Service Washes • Dry Cleaning", 0xFF2A8BD8, WHITE),
         "A launderette: rows of washing machines down both walls, a bench and a service counter, a flat over it.",
-        fitout, style="modern", roof="flat", wall="white_concrete", stall="light_blue_terracotta", door_u=4)
+        fitout, style="modern", roof="flat", wall="ptmuk:white_render", stall="light_blue_terracotta", door_u=4)
 
 
 def barbers():
@@ -407,7 +410,7 @@ def phone_shop():
         "phone_shop", "Phone Shop", "Shops", 8, 17, 2,
         ("PHONEZONE", "Phones • Repairs • Accessories", 0xFF6A1B9A, WHITE),
         "A mobile phone shop: display tables of handsets, shelves of accessories, a repairs counter, a flat over it.",
-        fitout, style="modern", roof="flat", wall="light_gray_concrete", stall="purple_terracotta", door_u=4)
+        fitout, style="modern", roof="flat", wall=STOCK, stall="purple_terracotta", door_u=4)
 
 
 def estate_agent():
@@ -467,7 +470,7 @@ def peri_peri():
         "peri_peri_restaurant", "Peri-Peri Chicken Restaurant", "Food & Drink", 14, 20, 2,
         ("CASA PERI", "Flame-Grilled Peri-Peri Chicken", 0xFF111111, 0xFFE8432D),
         "A flame-grilled chicken restaurant in a double unit: order at the counter, grills and fryers behind, booths and "
-        "tables, a drinks machine, more tables upstairs.", fitout, style="modern", roof="flat", wall="white_concrete",
+        "tables, a drinks machine, more tables upstairs.", fitout, style="modern", roof="flat", wall="ptmuk:white_render",
         stall="black_terracotta", door_u=9, upper=dining_upstairs("jungle"))
 
 

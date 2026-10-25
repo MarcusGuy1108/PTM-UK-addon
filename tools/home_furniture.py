@@ -336,6 +336,22 @@ def make_shop_textures():
     for film in ST.POSTERS:
         lo, hi = HT.halves(ST.poster(film))
         TEX[f"poster_{film}_lower"], TEX[f"poster_{film}_upper"] = s(lo, Q + f"poster_{film}_lower"), s(hi, Q + f"poster_{film}_upper")
+    TEX.update({                                         # outside a shop or pub
+        "alarm_front": s(ST.alarm_front(), Q + "alarm_front"),
+        "plastic_white": s(ST.plastic((232, 234, 236)), Q + "plastic_white"),
+        "fan_grille": s(ST.fan_grille(), Q + "fan_grille"),
+        "louvres": s(ST.louvres(), Q + "louvres"),
+        "chalkboard": s(ST.chalkboard(), Q + "chalkboard"),
+        "flowers": s(ST.flowers(), Q + "flowers"),
+        "coir": s(ST.coir(), Q + "coir"),
+        "lantern_glass": s(ST.lantern_glass(False), Q + "lantern_glass"),
+        "lantern_glass_on": s(ST.lantern_glass(True), Q + "lantern_glass_on"),
+        "shutter_box": s(ST.ribbed(), Q + "shutter_box"),
+        "feather_flag": s(ST.feather_flag(), Q + "feather_flag"),
+        "parasol": s(ST.parasol(), Q + "parasol"),
+        "picnic_wood": s(HT.timber((150, 116, 78), 64), Q + "picnic_wood"),
+        "amber": s(HT.glow((250, 170, 40)), Q + "amber"),
+    })
 
 
 def tiles(size=64):
@@ -1458,6 +1474,118 @@ def weight_bench():
     return els, {"chrome": t("chrome"), "leather_black": t("leather_black"), "black": t("black")}
 
 
+# ----------------------------------------------------------------- outside a shop or pub
+# Wall pieces stand in the space in front of a wall, their backs against it (z = 16).
+
+def alarm_box():
+    """A burglar alarm bell box high on the front wall, its strobe on top."""
+    els = [bx((4.5, 4, 13.5), (11.5, 12, 16), "#plastic_white", faces=("east", "west", "up", "down")),
+           bx((5, 4.5, 12.5), (11, 11.5, 13.5), "#plastic_white", front="#alarm_front", full=("north",)),
+           bx((6.5, 12, 13.6), (9.5, 13.4, 15.6), "#amber")]
+    return els, {"plastic_white": t("plastic_white"), "alarm_front": t("alarm_front"), "amber": t("amber")}
+
+
+def downpipe():
+    """A length of black rainwater pipe down a wall, held by a clip."""
+    els = [bx((6.75, 0, 12.5), (9.25, 16, 15), "#black"),
+           bx((6.25, 11, 12), (9.75, 12, 16), "#black")]
+    return els, {"black": t("black")}
+
+
+def air_con():
+    """An air conditioning condenser: a fan behind a round grille, louvres beside it."""
+    els = [bx((0.5, 1, 9.5), (15.5, 12, 16), "#plastic_white", faces=("east", "west", "up", "south")),
+           bx((0.5, 1, 9.48), (11, 12, 9.5), "#fan_grille", faces=("north",), full=("north",)),
+           bx((11, 1, 9.48), (15.5, 12, 9.5), "#louvres", faces=("north",)),
+           bx((1, 0, 10), (3, 1, 15.5), "#dark_grey"), bx((13, 0, 10), (15, 1, 15.5), "#dark_grey")]
+    return els, {"plastic_white": t("plastic_white"), "fan_grille": t("fan_grille"), "louvres": t("louvres"),
+                 "dark_grey": t("dark_grey")}
+
+
+def satellite_dish():
+    """A satellite dish on a wall bracket, tipped up at the sky, its LNB out in front."""
+    tilt = ("x", 22.5, (8, 8, 7.4))
+    els = [bx((6, 6, 15), (10, 10, 16), "#dark_grey"),
+           bx((7.5, 7.5, 8), (8.5, 8.5, 15), "#dark_grey"),
+           bx((3, 3.5, 7), (13, 12.5, 7.8), "#plastic_white", rot=tilt),
+           bx((4, 2.5, 7), (12, 13.5, 7.8), "#plastic_white", rot=tilt),
+           bx((7.6, 3.4, 2.4), (8.4, 4.2, 7), "#dark_grey", rot=tilt),
+           bx((7, 3, 1.4), (9, 5, 3), "#dark_grey", rot=tilt)]
+    return els, {"dark_grey": t("dark_grey"), "plastic_white": t("plastic_white")}
+
+
+def a_board():
+    """A chalked A-board on the pavement."""
+    els = [bx((2, 0, 7.6), (14, 15, 8.4), "#chalkboard", rot=("x", 22.5, (8, 15, 8)), full=("north",),
+              faces=("north", "east", "west", "up", "down")),
+           bx((2, 0, 7.6), (14, 15, 8.4), "#chalkboard", rot=("x", -22.5, (8, 15, 8)), faces=("south", "east", "west", "up", "down"),
+              uv={"south": [0, 0, 16, 16]})]
+    return els, {"chalkboard": t("chalkboard")}
+
+
+def hanging_basket():
+    """A hanging basket of flowers on a black bracket off the wall."""
+    els = [bx((7, 12, 15), (9, 16, 16), "#black"),
+           bx((7.5, 15, 7.5), (8.5, 16, 15), "#black"),
+           bx((7.5, 12.5, 11.5), (8.5, 13.5, 15.5), "#black", rot=("x", 45, (8, 13, 13.5))),
+           bx((7.8, 10.5, 7.8), (8.2, 15, 8.2), "#black"),
+           bx((5, 5, 5), (11, 8, 11), "#coir"),
+           bx((4, 8, 4), (12, 10.5, 12), "#flowers", uv={"up": [0, 0, 16, 16]}),
+           bx((3.5, 5.5, 6), (4, 9, 9), "#flowers"), bx((12, 4.5, 7), (12.5, 8.5, 10), "#flowers"),
+           bx((6, 4, 3.5), (9, 8, 4), "#flowers"), bx((7, 5, 12), (10, 9, 12.5), "#flowers")]
+    return els, {"black": t("black"), "coir": t("coir"), "flowers": t("flowers")}
+
+
+def coach_lantern(on):
+    """A black coach lantern hung from a wall bracket."""
+    glass = "#lantern_glass_on" if on else "#lantern_glass"
+    els = [bx((6.5, 8, 15), (9.5, 14, 16), "#black"),
+           bx((7.5, 13, 10), (8.5, 14, 15), "#black"),
+           bx((5.5, 12, 7.5), (10.5, 12.8, 12.5), "#black"),
+           bx((6.5, 12.8, 8.5), (9.5, 13.6, 11.5), "#black"),
+           bx((6, 6, 8), (10, 12, 12), glass, emissive=on),
+           bx((5.5, 5.2, 7.5), (10.5, 6, 12.5), "#black"),
+           bx((7.5, 4.4, 9.5), (8.5, 5.2, 10.5), "#black")]
+    return els, {"black": t("black"), glass[1:]: t(glass[1:])}
+
+
+def shutter_box():
+    """The housing of a roller shutter, across the top of a shop window (they join up side by side)."""
+    els = [bx((0, 11, 11.5), (16, 16, 16), "#shutter_box", faces=("north", "up", "down", "east", "west"))]
+    return els, {"shutter_box": t("shutter_box")}
+
+
+def feather_flag():
+    """A forecourt feather flag on its pole."""
+    els = [bx((6, 0, 6), (10, 1, 10), "#dark_grey"),
+           bx((7.6, 1, 7.6), (8.4, 31, 8.4), "#chrome"),
+           bx((8.4, 9, 7.9), (14.5, 30, 8.1), "#feather_flag", faces=("north", "south", "east", "up", "down"),
+              uv={"north": [0, 0, 16, 16], "south": [16, 0, 0, 16]})]
+    return els, {"dark_grey": t("dark_grey"), "chrome": t("chrome"), "feather_flag": t("feather_flag")}
+
+
+def parasol():
+    """A pub garden parasol on its pole (stand it through a picnic bench, or on its own)."""
+    els = [bx((7.6, 0, 7.6), (8.4, 29, 8.4), "#chrome"),
+           bx((-12, 25, -12), (28, 26, 28), "#parasol", uv={"up": [0, 0, 16, 16], "down": [0, 0, 16, 16]}),
+           bx((-6, 26, -6), (22, 27.2, 22), "#parasol", uv={"up": [0, 0, 16, 16]}),
+           bx((1, 27.2, 1), (15, 28.4, 15), "#parasol", uv={"up": [0, 0, 16, 16]}),
+           bx((7, 28.4, 7), (9, 29.4, 9), "#chrome")]
+    return els, {"chrome": t("chrome"), "parasol": t("parasol")}
+
+
+def picnic_bench(part):
+    """A pub garden picnic bench, two blocks long: table top, a bench each side, A-frame legs at the ends."""
+    left = part == "left"
+    end = 1.5 if left else 13
+    els = [bx((0, 11, 4), (16, 12, 12), "#picnic_wood"),
+           bx((0, 6.5, 0.5), (16, 7.5, 3.5), "#picnic_wood"), bx((0, 6.5, 12.5), (16, 7.5, 15.5), "#picnic_wood"),
+           bx((end, 5.5, 0.5), (end + 1.5, 6.5, 15.5), "#picnic_wood"),
+           bx((end, 0, 3), (end + 1.5, 11, 4.5), "#picnic_wood", rot=("x", 22.5, (end, 11, 4))),
+           bx((end, 0, 11.5), (end + 1.5, 11, 13), "#picnic_wood", rot=("x", -22.5, (end, 11, 12)))]
+    return els, {"picnic_wood": t("picnic_wood")}
+
+
 def bottle_fridge():
     els = [bx((0, 0, 1), (16, 14, 16), "#black", faces=("east", "west", "south", "up", "down")),
            bx((0, 0, 0.98), (16, 14, 1), "#bottle_fridge", faces=("north",), full=("north",), emissive=True)]
@@ -1648,6 +1776,21 @@ def _home():
         F("weight_bench", "Weight Bench", weight_bench, shape=(2, 0, 2, 14, 8, 14), seat=8, group="shop", sound="METAL"),
         F("bottle_fridge", "Bottle Fridge", bottle_fridge, shape=(0, 0, 1, 16, 14, 16), rows=2, surface="counter",
           group="shop", sound="GLASS"),
+    ]
+    out += [                                             # outside a shop or pub
+        F("alarm_box", "Burglar Alarm Box", alarm_box, shape=(4.5, 4, 12.5, 11.5, 13.4, 16), group="shop", sound="METAL"),
+        F("downpipe", "Downpipe", downpipe, shape=(6.25, 0, 12, 9.75, 16, 16), group="shop", sound="METAL"),
+        F("air_con", "Air Conditioning Unit", air_con, shape=(0.5, 0, 9.5, 15.5, 12, 16), group="shop", sound="METAL"),
+        F("satellite_dish", "Satellite Dish", satellite_dish, shape=(3, 2, 2, 13, 14, 16), group="shop", sound="METAL"),
+        F("a_board", "A-Board", a_board, shape=(2, 0, 2.5, 14, 15, 13.5), group="shop"),
+        F("hanging_basket", "Hanging Basket", hanging_basket, shape=(3.5, 4, 3.5, 12.5, 16, 16), group="shop",
+          sound="GRASS", cutout=True),
+        F("coach_lantern", "Coach Lantern", coach_lantern, shape=(5.5, 4.4, 7.5, 10.5, 14, 16), light=14,
+          effect="click", group="shop", sound="METAL"),
+        F("shutter_box", "Roller Shutter Box", shutter_box, shape=(0, 11, 11.5, 16, 16, 16), group="shop", sound="METAL"),
+        F("feather_flag", "Feather Flag", feather_flag, "tall", (6, 0, 6, 10, 16, 10), group="shop", sound="WOOL"),
+        F("parasol", "Garden Parasol", parasol, "tall", (7, 0, 7, 9, 16, 9), group="shop", sound="WOOL"),
+        F("picnic_bench", "Picnic Bench", picnic_bench, "wide", (0, 0, 0.5, 16, 12, 15.5), seat=7.5, group="shop"),
     ]
     for film, title in ST.POSTERS.items():
         out.append(F(f"film_poster_{film}", f"Film Poster ({title})", (lambda f=film: lambda: film_poster(f))(), "tall",

@@ -60,6 +60,20 @@ public final class ModBlocks {
     public static final RegistryObject<Block> NAMEPLATE = BLOCKS.register("street_nameplate", com.ptmuk.map.NameplateBlock::new);
     public static final RegistryObject<Block> FUEL_PRICE_SIGN = BLOCKS.register("fuel_price_sign", com.ptmuk.building.FuelPriceSignBlock::new);
     public static final RegistryObject<Block> CAR_WASH = BLOCKS.register("car_wash", com.ptmuk.building.CarWashBlock::new);
+    /** Display cars, one per paint (0xRRGGBB); must match PAINTS in tools/display_car.py. */
+    public static final java.util.Map<String, Integer> CAR_PAINTS = new java.util.LinkedHashMap<>();
+    public static final java.util.List<RegistryObject<Block>> DISPLAY_CARS = new java.util.ArrayList<>();
+
+    static {
+        CAR_PAINTS.put("red", 0xB0181E);
+        CAR_PAINTS.put("white", 0xEEEEEA);
+        CAR_PAINTS.put("black", 0x1E1E21);
+        CAR_PAINTS.put("silver", 0xAAAEB4);
+        CAR_PAINTS.put("blue", 0x1C3A8A);
+        CAR_PAINTS.put("grey", 0x5A5E64);
+        CAR_PAINTS.forEach((paint, colour) -> DISPLAY_CARS.add(BLOCKS.register("display_car_" + paint,
+                () -> new com.ptmuk.building.DisplayCarBlock(colour))));
+    }
     /** Framed windows for UK buildings; must match WINDOWS in tools/building.py. */
     public static final String[] WINDOWS = {"upvc_window", "sash_window", "georgian_window", "leaded_window", "shop_window",
             "office_glazing", "grey_framed_window"};

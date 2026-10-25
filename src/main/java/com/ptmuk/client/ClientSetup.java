@@ -24,6 +24,7 @@ public final class ClientSetup {
         event.registerBlockEntityRenderer(ModBlockEntities.SHOP_SIGN.get(), com.ptmuk.client.building.ShopSignRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.FUEL_PRICE_SIGN.get(), com.ptmuk.client.building.FuelPriceSignRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.CAR_WASH.get(), com.ptmuk.client.building.CarWashRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.DISPLAY_CAR.get(), com.ptmuk.client.building.DisplayCarRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.NAMEPLATE.get(), com.ptmuk.client.map.NameplateRenderer::new);
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.ALX400_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "alx400"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.UKDD_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "ukdd"));
@@ -33,5 +34,19 @@ public final class ClientSetup {
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.OMNICITY_TYPE.get(), c -> new com.ptmuk.client.bus.DoubleDeckerRenderer<>(c, "omnicity"));
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.K4_TYPE.get(), com.ptmuk.client.bus.KiaK4Renderer::new);
         event.registerEntityRenderer(com.ptmuk.home.HomeBlocks.SEAT.get(), net.minecraft.client.renderer.entity.NoopRenderer::new);
+    }
+
+    @SubscribeEvent
+    public static void registerModels(net.minecraftforge.client.event.ModelEvent.RegisterAdditional event) {
+        event.register(com.ptmuk.client.building.DisplayCarRenderer.MODEL);
+    }
+
+    /** Display car items take their paint from their block. */
+    @SubscribeEvent
+    public static void itemColours(net.minecraftforge.client.event.RegisterColorHandlersEvent.Item event) {
+        for (var car : com.ptmuk.registry.ModBlocks.DISPLAY_CARS) {
+            int colour = ((com.ptmuk.building.DisplayCarBlock) car.get()).colour;
+            event.register((stack, tint) -> tint == 0 ? 0xFF000000 | colour : -1, car.get());
+        }
     }
 }

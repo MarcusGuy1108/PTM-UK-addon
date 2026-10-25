@@ -1439,11 +1439,13 @@ def all_prefabs():
     import prefab_stretch
     builds = [b if b.ident in NOT_ENLARGED or b.category in ("Estates", "Shopfronts") else prefab_stretch.enlarge(b)
               for b in _all_prefabs()]
+    import prefab_facade
     for b in builds:
         b.fill_ground()
         b.frame_doors()
         prefab_furnish.furnish(b)
         prefab_dress.dress(b)
+        prefab_facade.dress_front(b)
     return builds
 
 

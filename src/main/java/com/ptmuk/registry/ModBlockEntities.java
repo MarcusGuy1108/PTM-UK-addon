@@ -52,6 +52,9 @@ public final class ModBlockEntities {
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<BlockEntityType<com.ptmuk.building.CarWashBlockEntity>> CAR_WASH = BLOCK_ENTITIES.register(
             "car_wash", () -> BlockEntityType.Builder.of(com.ptmuk.building.CarWashBlockEntity::new, ModBlocks.CAR_WASH.get()).build(null));
+    public static final RegistryObject<BlockEntityType<com.ptmuk.building.DisplayCarBlock.DisplayCarBlockEntity>> DISPLAY_CAR = BLOCK_ENTITIES.register(
+            "display_car", () -> BlockEntityType.Builder.of(com.ptmuk.building.DisplayCarBlock.DisplayCarBlockEntity::new,
+                    ModBlocks.DISPLAY_CARS.stream().map(RegistryObject::get).toArray(net.minecraft.world.level.block.Block[]::new)).build(null));
 
     private ModBlockEntities() {
     }

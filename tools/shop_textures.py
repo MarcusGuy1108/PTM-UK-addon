@@ -1115,3 +1115,133 @@ def gym_screen(size=16):
     for x in range(3, 13, 3):
         d.rectangle([x, 10, x + 1, 12], fill=(220, 220, 220))
     return img
+
+
+# ----------------------------------------------------------------- outside a shop or pub (own random, so nothing above shifts)
+
+_X = random.Random(77)
+
+
+def alarm_front(size=32):
+    """A burglar alarm bell box's front: white, with a coloured sweep and a slotted sounder."""
+    img = _img(size, size, (236, 238, 240))
+    d = ImageDraw.Draw(img)
+    d.polygon([(0, size * 0.62), (size, size * 0.40), (size, size * 0.70), (0, size * 0.92)], fill=(26, 70, 160))
+    d.line([(0, size * 0.58), (size, size * 0.36)], fill=(240, 196, 40), width=2)
+    for y in range(4, int(size * 0.34), 3):
+        d.line([(size * 0.3, y), (size * 0.7, y)], fill=(170, 174, 180))
+    return _speckle(img, 3)
+
+
+def fan_grille(size=32):
+    """An air conditioning unit's fan behind its round grille."""
+    img = _img(size, size, (224, 226, 228))
+    d = ImageDraw.Draw(img)
+    c, r = size / 2 - 0.5, size / 2 - 2
+    d.ellipse([c - r, c - r, c + r, c + r], fill=(46, 48, 52))
+    for k in range(4):
+        a = k * math.pi / 2 + 0.5
+        d.polygon([(c, c), (c + r * 0.9 * math.cos(a), c + r * 0.9 * math.sin(a)),
+                   (c + r * 0.9 * math.cos(a + 0.7), c + r * 0.9 * math.sin(a + 0.7))], fill=(90, 94, 100))
+    for rr in range(3, int(r) + 1, 3):
+        d.ellipse([c - rr, c - rr, c + rr, c + rr], outline=(150, 154, 160))
+    d.line([(c - r, c), (c + r, c)], fill=(150, 154, 160))
+    d.line([(c, c - r), (c, c + r)], fill=(150, 154, 160))
+    return _speckle(img, 3)
+
+
+def louvres(size=16, colour=(214, 216, 218)):
+    """Horizontal louvres down the side of a box."""
+    img = _img(size, size, colour)
+    d = ImageDraw.Draw(img)
+    for y in range(1, size, 3):
+        d.line([(1, y), (size - 2, y)], fill=_shade(colour, 0.62))
+    return _speckle(img, 3)
+
+
+def chalkboard(size=32):
+    """A pub or cafe A-board: chalk lines of specials on slate, in a wooden frame."""
+    img = _img(size, size, (36, 42, 40))
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, size - 1, size - 1], outline=(132, 92, 54), width=2)
+    chalk = ((236, 236, 230), (250, 214, 90), (240, 140, 170), (150, 210, 240))
+    d.line([(7, 6), (size - 8, 6)], fill=chalk[1], width=2)
+    y = 11
+    while y < size - 5:
+        x0 = 5 + _X.randint(0, 2)
+        x1 = size - 6 - _X.randint(0, 9)
+        col = chalk[_X.randint(0, 3)] if _X.random() < 0.35 else chalk[0]
+        for x in range(x0, x1, 2):
+            if _X.random() < 0.8:
+                d.point((x, y), fill=col)
+                d.point((x + 1, y + (1 if _X.random() < 0.3 else 0)), fill=col)
+        y += 4
+    return _speckle(img, 4)
+
+
+def flowers(size=32):
+    """Bedding plants spilling over a hanging basket: leaves and lots of colour."""
+    img = _img(size, size, (52, 104, 46))
+    d = ImageDraw.Draw(img)
+    for _ in range(90):
+        x, y = _X.uniform(0, size), _X.uniform(0, size)
+        d.ellipse([x - 1.5, y - 1, x + 1.5, y + 1], fill=(40 + _X.randint(0, 40), 100 + _X.randint(0, 50), 36))
+    cols = ((214, 38, 70), (240, 100, 170), (150, 70, 200), (250, 250, 248), (250, 200, 50), (240, 110, 40))
+    for _ in range(46):
+        x, y = _X.uniform(1, size - 1), _X.uniform(1, size - 1)
+        d.ellipse([x - 1.2, y - 1.2, x + 1.2, y + 1.2], fill=cols[_X.randint(0, len(cols) - 1)])
+    return img
+
+
+def coir(size=16):
+    """The coir liner of a hanging basket."""
+    img = _img(size, size, (110, 82, 50))
+    d = ImageDraw.Draw(img)
+    for _ in range(40):
+        x, y = _X.uniform(0, size), _X.uniform(0, size)
+        d.line([(x, y), (x + _X.uniform(-3, 3), y + _X.uniform(-1, 1))], fill=(70 + _X.randint(0, 50), 52, 30))
+    return img
+
+
+def lantern_glass(lit, size=16):
+    """A coach lantern's glass with its glazing bars: warm when it's lit."""
+    base = (255, 216, 130) if lit else (150, 152, 140)
+    img = _img(size, size, base)
+    d = ImageDraw.Draw(img)
+    if lit:
+        d.ellipse([size * 0.3, size * 0.3, size * 0.7, size * 0.75], fill=(255, 246, 214))
+    d.line([(size // 2, 0), (size // 2, size)], fill=(24, 24, 24))
+    d.rectangle([0, 0, size - 1, size - 1], outline=(24, 24, 24))
+    return img
+
+
+def ribbed(colour=(186, 190, 196), size=16):
+    """A roller shutter box: pressed aluminium with ribs along it."""
+    img = _img(size, size, colour)
+    d = ImageDraw.Draw(img)
+    for y in (3, 8, 13):
+        d.line([(0, y), (size, y)], fill=_shade(colour, 0.8))
+        d.line([(0, y + 1), (size, y + 1)], fill=_shade(colour, 1.1))
+    return _speckle(img, 3)
+
+
+def feather_flag(size=32):
+    """A forecourt feather flag: plain bands of colour (no name or badge on it)."""
+    img = _img(size, size, (24, 60, 140))
+    d = ImageDraw.Draw(img)
+    d.polygon([(0, size * 0.55), (size, size * 0.25), (size, size * 0.45), (0, size * 0.75)], fill=(240, 242, 246))
+    d.polygon([(0, size * 0.80), (size, size * 0.50), (size, size * 0.56), (0, size * 0.86)], fill=(220, 40, 50))
+    return img
+
+
+def parasol(size=32):
+    """A pub garden parasol's canopy: cream and bottle green panels."""
+    img = _img(size, size, (232, 224, 200))
+    d = ImageDraw.Draw(img)
+    c = size / 2
+    for k in range(8):
+        if k % 2:
+            a0, a1 = k * math.pi / 4, (k + 1) * math.pi / 4
+            d.polygon([(c, c), (c + size * math.cos(a0), c + size * math.sin(a0)), (c + size * math.cos(a1), c + size * math.sin(a1))],
+                      fill=(30, 82, 54))
+    return _speckle(img, 3)

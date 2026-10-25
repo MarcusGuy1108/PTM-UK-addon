@@ -35,6 +35,7 @@ import petrol  # noqa: E402
 import car_k4  # noqa: E402
 import bus_extras  # noqa: E402
 import home_furniture  # noqa: E402
+import display_car  # noqa: E402
 
 MOD_ID = "ptmuk"
 ROOT = Path(__file__).resolve().parent.parent
@@ -952,6 +953,7 @@ def write_lang():
     lang.update(bus_extras.lang())
     lang.update(petrol.lang(MOD_ID))
     lang.update(home_furniture.lang(MOD_ID))
+    lang.update(display_car.lang(MOD_ID))
     lang.update({"item.ptmuk.alx400": "Alexander ALX400 (Double Decker)", "entity.ptmuk.ptm_124d_alx400": "Alexander ALX400",
                  "item.ptmuk.uk_double_decker": "UK Double Decker", "entity.ptmuk.ptm_124e_ukdd": "UK Double Decker",
                  "item.ptmuk.enviro400": "Alexander Dennis Enviro400 (London, Double Decker)",
@@ -984,7 +986,8 @@ def write_data():
                {"replace": False, "values": everything + [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" not in n]})
     write_json(DATA / "minecraft/tags/blocks/mineable/axe.json",
                {"replace": False, "values": [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" in n]})
-    everything += [f"{MOD_ID}:{n}" for n in building.block_ids()] + [f"{MOD_ID}:fuel_price_sign", f"{MOD_ID}:car_wash"]
+    everything += [f"{MOD_ID}:{n}" for n in building.block_ids()] + [f"{MOD_ID}:fuel_price_sign", f"{MOD_ID}:car_wash"] + \
+        [f"{MOD_ID}:{n}" for n in display_car.ids()]
     write_json(DATA / "minecraft/tags/blocks/mineable/pickaxe.json",
                {"replace": False, "values": everything + [f"{MOD_ID}:{n}" for n in pylons.TOWERS if "pole" not in n]})
     write_json(DATA / "minecraft/tags/blocks/slabs.json",
@@ -1035,6 +1038,7 @@ def main():
     bus_omnicity.main()
     petrol.generate(sys.modules[__name__])
     home_furniture.generate(sys.modules[__name__])
+    display_car.generate(sys.modules[__name__])
     prefab_designs.generate()
     car_k4.main()
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)

@@ -230,53 +230,163 @@ def discount_store():
 
 # ================================================================== car dealership
 
-def car_dealership(ident="car_dealership", name="Car Dealership with Workshop"):
-    W, D = 42, 40
-    b = Build(ident, name, "Commercial", W, 13, D,
-              "A main dealer: a forecourt of display bays, a double-height glass showroom with sales desks, and a "
-              "service workshop with lifts, tool chests and up-and-over doors. The name, ROADSTAR MOTORS, is made up.")
-    P.paving(b, 0, 0, W - 1, 13, "ptmuk:tarmac")
-    P.parking_bays(b, 2, 2, 25, 8, "u", 4, "back")
-    P.paving(b, 0, 11, W - 1, 13, "ptmuk:block_paving_grey")
-    for y in range(1, 4):
-        b.set(1, y, 1, "gray_concrete")
-        b.set(4, y, 1, "gray_concrete")
-    big_sign(b, 1, 4, 4, 6, 1, "ROADSTAR", "MOTORS", 0xFF0B2A5B)
-    for u in (0, 20, W - 1):
-        P.street_light(b, u, 12, "front", 6)
-    # showroom
-    b.fill(2, 0, 14, 25, 0, D - 2, "polished_diorite")
-    b.walls(2, 1, 14, 25, 9, D - 2, "white_concrete")
-    b.window(3, 1, 14, 22, 7, GLAZING)
-    for u in (12, 13):
-        b.door(u, 1, 14, "birch", facing="back", hinge="left" if u == 12 else "right")
-    big_sign(b, 4, 23, 8, 9, 13, "ROADSTAR MOTORS", "SALES • SERVICE • PARTS", 0xFF0B2A5B)
-    for u in (5, 10, 17, 22):
-        fit(b, "desk", u, 1, 33, "front")
-        fit(b, "computer", u, 2, 33, "front", level="table")
-        fit(b, "office_chair", u, 1, 34, "front")
-        fit(b, "dining_chair", u, 1, 32, "back")
-    for u in (3, 24):
-        fit(b, "houseplant", u, 1, 15, "front", level="floor")
-    P.ceiling_lights(b, 2, 14, 25, D - 2, 9, step=4, block="sea_lantern")
-    P.flat_roof(b, 2, 25, 14, D - 2, 10, deck=DARK, parapet="white_concrete", coping="smooth_stone")
-    # workshop, through a doorway from the showroom
-    b.fill(26, 0, 14, W - 2, 0, D - 2, "smooth_stone")
-    b.walls(26, 1, 14, W - 2, 8, D - 2, DARK)
-    b.fill(25, 1, 20, 26, 2, 20, AIR)
-    P.garage_door(b, 28, 31, 14, 1, 4, "front", "white_garage_door")
-    P.garage_door(b, 34, 37, 14, 1, 4, "front", "white_garage_door")
-    for u0 in (28, 34):
-        for v in (22, 30):
-            tall(b, "car_lift", u0 - 1, 1, v, "right")
-            tall(b, "car_lift", u0 + 4, 1, v, "left")
-    for u in range(28, 38, 2):
-        fit(b, "tool_chest", u, 1, D - 3, "front")
-    fit(b, "tyre_stack", W - 3, 1, 17, "left")
-    fit(b, "tyre_stack", W - 3, 1, 18, "left")
-    fit(b, "oil_drum", W - 3, 1, 20, "left")
-    P.ceiling_lights(b, 26, 14, W - 2, D - 2, 8, step=4, block="sea_lantern")
-    P.flat_roof(b, 26, W - 2, 14, D - 2, 9, deck=DARK, parapet=DARK, coping="smooth_stone")
+CAR_PAINTS = ("white", "grey", "red", "black", "silver", "blue")
+
+
+def car(b, u, y, v, facing, k):
+    """A display car whose middle is (u, v): it reaches about 2.5 each way along `facing` and a block each side."""
+    b.set(u, y, v, Block(f"ptmuk:display_car_{CAR_PAINTS[k % len(CAR_PAINTS)]}", {"facing": DIRS[facing]}))
+
+
+def car_dealership(ident="car_dealership", name="Car Dealership (Main Dealer)"):
+    W, D = 72, 64
+    NAVY = 0xFF0B2A5B
+    b = Build(ident, name, "Commercial", W, 15, D,
+              "A main dealer: a forecourt of new cars behind bollards, flags and a totem sign, a double-height glass "
+              "showroom with a tall entrance portal, cars on display, a reception desk, sales desks and a customer "
+              "lounge, and behind it service reception, a workshop with roller doors, car lifts (one car up on a lift) "
+              "and a parts store, a valeting bay with a car wash, customer parking and a yard of cars waiting for "
+              "service. The name, ROADSTAR MOTORS, is made up.")
+    k = 0
+    # the ground: pavement along the front (tarmac across the drive), forecourt paving, tarmac behind
+    P.paving(b, 0, 0, W - 1, D - 1, "ptmuk:tarmac")
+    P.paving(b, 0, 0, 50, 1, "ptmuk:paving_slabs")
+    P.paving(b, 57, 0, W - 1, 1, "ptmuk:paving_slabs")
+    P.paving(b, 1, 2, 47, 15, "ptmuk:block_paving_grey")
+    # the forecourt: two rows of cars facing the road, bollards and flags along the front
+    for u in range(4, 45, 4):
+        car(b, u, 1, 6, "front", k)
+        k += 1
+    for u in range(6, 43, 4):
+        if not 19 < u < 29:                                            # clear of the entrance portal
+            car(b, u, 1, 12, "front", k)
+            k += 1
+    for u in range(2, 47, 4):
+        b.set(u, 1, 2, B("ptmuk:bollard_steel"))
+    for u in (0, 20, 40, 47):
+        tall(b, "feather_flag", u, 1, 2, "front")
+    # the totem sign by the drive
+    b.fill(48, 1, 3, 50, 3, 3, "gray_concrete")
+    big_sign(b, 48, 50, 4, 6, 3, "ROADSTAR", "MOTORS", NAVY)
+    b.fill(48, 7, 3, 50, 7, 3, slab("smooth_stone"))
+    for u in (19, 34):
+        P.street_light(b, u, 15, "front", 6)
+    # customer parking beside the drive
+    P.parking_bays(b, 57, 3, 70, 8, "u", 3, "back")
+    P.parking_bays(b, 57, 14, 70, 19, "u", 3, "front")
+    for u, v, f in ((58, 5, "front"), (64, 5, "front"), (61, 16, "back"), (67, 16, "back")):
+        car(b, u, 1, v, f, k)
+        k += 1
+    P.street_light(b, 63, 11, "left", 6)
+    P.tree(b, 70, 21, 4, 2)
+
+    # ---------------------------------------------------------------- the showroom
+    b.fill(2, 0, 17, 45, 0, 43, "white_concrete")
+    b.walls(1, 1, 16, 46, 10, 44, "white_concrete")
+    b.window(2, 1, 16, 44, 9, GLAZING)
+    b.side_window(1, 1, 17, 27, 9, GLAZING)
+    b.fill(1, 10, 16, 46, 10, 16, "light_gray_concrete")
+    for u in (24, 25):
+        b.door(u, 1, 16, "birch", facing="back", hinge="left" if u == 24 else "right")
+    # the entrance portal standing out in front, the name across its top
+    b.fill(21, 0, 13, 27, 0, 15, "smooth_stone")
+    for u in (21, 27):
+        b.fill(u, 1, 13, u, 13, 15, "black_concrete")
+    b.fill(21, 11, 13, 27, 13, 15, "black_concrete")
+    big_sign(b, 22, 26, 11, 12, 12, "ROADSTAR MOTORS", "SALES • SERVICE • PARTS", NAVY)
+    lights_in(b, 22, 13, 26, 15, 10, step=2, level=13)
+    # cars on display
+    for v in (22, 31):
+        for u in (6, 12, 18, 30, 36, 42):
+            car(b, u, 1, v, "front", k)
+            k += 1
+    # reception desk in the middle, sales desks and a customer lounge at the back
+    for u in (22, 23, 25, 26):
+        fit(b, "desk", u, 1, 26, "front")
+    for u in (23, 25):
+        fit(b, "computer", u, 2, 26, "front", level="table")
+        fit(b, "office_chair", u, 1, 27, "front")
+    for u in (4, 10, 16, 28):
+        fit(b, "desk", u, 1, 38, "front")
+        fit(b, "computer", u, 2, 38, "front", level="table")
+        fit(b, "office_chair", u, 1, 39, "front")
+        fit(b, "dining_chair", u, 1, 37, "back")
+        fit(b, "dining_chair", u + 1, 1, 37, "back")
+        fit(b, "houseplant", u + 2, 1, 39, "front", level="floor")
+    P.sofa(b, 36, 40, 1, 42, "back", "spruce")
+    fit(b, "coffee_table", 38, 1, 40, "front")
+    for u, name in ((43, "kitchen_unit_white"), (44, "bottle_fridge")):
+        fit(b, name, u, 1, 43, "front")
+    fit(b, "coffee_machine", 43, 2, 43, "front", level="counter")
+    for u in (34, 45):
+        fit(b, "houseplant", u, 1, 43, "front", level="floor")
+    for u in (2, 45):
+        fit(b, "houseplant", u, 1, 17, "front", level="floor")
+    big_sign(b, 30, 34, 6, 7, 43, "ROADSTAR", "MOTORS", NAVY)              # the name on the back wall inside
+    b.door(20, 1, 44, "birch", facing="back", hinge="left")              # out to the yard
+
+    # ---------------------------------------------------------------- service reception and the workshop
+    b.fill(47, 0, 25, 69, 0, 59, "smooth_stone")
+    b.walls(46, 1, 24, 70, 8, 60, "light_gray_concrete")
+    b.fill(46, 1, 24, 70, 2, 24, "ptmuk:blue_engineering_brick")
+    b.fill(46, 1, 60, 70, 2, 60, "ptmuk:blue_engineering_brick")
+    b.window(47, 1, 24, 6, 3, GLAZING)
+    b.door(49, 1, 24, "birch", facing="front", hinge="left")
+    big_sign(b, 47, 52, 5, 5, 23, "SERVICE", "Reception", NAVY)
+    b.door(46, 1, 26, "birch", facing="left", hinge="left")               # from the showroom
+    b.fill(53, 1, 25, 53, 4, 31, "light_gray_concrete")                   # reception's partition
+    b.door(53, 1, 30, "birch", facing="right", hinge="left")
+    for u in range(47, 52):
+        fit(b, "kitchen_unit_white", u, 1, 28, "front")
+    fit(b, "computer", 48, 2, 28, "front", level="counter")
+    fit(b, "till", 50, 2, 28, "front", level="counter")
+    fit(b, "office_chair", 49, 1, 29, "front")
+    for u in (50, 51, 52):
+        fit(b, "dining_chair", u, 1, 25, "back")
+    for u0 in (54, 60, 66):                                               # the roller doors and the bays behind them
+        P.garage_door(b, u0, u0 + 3, 24, 1, 4, "front", "white_garage_door")
+    for bay, cu in enumerate((55, 61, 67)):
+        for v in (34, 47):
+            tall(b, "car_lift", cu - 2, 1, v, "right")
+            tall(b, "car_lift", cu + 2, 1, v, "left")
+        if bay == 0:
+            car(b, cu, 2, 34, "front", k)                                 # up on the lift
+        elif bay == 1:
+            car(b, cu, 1, 34, "front", k)
+        if bay != 1:
+            car(b, cu, 1, 47, "back", k + 1)
+        k += 2
+    for u in range(60, 69, 2):
+        fit(b, "tool_chest", u, 1, 51, "back")
+    for v in (52, 53):
+        fit(b, "tyre_stack", 69, 1, v, "left")
+    fit(b, "oil_drum", 69, 1, 55, "left")
+    fit(b, "oil_drum", 68, 1, 55, "left")
+    for v in (54, 57):                                                    # the parts store
+        for u in range(48, 60):
+            tall(b, "pallet_racking", u, 1, v, "front" if v == 54 else "back")
+    P.flat_roof(b, 46, 70, 24, 60, 9, deck=DARK, parapet="light_gray_concrete", coping="smooth_stone")
+    P.ceiling_lights(b, 46, 24, 70, 60, 9, step=4, block="sea_lantern")
+    b.door(62, 1, 60, "birch", facing="back", hinge="left")
+    P.flat_roof(b, 1, 46, 16, 44, 11, deck=DARK, parapet="white_concrete", coping="smooth_stone")    # over the showroom (it's the taller)
+    P.ceiling_lights(b, 1, 16, 46, 44, 11, step=4, block="sea_lantern")
+    for u, v, y in ((8, 40, 12), (11, 40, 12), (14, 40, 12), (60, 56, 10), (63, 56, 10)):   # plant on the roofs
+        fit(b, "air_con", u, y, v, "front")
+
+    # ---------------------------------------------------------------- valeting and the yard
+    b.set(8, 1, 56, B("ptmuk:car_wash", facing=DIRS["front"]))
+    car(b, 8, 1, 48, "back", k)
+    k += 1
+    P.parking_bays(b, 17, 47, 44, 52, "u", 3, "back")
+    P.parking_bays(b, 17, 57, 44, 62, "u", 3, "front")
+    for u in (18, 24, 27, 36, 42):
+        car(b, u, 1, 49, "front", k)
+        k += 1
+    for u in (21, 30, 33, 39):
+        car(b, u, 1, 59, "back", k)
+        k += 1
+    P.street_light(b, 30, 54, "left", 6)
+    P.hedge(b, 0, W - 1, D - 1)
     return b
 
 
