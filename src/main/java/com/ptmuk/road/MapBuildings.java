@@ -258,6 +258,7 @@ public final class MapBuildings {
             public void set(BlockPos pos, BlockState state) {
                 if (state != null) {
                     level.setBlock(pos, state, flags);
+                    com.ptmuk.block.Walkways.placed(level, pos);
                 }
             }
 

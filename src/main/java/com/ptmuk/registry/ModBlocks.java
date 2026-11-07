@@ -120,9 +120,11 @@ public final class ModBlocks {
         VMS = BLOCKS.register("matrix_sign", VmsBlock::new);
         MOTORWAY.put("matrix_sign", VMS);
         for (BuildingMaterial m : BuildingMaterial.values()) {
-            RegistryObject<Block> full = BLOCKS.register(m.id(), () -> new Block(m.properties()));
+            RegistryObject<Block> full = BLOCKS.register(m.id(), () -> m.walkable()
+                    ? new com.rinventor.ptm2.objects.blocks.WalkableFloor(m.look(), m.sound()) : new Block(m.properties()));
             BUILDING.put(m.id(), full);
-            BUILDING.put(m.id() + "_slab", BLOCKS.register(m.id() + "_slab", () -> new SlabBlock(m.properties())));
+            BUILDING.put(m.id() + "_slab", BLOCKS.register(m.id() + "_slab", () -> m.walkable()
+                    ? new com.rinventor.ptm2.objects.blocks.WalkableFloorSlab(m.look(), m.sound()) : new SlabBlock(m.properties())));
             BUILDING.put(m.id() + "_stairs", BLOCKS.register(m.id() + "_stairs",
                     () -> new StairBlock(() -> full.get().defaultBlockState(), m.properties())));
         }

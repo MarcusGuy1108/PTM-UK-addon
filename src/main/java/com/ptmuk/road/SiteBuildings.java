@@ -80,6 +80,7 @@ final class SiteBuildings {
         var box = t.get().getBoundingBox(settings, origin);
         BlockPos.betweenClosedStream(box).forEach(p -> out.remember(p.immutable()));
         t.get().placeInWorld(level, origin, origin, settings, net.minecraft.util.RandomSource.create(), 2);
+        com.ptmuk.block.Walkways.area(level, box);
     }
 
     // ------------------------------------------------------------------ helpers

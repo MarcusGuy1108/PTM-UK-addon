@@ -366,6 +366,8 @@ public class RoadPlannerScreen extends Screen {
             st.footSurface = RoadStyle.FOOTWAYS.get((i + 1) % RoadStyle.FOOTWAYS.size());
         }), () -> "Corners: " + st.cornerRadius, b -> edit.accept(() -> st.cornerRadius = st.cornerRadius >= 14 ? 3 : st.cornerRadius + 1));
         y += ROW;
+        button(y, () -> "Cycle lanes: " + (st.cycleLane ? "yes" : "no"), b -> edit.accept(() -> st.cycleLane = !st.cycleLane));
+        y += ROW;
         if (seg != null) {
             halfButtons(y, () -> "Straighten", b -> edit.accept(() -> seg.bend = 0), () -> "Reverse", b -> edit.accept(() -> {
                 int t = seg.a;
@@ -706,6 +708,14 @@ public class RoadPlannerScreen extends Screen {
                 button(y, () -> "Houses: " + TOWN_HOUSES[st.houses % TOWN_HOUSES.length], b -> edit.accept(() -> st.houses = (st.houses + 1) % TOWN_HOUSES.length));
                 y += ROW;
             }
+            button(y, () -> "Lay out the town", b -> {
+                remember();
+                flash(com.ptmuk.road.layout.TownLayout.layOutDistricts(plan, st, net.minecraft.util.RandomSource.create()));
+                selSite = null;
+                changed();
+                rebuildPanel();
+            });
+            y += ROW;
             button(y, () -> "Delete site", b -> deleteSelection());
             return;
         }
@@ -852,6 +862,8 @@ public class RoadPlannerScreen extends Screen {
         to.lightSpacing = c.lightSpacing;
         to.cornerRadius = c.cornerRadius;
         to.surface = c.surface;
+        to.zebra = c.zebra;
+        to.cycleLane = c.cycleLane;
     }
 
     private static String yellowName(RoadStyle.Yellow y) {
@@ -860,6 +872,7 @@ public class RoadPlannerScreen extends Screen {
             case SINGLE -> "single";
             case DOUBLE -> "double";
             case AUTO -> "auto";
+            case BAYS -> "bays";
         };
     }
 
@@ -1006,6 +1019,18 @@ public class RoadPlannerScreen extends Screen {
         if (preview == null && plan.segments.isEmpty() && plan.sites.isEmpty()) {
             flash("Draw a road or a site first");
             return;
+        }
+        if (plan.sites.stream().anyMatch(st -> st.type == SiteType.TOWN || st.type == SiteType.DISTRICT)) {
+            // towns and districts not laid out yet are laid out now (Undo takes it back)
+            remember();
+            String said = com.ptmuk.road.layout.TownLayout.layOutAll(plan, net.minecraft.util.RandomSource.create());
+            selSite = null;
+            changed();
+            rebuildPanel();
+            if (plan.sites.stream().anyMatch(st -> st.type == SiteType.TOWN || st.type == SiteType.DISTRICT)) {
+                flash(said);                                    // one didn't fit: say why and build nothing yet
+                return;
+            }
         }
         byte[] data = RoadPlans.pack(plan);
         if (data.length > RoadPlans.MAX_PLAN) {
@@ -1790,7 +1815,7 @@ public class RoadPlannerScreen extends Screen {
                 ? (plan.map == null ? "Move the map to where its middle goes, then pick a file." : "Click two points to measure.")
                 : mode == Mode.SITES
                 ? (selSite == null && newSiteType == SiteType.TOWN && drawTown ? "Hold the left button and draw round where the town goes."
-                : selSite == null && newSiteType == SiteType.DISTRICT ? "Mark out part of a town (before you lay it out) and pick what goes there."
+                : selSite == null && newSiteType == SiteType.DISTRICT ? "Mark out part of a town and pick what goes there. Districts drawn side by side make one town; Build lays them out."
                 : "Drag out a site; drag it to move, a corner to resize.")
                 : mode == Mode.DRAW && tracing
                 ? (tracePiece ? "Click an old road where a new road will join it: it follows " + PIECE + " blocks each way, ready for the junction."

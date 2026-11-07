@@ -468,6 +468,7 @@ public final class RoadBuilder {
             Clearable.tryClear(be);
         }
         level.setBlock(pos, state, FLAGS);
+        com.ptmuk.block.Walkways.placed(level, pos);
         job.changed++;
     }
 
@@ -493,8 +494,10 @@ public final class RoadBuilder {
         }
         Palette pal = job.palette;
         RoadStyle st = layout.styleOf(idx);
-        BlockState road = pal.get(st.surface, "ptmuk:tarmac");
-        BlockState roadSlab = slab(pal.get(st.surface + "_slab", "ptmuk:tarmac_slab"));
+        boolean bike = layout.cycle.get(idx);
+        String surface = bike ? "ptm2:fresh_bicycle_lane" : st.surface;
+        BlockState road = pal.get(surface, bike ? "ptmuk:tarmac_red" : "ptmuk:tarmac");
+        BlockState roadSlab = slab(pal.get(surface + "_slab", bike ? "ptmuk:tarmac_red_slab" : "ptmuk:tarmac_slab"));
         BlockState kerb = pal.get("ptmuk:concrete_kerb", "smooth_stone");
         BlockState kerbSlab = slab(pal.get("ptmuk:concrete_kerb_slab", "smooth_stone_slab"));
         BlockState paving = pal.get(st.footSurface, "ptmuk:paving_slabs");
@@ -621,6 +624,12 @@ public final class RoadBuilder {
             case Layout.M_ZIGZAG -> "ptm2:zig_zag_marking";
             case Layout.M_ARROW -> "ptm2:arrow_marking";
             case Layout.M_TEXT -> "ptm2:text_marking";
+            case Layout.M_LEFT -> "ptm2:turn_left_arrow_marking";
+            case Layout.M_RIGHT -> "ptm2:turn_right_arrow_marking";
+            case Layout.M_LEFT_AHEAD -> "ptm2:turn_left_straight_marking";
+            case Layout.M_RIGHT_AHEAD -> "ptm2:turn_right_straight_marking";
+            case Layout.M_LEFT_RIGHT -> "ptm2:left_right_arrow_marking";
+            case Layout.M_BIKE -> "ptm2:bicycle_road_marking";
             default -> null;
         };
         BlockState s = pal.get(id, (m & Layout.YELLOW) != 0 ? "yellow_carpet" : "white_carpet");

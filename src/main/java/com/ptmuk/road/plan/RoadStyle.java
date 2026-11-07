@@ -10,8 +10,8 @@ import java.util.List;
 public final class RoadStyle {
     public enum Centre { NONE, DASHED, HAZARD, DOUBLE_WHITE }
 
-    /** Yellow lines along the kerbs (parking restrictions). AUTO: single, double near junctions. */
-    public enum Yellow { NONE, SINGLE, DOUBLE, AUTO }
+    /** Yellow lines along the kerbs (parking restrictions). AUTO: single, double near junctions. BAYS: double near junctions, parking bays (or a single) between. */
+    public enum Yellow { NONE, SINGLE, DOUBLE, AUTO, BAYS }
 
     /** What the pavements are surfaced with (a slab of the same is used for half heights). */
     public static final List<String> FOOTWAYS = List.of("ptm2:fresh_stone_sidewalk", "ptm2:used_asphalt_sidewalk",
@@ -45,6 +45,8 @@ public final class RoadStyle {
     public String surface = "ptm2:fresh_asphalt_road";
     /** A zebra crossing (stripes, zig-zags, Belisha beacons) halfway along each stretch between junctions. */
     public boolean zebra;
+    /** A red cycle lane along each kerb (a one-way road's left), a solid line out from it; advanced stop lines at traffic lights. */
+    public boolean cycleLane;
 
     public RoadStyle copy() {
         RoadStyle s = new RoadStyle();
@@ -68,6 +70,7 @@ public final class RoadStyle {
         s.cornerRadius = cornerRadius;
         s.surface = surface;
         s.zebra = zebra;
+        s.cycleLane = cycleLane;
         return s;
     }
 
@@ -117,7 +120,7 @@ public final class RoadStyle {
     public static RoadStyle residential() {
         RoadStyle s = new RoadStyle();
         s.name = "Residential street";
-        s.yellow = Yellow.NONE;
+        s.yellow = Yellow.BAYS;
         s.laneWidth = 4;
         s.pavement = 3;
         s.centre = Centre.NONE;

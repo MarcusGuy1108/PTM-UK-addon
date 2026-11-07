@@ -226,6 +226,55 @@ public final class UkStreetGameTests {
         return l.fixtures.stream().anyMatch(what);
     }
 
+    /**
+     * UK junction details: at traffic lights each way in has its primary at the stop line and a
+     * secondary over the junction; lane arrows (one wide road's kerb lane left only); a cycle lane
+     * in red with bikes painted in it; a T with a one-way street coming in, arrows for each way in
+     * and down the one-way street; parking bays along a side street.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void ukJunctionDetails(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Node c = plan.addNode(150, 150);
+        c.junction = RoadPlan.Junction.SIGNALS;
+        RoadStyle cyc = RoadStyle.mainRoad();
+        cyc.cycleLane = true;
+        plan.addSegment(plan.addNode(0, 150).id, c.id, RoadStyle.wideMainRoad());
+        plan.addSegment(c.id, plan.addNode(299, 150).id, RoadStyle.wideMainRoad());
+        plan.addSegment(plan.addNode(150, 0).id, c.id, cyc);
+        RoadPlan.Node t = plan.addNode(150, 260);
+        t.junction = RoadPlan.Junction.SIGNALS;
+        plan.addSegment(c.id, t.id, cyc.copy());
+        plan.addSegment(t.id, plan.addNode(299, 260).id, RoadStyle.residential());
+        RoadStyle oneWay = RoadStyle.residential();
+        oneWay.oneWay = true;
+        oneWay.laneWidth = 9;
+        plan.addSegment(plan.addNode(0, 260).id, t.id, oneWay);
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        // rot8 is the way the traffic a head is for goes: 0 south, 2 west, 4 north, 6 east
+        int[][] near = {{0, 0, -1}, {4, 0, 1}, {2, 1, 0}, {6, -1, 0}};
+        for (int[] w : near) {
+            boolean primary = has(l, f -> f.type() == Layout.FixtureType.SIGNAL && f.rot8() == w[0] && Math.abs(f.x() - 150) < 30 && Math.abs(f.z() - 150) < 30
+                    && (w[1] * (f.x() - 150) + w[2] * (f.z() - 150)) > 0);
+            boolean secondary = has(l, f -> f.type() == Layout.FixtureType.SIGNAL && f.rot8() == w[0] && Math.abs(f.x() - 150) < 30 && Math.abs(f.z() - 150) < 30
+                    && (w[1] * (f.x() - 150) + w[2] * (f.z() - 150)) < 0);
+            helper.assertTrue(primary && secondary, "traffic going " + w[0] + ": primary " + primary + ", secondary over the junction " + secondary);
+        }
+        helper.assertTrue(count(l, 0, 299, 130, 170, Layout.M_LEFT) >= 1, "no left turn only lane on the wide road");
+        helper.assertTrue(count(l, 0, 299, 130, 170, Layout.M_RIGHT_AHEAD) >= 1, "no right and on arrow in the wide road's outside lane");
+        helper.assertTrue(l.cycle.cardinality() > 100 && count(l, 130, 170, 0, 250, Layout.M_BIKE) >= 3, "cycle lane: " + l.cycle.cardinality()
+                + " red, " + count(l, 130, 170, 0, 250, Layout.M_BIKE) + " bikes");
+        helper.assertTrue(count(l, 140, 160, 200, 250, Layout.M_LEFT) >= 1, "coming down to the T: no left arrow");
+        helper.assertTrue(count(l, 170, 220, 250, 270, Layout.M_RIGHT) >= 1, "the side street into the T: no right arrow");
+        helper.assertTrue(count(l, 80, 140, 250, 270, Layout.M_LEFT_AHEAD) >= 1, "the one-way street into the T: no left and on arrow");
+        helper.assertTrue(count(l, 0, 110, 250, 270, Layout.M_ARROW) >= 1, "no arrows down the one-way street");
+        int bays = count(l, 180, 290, 250, 270, Layout.M_HALF), yellows = count(l, 165, 290, 250, 270, Layout.M_DOUBLE | Layout.YELLOW)
+                + count(l, 165, 290, 250, 270, Layout.M_LINE | Layout.YELLOW);
+        helper.assertTrue(bays >= 40 || yellows >= 40, "the side street has " + bays + " bay lines and " + yellows + " yellows");
+        helper.assertTrue(count(l, 165, 185, 250, 270, Layout.M_DOUBLE | Layout.YELLOW) >= 4, "no double yellows by the junction");
+        helper.succeed();
+    }
+
     private static int count(Layout l, int x0, int x1, int z0, int z1, int mark) {
         int n = 0;
         for (int z = z0; z <= z1; z++) {

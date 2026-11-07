@@ -196,6 +196,7 @@ public final class BlockSwap {
             saved.add(new RoadBuilder.Saved(p, old, be == null ? null : be.saveWithFullMetadata()));
             Clearable.tryClear(be);
             level.setBlock(p, sameWay(old, to.defaultBlockState()), FLAGS);
+            com.ptmuk.block.Walkways.placed(level, p);
         }
         // fences, panes and walls join up with what's round them now
         for (RoadBuilder.Saved sv : saved) {

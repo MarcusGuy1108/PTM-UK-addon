@@ -94,6 +94,7 @@ public final class PrefabPlacer {
             template.get().placeInWorld(level, p.origin(), p.origin(), settings, RandomSource.create(), FLAGS);
         }
         foundations(level, box, saved);
+        com.ptmuk.block.Walkways.area(level, box);
         if (p.mirror() != net.minecraft.world.level.block.Mirror.NONE) {
             fixShopSigns(level, box);
         }

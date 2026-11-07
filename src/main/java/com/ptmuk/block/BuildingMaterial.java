@@ -1,5 +1,7 @@
 package com.ptmuk.block;
 
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -41,6 +43,20 @@ public enum BuildingMaterial {
 
     public String id() {
         return id;
+    }
+
+    public SoundType sound() {
+        return sound;
+    }
+
+    /** Paving pedestrians walk on: built as PTM2 walkable floor so they spawn there too. */
+    public boolean walkable() {
+        return id.startsWith("paving") || id.startsWith("block_paving") || id.startsWith("tactile");
+    }
+
+    /** Vanilla block PTM2's walkable floor copies its map colour and tool rules from. */
+    public Block look() {
+        return colour == MapColor.TERRACOTTA_RED ? Blocks.RED_TERRACOTTA : colour == MapColor.SAND ? Blocks.SANDSTONE : Blocks.STONE;
     }
 
     public BlockBehaviour.Properties properties() {

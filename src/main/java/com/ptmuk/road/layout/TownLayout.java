@@ -95,7 +95,170 @@ public final class TownLayout {
         }
         town.type = RoadPlan.SiteType.GREEN;
         town.built = false;
+        plan.sites.removeIf(d -> d.type == RoadPlan.SiteType.DISTRICT && touch(d, town, 0));   // they've said what goes where
         return said;
+    }
+
+    /** Districts drawn this near each other are one town (the gap between them is town too). */
+    static final int JOIN = 24;
+
+    private static boolean touch(RoadPlan.Site a, RoadPlan.Site b, int gap) {
+        return a.x1 + gap >= b.x0 && a.x0 <= b.x1 + gap && a.z1 + gap >= b.z0 && a.z0 <= b.z1 + gap;
+    }
+
+    /**
+     * Lay out the town a district is part of: the Town site drawn round it if there is one, else a
+     * town over it and every district drawn next to it, shaped to them (gaps up to JOIN between
+     * them filled in), so high street, houses, shopping and the rest are worked out together.
+     */
+    public static String layOutDistricts(RoadPlan plan, RoadPlan.Site district, RandomSource rand) {
+        for (RoadPlan.Site t : List.copyOf(plan.sites)) {
+            if (t.type == RoadPlan.SiteType.TOWN && touch(t, district, 0)) {
+                return layOut(plan, t, rand);
+            }
+        }
+        List<RoadPlan.Site> group = new ArrayList<>(List.of(district));
+        for (int i = 0; i < group.size(); i++) {
+            for (RoadPlan.Site d : plan.sites) {
+                if (d.type == RoadPlan.SiteType.DISTRICT && !group.contains(d) && touch(d, group.get(i), JOIN)) {
+                    group.add(d);
+                }
+            }
+        }
+        RoadPlan.Site town = merged(plan, group);
+        String said = layOut(plan, town, rand);
+        if (town.type == RoadPlan.SiteType.TOWN) {
+            plan.sites.remove(town);                          // it didn't fit: the districts stay as they were
+            return said.replace("A town needs", "Districts together need").replace("The shape", "The districts' shape");
+        }
+        return said;
+    }
+
+    /** Every Town site and district laid out (districts not in a town make their own); what the last one said. */
+    public static String layOutAll(RoadPlan plan, RandomSource rand) {
+        String said = null;
+        for (RoadPlan.Site st : List.copyOf(plan.sites)) {
+            if (plan.sites.contains(st) && (st.type == RoadPlan.SiteType.TOWN || st.type == RoadPlan.SiteType.DISTRICT)) {
+                said = st.type == RoadPlan.SiteType.TOWN ? layOut(plan, st, rand) : layOutDistricts(plan, st, rand);
+            }
+        }
+        return said;
+    }
+
+    /** A Town site over a group of districts: their shapes together, gaps up to JOIN closed, as a drawn outline. */
+    static RoadPlan.Site merged(RoadPlan plan, List<RoadPlan.Site> group) {
+        int pad = JOIN / 2 + 2;
+        int gx0 = Integer.MAX_VALUE, gz0 = Integer.MAX_VALUE, gx1 = Integer.MIN_VALUE, gz1 = Integer.MIN_VALUE;
+        for (RoadPlan.Site d : group) {
+            gx0 = Math.min(gx0, d.x0);
+            gz0 = Math.min(gz0, d.z0);
+            gx1 = Math.max(gx1, d.x1);
+            gz1 = Math.max(gz1, d.z1);
+        }
+        int ox = gx0 - pad, oz = gz0 - pad, w = gx1 - gx0 + 1 + 2 * pad, h = gz1 - gz0 + 1 + 2 * pad;
+        boolean[] in = new boolean[w * h];
+        for (RoadPlan.Site d : group) {
+            boolean[] m = d.mask();
+            for (int z = 0; z < d.depth(); z++) {
+                for (int x = 0; x < d.width(); x++) {
+                    in[(d.z0 - oz + z) * w + d.x0 - ox + x] |= m[z * d.width() + x];
+                }
+            }
+        }
+        // a closing: grow by half the gap, then shrink back
+        Distance grow = Distance.of(in, w, h);
+        boolean[] outside = new boolean[w * h];
+        for (int i = 0; i < w * h; i++) {
+            outside[i] = grow.dist[i] > JOIN / 2.0;
+        }
+        Distance shrink = Distance.of(outside, w, h);
+        for (int i = 0; i < w * h; i++) {
+            in[i] = shrink.dist[i] > JOIN / 2.0;
+        }
+        int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+        for (int i = 0; i < w * h; i++) {
+            if (in[i]) {
+                x0 = Math.min(x0, ox + i % w);
+                z0 = Math.min(z0, oz + i / w);
+                x1 = Math.max(x1, ox + i % w);
+                z1 = Math.max(z1, oz + i / w);
+            }
+        }
+        int[] loop = outline(in, w, h);
+        for (int i = 0; i < loop.length; i += 2) {
+            loop[i] += ox;
+            loop[i + 1] += oz;
+        }
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, x0, z0, x1, z1);
+        town.outline = loop;
+        town.highStreet = group.stream().anyMatch(d -> d.district == RoadPlan.District.HIGH_STREET);
+        group.stream().filter(d -> d.district == RoadPlan.District.HOUSES).findFirst().ifPresent(d -> town.houses = d.houses);
+        return town;
+    }
+
+    /**
+     * The outer edge of the cells marked in a grid (nothing marked round its border), as block
+     * corners x, z, x, z... every few blocks round it: the longest loop of edges between a marked
+     * cell and an unmarked one.
+     */
+    static int[] outline(boolean[] in, int w, int h) {
+        int vw = w + 1;
+        int[] next = new int[vw * (h + 1)], next2 = new int[vw * (h + 1)];
+        java.util.Arrays.fill(next, -1);
+        java.util.Arrays.fill(next2, -1);
+        for (int z = 0; z < h; z++) {
+            for (int x = 0; x < w; x++) {
+                if (!in[z * w + x]) {
+                    continue;
+                }
+                int tl = z * vw + x, tr = tl + 1, bl = tl + vw, br = bl + 1;
+                if (z == 0 || !in[(z - 1) * w + x]) {
+                    edge(next, next2, tl, tr);
+                }
+                if (x == w - 1 || !in[z * w + x + 1]) {
+                    edge(next, next2, tr, br);
+                }
+                if (z == h - 1 || !in[(z + 1) * w + x]) {
+                    edge(next, next2, br, bl);
+                }
+                if (x == 0 || !in[z * w + x - 1]) {
+                    edge(next, next2, bl, tl);
+                }
+            }
+        }
+        List<Integer> best = List.of();
+        for (int v = 0; v < next.length; v++) {
+            while (next[v] >= 0) {
+                List<Integer> loop = new ArrayList<>();
+                int at = v;
+                do {
+                    loop.add(at);
+                    int to = next[at];
+                    next[at] = next2[at];                    // a corner two loops meet at goes on into the other
+                    next2[at] = -1;
+                    at = to;
+                } while (at != v && at >= 0);
+                if (loop.size() > best.size()) {
+                    best = loop;
+                }
+            }
+        }
+        int step = 3, n = (best.size() + step - 1) / step;
+        int[] out = new int[2 * n];
+        for (int i = 0; i < n; i++) {
+            int v = best.get(i * step);
+            out[2 * i] = v % vw;
+            out[2 * i + 1] = v / vw;
+        }
+        return out;
+    }
+
+    private static void edge(int[] next, int[] next2, int from, int to) {
+        if (next[from] < 0) {
+            next[from] = to;
+        } else {
+            next2[from] = to;
+        }
     }
 
     // ------------------------------------------------------------------ town to world

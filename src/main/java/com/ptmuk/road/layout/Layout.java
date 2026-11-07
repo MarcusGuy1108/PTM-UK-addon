@@ -30,7 +30,8 @@ public final class Layout {
             RESERVATION = 7, BARRIER = 8, PAINT = 9, DOME = 10, BLEND = 11, TACTILE = 12, PLOT = 13;
     // markings (PTM2 blocks); YELLOW is or-ed in for yellow paint
     public static final byte M_NONE = 0, M_LINE = 1, M_DOUBLE = 2, M_HALF = 3, M_STOP = 5,
-            M_TRIANGLE = 6, M_ZEBRA = 7, M_HATCH = 8, M_ZIGZAG = 9, M_ARROW = 10, M_TEXT = 11;
+            M_TRIANGLE = 6, M_ZEBRA = 7, M_HATCH = 8, M_ZIGZAG = 9, M_ARROW = 10, M_TEXT = 11,
+            M_LEFT = 12, M_RIGHT = 13, M_LEFT_AHEAD = 14, M_RIGHT_AHEAD = 15, M_LEFT_RIGHT = 16, M_BIKE = 17;
     public static final int YELLOW = 0x40;
 
     public static final int BLEND_WIDTH = 8;
@@ -45,6 +46,8 @@ public final class Layout {
         // on sites
         TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
         ORDER_POINT, MENU_BOARD, PICNIC_TABLE, HEDGE,
+        // along pavements
+        PILLAR_BOX, PHONE_BOX, GRIT_BIN, PLANTER, BIKE_STAND,
         // in a town's green space
         PARK_TREE
     }
@@ -58,6 +61,8 @@ public final class Layout {
     public final float[] top;
     public final byte[] mark;
     public final byte[] markRot;
+    /** Road cells that are a cycle lane (surfaced red). */
+    public final java.util.BitSet cycle = new java.util.BitSet();
     /** For BLEND cells: how far they are from the road's footprint. */
     public final float[] blendDist;
     /** Columns that belong to something not built yet. */
@@ -158,6 +163,8 @@ public final class Layout {
         /** A major road at a give way junction (or a one-way road leaving one): the sample where it meets the junction, or -1. */
         int entryA = -1, entryB = -1;
         boolean minorA, minorB;
+        /** At traffic lights: the kerb lane coming in at that end turns left only. */
+        boolean leftOnlyA, leftOnlyB;
     }
 
     private static final class Jn {
@@ -268,6 +275,7 @@ public final class Layout {
         classify();
         markings();
         lights();
+        furniture();
         nameplates();
         directionSigns();
         traffic();
@@ -1043,6 +1051,12 @@ public final class Layout {
             out.add(new Line(hc - 0.5, M_LINE, 1, 0, true, 1));
             out.add(new Line(-(hc - 0.5), M_LINE, 1, 0, true, 1));
         }
+        if (st.cycleLane && !st.dual) {
+            out.add(new Line(hc - 1.5, M_LINE, 1, 0, true, 2));            // a one-way road's on its left only
+            if (!st.oneWay) {
+                out.add(new Line(-(hc - 1.5), M_LINE, 1, 0, true, 2));
+            }
+        }
         return out;
     }
 
@@ -1126,6 +1140,10 @@ public final class Layout {
                     setMark(idx, line.kind, rot8(c.tx[i], c.tz[i]), line.prio);
                 }
             }
+        }
+        for (Seg g : segs) {
+            cycleLanes(g);
+            oneWayArrows(g);
         }
         for (Jn j : jns) {
             for (Seg g : j.arms) {
@@ -1213,8 +1231,16 @@ public final class Layout {
                 continue;
             }
             boolean nearJunction = toCore.dist[idx] < 16 || owner[idx] < 0;
-            boolean dbl = st.yellow == RoadStyle.Yellow.DOUBLE || (st.yellow == RoadStyle.Yellow.AUTO && nearJunction);
             int rot = kerbDir < 2 ? 0 : 2;                 // along the kerb
+            if (st.yellow == RoadStyle.Yellow.BAYS && !nearJunction && Math.floorMod(owner[idx] * 0x9E3779B1 >>> 7, 5) != 0) {
+                // most stretches of a side street: parking bays, their dashed edge a block out from the kerb
+                int bx = x - nb[kerbDir][0], bz = z - nb[kerbDir][1];
+                if (bx >= 0 && bz >= 0 && bx < w && bz < h && owner[bz * w + bx] == owner[idx]) {
+                    setMark(bz * w + bx, M_HALF, rot, 1);
+                }
+                continue;
+            }
+            boolean dbl = st.yellow == RoadStyle.Yellow.DOUBLE || (st.yellow != RoadStyle.Yellow.SINGLE && nearJunction);
             setMark(idx, (dbl ? M_DOUBLE : M_LINE) | YELLOW, rot, 1);
         }
     }
@@ -1399,18 +1425,32 @@ public final class Layout {
                 setMark(idx, stop ? M_STOP : M_HALF, stop ? inbound : across, 6);
             }
         }
+        if (j.type != Junction.MINI_ROUNDABOUT && (j.type != Junction.ROUNDABOUT || g.st.lanes >= 2)) {
+            arrows(j, g, atA, i, side, inner, inbound);
+        }
+        if (j.type == Junction.SIGNALS && g.st.cycleLane) {
+            // an advanced stop line: the box between it and the stop line for bikes to wait in, a bike painted in it
+            int row = atA ? i + 4 * blk : i - 4 * blk;
+            for (double d = inner; row >= 0 && row < c.n && d <= outer; d += 0.25) {
+                double sd = side * d;
+                setMark(index((int) Math.floor(c.x[row] + c.leftX(row) * sd), (int) Math.floor(c.z[row] + c.leftZ(row) * sd)), M_STOP, inbound, 6);
+            }
+            eachLane(g, i, atA, side, inner, 2, idx -> setMark(idx, M_BIKE, (inbound + 2) % 8, 6));
+        }
         if (j.type == Junction.SIGNALS) {
             crossing(j, g, atA);
-            // a pole and head each side of the approach at the stop line, facing the traffic
-            // a couple of blocks back from the line, where the kerb is still straight; step out to it
+            // UK style: the primary on the near side at the stop line (a couple of blocks back, where the kerb is
+            // still straight), another on the off side too where two lanes come up to it, and a secondary
+            // across the junction on the far right
             int back = (int) Math.round(2 / Curve.STEP);
             int k0 = Math.max(0, Math.min(c.n - 1, atA ? i + back : i - back));
-            for (int sideSign : new int[]{side, -side}) {
+            for (int sideSign : g.st.dual || g.st.lanes >= 2 ? new int[]{side, -side} : new int[]{side}) {
                 int idx = pavement(g, k0, sideSign, j.radius + 8, false);
                 if (idx >= 0) {
                     signalAt(cellX(idx), cellZ(idx), top[idx], inbound);
                 }
             }
+            secondary(j, g, atA, i, inbound);
             return;
         }
         // the sign to go with the line, on the pavement on the left a couple of blocks back
@@ -1470,6 +1510,152 @@ public final class Layout {
         int idx = d < 1.5 ? -1 : index((int) Math.floor(j.node.x + 0.5 + out[0] * d), (int) Math.floor(j.node.z + 0.5 + out[1] * d));
         if (idx >= 0 && island[idx]) {
             fixtures.add(new Fixture(FixtureType.CHEVRON_SIGN, cellX(idx), cellZ(idx), top[idx], rot8(-out[0], -out[1]), 0));
+        }
+    }
+
+    /**
+     * A UK secondary signal for the traffic coming in along g: over the junction on the far right,
+     * where drivers past the stop line still see it; on the pole of the primary for the way the
+     * other way if there's a road straight ahead, else (the side road of a T) on the far pavement.
+     */
+    private void secondary(Jn j, Seg g, boolean atA, int i, int inbound) {
+        Curve c = g.c;
+        double fx = atA ? -c.tx[i] : c.tx[i], fz = atA ? -c.tz[i] : c.tz[i];
+        Seg ahead = null;
+        double best = 0.7;
+        for (Seg h : j.arms) {
+            double[] o = outward(h, j.node);
+            if (h != g && o[0] * fx + o[1] * fz > best) {
+                best = o[0] * fx + o[1] * fz;
+                ahead = h;
+            }
+        }
+        int idx = -1;
+        if (ahead != null) {
+            boolean hA = ahead.na.id == j.node.id;
+            Curve hc = ahead.c;
+            int cut = hA ? ahead.cutA : ahead.cutB, back = (int) Math.round(2 / Curve.STEP);
+            int k = cut >= 0 ? cut + (hA ? back : -back) : hc.index(hA ? j.radius + 6 : hc.length - j.radius - 6);
+            idx = pavement(ahead, Math.max(0, Math.min(hc.n - 1, k)), hA ? -1 : 1, j.radius + 8, false);
+        } else {
+            double sx = c.x[i] - fz * g.hc / 2, sz = c.z[i] + fx * g.hc / 2;   // the right-hand half of the road
+            boolean road = false;
+            for (double d = 0; d < 2 * j.radius + 40 && idx < 0; d += 0.5) {
+                int at = index((int) Math.floor(sx + fx * d), (int) Math.floor(sz + fz * d));
+                if (at < 0 || road && kind[at] == NONE) {
+                    break;
+                }
+                road |= kind[at] == ROAD;
+                idx = road && (kind[at] == FOOTWAY || kind[at] == VERGE) ? at : -1;
+            }
+        }
+        if (idx >= 0) {
+            signalAt(cellX(idx), cellZ(idx), top[idx], inbound);
+        }
+    }
+
+    /**
+     * Arrows in the lanes coming up to a junction, for the ways each lane goes there (the kerb lane
+     * left and on, the outside one right and on, the rest on; all of them in a one-lane road): at
+     * traffic lights, and where two or more lanes come in. Now and then at traffic lights, where
+     * there's a way left and a way on, the kerb lane of two or more is left only.
+     */
+    private void arrows(Jn j, Seg g, boolean atA, int i, int side, double inner, int inbound) {
+        Curve c = g.c;
+        boolean signals = j.type == Junction.SIGNALS;
+        int n = g.st.lanes;
+        if (!signals && n < 2) {
+            return;
+        }
+        double ex = atA ? -c.tx[i] : c.tx[i], ez = atA ? -c.tz[i] : c.tz[i];
+        boolean left = false, ahead = false, right = false;
+        for (Seg h : j.arms) {
+            if (h == g || h.st.oneWay && h.nb.id == j.node.id) {
+                continue;                                    // no way out along it
+            }
+            double[] o = outward(h, j.node);
+            double dot = o[0] * ex + o[1] * ez;
+            if (dot > 0.7) {
+                ahead = true;
+            } else if (dot >= -0.4) {
+                left |= o[0] * ez - o[1] * ex > 0;           // as traffic() turns
+                right |= o[0] * ez - o[1] * ex <= 0;
+            }
+        }
+        boolean leftOnly = signals && n >= 2 && left && ahead && Math.floorMod(j.node.id * 31 + g.seg.id, 2) == 0;
+        if (atA) {
+            g.leftOnlyA = leftOnly;
+        } else {
+            g.leftOnlyB = leftOnly;
+        }
+        int[] marks = new int[n];
+        for (int k = 0; k < n; k++) {                        // k: 0 by the kerb
+            marks[k] = turnMark(left && (n == 1 || k == 0), ahead && !(leftOnly && k == 0), right && (n == 1 || k == n - 1));
+        }
+        double[] backs = signals ? (n >= 2 ? new double[]{9, 25} : new double[]{9}) : new double[]{12};
+        for (double back : backs) {
+            int[] lane = {n - 1};                            // eachLane goes from the middle of the road out
+            eachLane(g, i, atA, side, inner, back, idx -> {
+                int m = marks[Math.max(0, lane[0]--)];
+                if (m != M_NONE) {
+                    setMark(idx, m, inbound, 5);
+                }
+            });
+        }
+    }
+
+    private static int turnMark(boolean left, boolean ahead, boolean right) {
+        if (left && right) {
+            return ahead ? M_NONE : M_LEFT_RIGHT;            // any way at all: nothing painted
+        }
+        if (left) {
+            return ahead ? M_LEFT_AHEAD : M_LEFT;
+        }
+        if (right) {
+            return ahead ? M_RIGHT_AHEAD : M_RIGHT;
+        }
+        return ahead ? M_ARROW : M_NONE;
+    }
+
+    /** A cycle lane: red along the kerb (inside the solid line lines() draws), a bike painted in it every so often. */
+    private void cycleLanes(Seg g) {
+        if (!g.st.cycleLane || g.st.dual) {
+            return;
+        }
+        Curve c = g.c;
+        int from = Math.max(0, g.cutA), to = g.cutB >= 0 ? g.cutB : c.n - 1;
+        for (int sideSign = g.st.oneWay ? 1 : -1; sideSign <= 1; sideSign += 2) {
+            double nextBike = 8;
+            for (int[] cell : chain(c, sideSign * (g.hc - 0.5), from, to)) {
+                int idx = index(cell[0], cell[1]);
+                if (idx < 0 || kind[idx] != ROAD || core[idx] || owner[idx] != g.index) {
+                    continue;
+                }
+                cycle.set(idx);
+                int k = cell[2];
+                double s = sideSign > 0 ? c.s(k) : c.length - c.s(k);
+                if (s >= nextBike && s < c.length - 8) {
+                    int travel = sideSign > 0 ? rot8(c.tx[k], c.tz[k]) : rot8(-c.tx[k], -c.tz[k]);
+                    setMark(idx, M_BIKE, (travel + 2) % 8, 4);
+                    nextBike = s + 40;
+                }
+            }
+        }
+    }
+
+    /** Arrows down a one-way road every so often, the way it goes. */
+    private void oneWayArrows(Seg g) {
+        if (!g.st.oneWay) {
+            return;
+        }
+        Curve c = g.c;
+        int from = Math.max(0, g.cutA), to = g.cutB >= 0 ? g.cutB : c.n - 1;
+        for (double s = c.s(from) + 16; s < c.s(to) - 20; s += 45) {
+            int k = c.index(s);
+            for (int lane = 0; lane < g.st.lanes; lane++) {
+                double d = -g.hc + lane * (g.st.laneWidth + 1) + g.st.laneWidth / 2.0;
+                setMark(index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d)), M_ARROW, rot8(c.tx[k], c.tz[k]), 4);
+            }
         }
     }
 
@@ -1817,6 +2003,53 @@ public final class Layout {
         }
     }
 
+    /**
+     * Things along the pavements, at the kerb side clear of junctions: down a high street (double
+     * yellows and a wide pavement) bins, benches, planters and bike stands, now and then a pillar
+     * box or a phone box; down a side street a grit bin near some of its ends and a pillar box now
+     * and then.
+     */
+    private void furniture() {
+        FixtureType[] high = {FixtureType.BIN, FixtureType.BENCH, FixtureType.PLANTER, FixtureType.BIN, FixtureType.BIKE_STAND,
+                FixtureType.PLANTER, FixtureType.PILLAR_BOX, FixtureType.BENCH, FixtureType.BIN, FixtureType.PHONE_BOX};
+        for (Seg g : segs) {
+            RoadStyle st = g.st;
+            if (st.footway() < 2 || st.dual) {
+                continue;
+            }
+            Curve c = g.c;
+            double back = g.hc + st.kerbWidth() + st.verge + 0.5;
+            if (st.yellow == RoadStyle.Yellow.DOUBLE && st.footway() >= 3) {
+                int n = Math.floorMod(g.seg.id * 7, high.length);
+                for (double s = 10; s < c.length - 10; s += 12) {
+                    for (int side = -1; side <= 1; side += 2) {
+                        FixtureType t = high[n++ % high.length];
+                        streetThing(g, c.index(s + (side > 0 ? 0 : 6)), side, back, t);
+                    }
+                }
+            } else if (st.yellow == RoadStyle.Yellow.BAYS) {
+                int h = Math.floorMod(g.seg.id * 0x9E3779B1 >>> 9, 12);
+                if (h < 4 && c.length > 40) {
+                    streetThing(g, c.index(h % 2 == 0 ? 14 : c.length - 14), h < 2 ? 1 : -1, back + st.footway() - 1, FixtureType.GRIT_BIN);
+                } else if (h == 5 && c.length > 60) {
+                    streetThing(g, c.index(c.length / 2), 1, back, FixtureType.PILLAR_BOX);
+                }
+            }
+        }
+    }
+
+    private void streetThing(Seg g, int i, int side, double back, FixtureType type) {
+        Curve c = g.c;
+        double lx = c.leftX(i) * side, lz = c.leftZ(i) * side;
+        int idx = index((int) Math.floor(c.x[i] + lx * back), (int) Math.floor(c.z[i] + lz * back));
+        if (idx < 0 || kind[idx] != FOOTWAY || toCore.dist[idx] < 9 || tooClose(cellX(idx), cellZ(idx), 2)) {
+            return;
+        }
+        // a bench sits with its back to the road; the rest face it
+        int rot = type == FixtureType.BENCH ? rot8(lx, lz) : rot8(-lx, -lz);
+        fixtures.add(new Fixture(type, cellX(idx), cellZ(idx), top[idx], rot, 0));
+    }
+
     /** A signal head here, or a second head higher up an existing pole on the same corner. */
     private void signalAt(int x, int z, float t, int rot) {
         for (Fixture f : fixtures) {
@@ -2011,7 +2244,9 @@ public final class Layout {
                     LaneEnd gentlest = null;
                     boolean any = false;
                     for (LaneEnd o : out) {
-                        if (deadEnd ? o.seg() == e.seg() && o.lane() == e.lane() : o.seg() != e.seg() && turns(e, o, plain) && ahead(e, o)) {
+                        boolean leftOnly = e.lane() == 0 && (e.seg().nb.id == id ? e.seg().leftOnlyB : e.seg().na.id == id && e.seg().leftOnlyA)
+                                && e.dx() * o.dx() + e.dz() * o.dz() > 0.7;
+                        if (deadEnd ? o.seg() == e.seg() && o.lane() == e.lane() : o.seg() != e.seg() && turns(e, o, plain) && ahead(e, o) && !leftOnly) {
                             link(e.point(), o.point());
                             any = true;
                         } else if (!deadEnd && o.seg() != e.seg() && (gentlest == null

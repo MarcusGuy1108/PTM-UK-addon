@@ -130,6 +130,7 @@ public final class CustomSchematics {
                         continue;
                     }
                     level.setBlock(pos, state.mirror(p.mirror()).rotate(level, pos, p.rotation()), FLAGS);
+                    com.ptmuk.block.Walkways.placed(level, pos);
                 }
             }
         }

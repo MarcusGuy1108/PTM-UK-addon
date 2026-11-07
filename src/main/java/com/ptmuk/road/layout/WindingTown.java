@@ -222,7 +222,7 @@ final class WindingTown {
      */
     private void fill() {
         int cell = 6, gw = town.width() / cell + 1, gh = town.depth() / cell + 1;
-        double gap = 2 * res.halfOuter() + 2 * ROW;
+        double gap = 2 * res.halfOuter() + 1.5 * ROW;
         boolean[] failed = new boolean[gw * gh];
         for (int tries = 0; tries < 400; tries++) {
             boolean[] road = new boolean[gw * gh];
@@ -452,6 +452,18 @@ final class WindingTown {
         return kept.stream().anyMatch(k -> x >= k.x0 && x <= k.x1 + 1 && z >= k.z0 && z <= k.z1 + 1);
     }
 
+    /** Whether a road this far either side of its middle from (x0, z0) to (x1, z1) runs over ground kept clear. */
+    private boolean keptAlong(double x0, double z0, double x1, double z1, double half) {
+        double l = Math.hypot(x1 - x0, z1 - z0), nx = l < 1e-9 ? 0 : -(z1 - z0) / l, nz = l < 1e-9 ? 0 : (x1 - x0) / l;
+        for (double t = 0; t <= l; t += 2) {
+            double x = x0 + (x1 - x0) * t / Math.max(l, 1e-9), z = z0 + (z1 - z0) * t / Math.max(l, 1e-9);
+            if (keptAt(x, z) || keptAt(x + nx * half, z + nz * half) || keptAt(x - nx * half, z - nz * half)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ------------------------------------------------------------------ the main road
 
     /** Town coordinates (along its length, across it) to the world. */
@@ -539,6 +551,9 @@ final class WindingTown {
             if (room != null && !inside(wx(na, nc), wz(na, nc), res.halfOuter() + 2)) {
                 break;                                        // a neck in the outline: the main road ends here
             }
+            if (keptAlong(wx(a, c), wz(a, c), wx(na, nc), wz(na, nc), spine.style.halfOuter() + 2)) {
+                break;                                        // a park, shopping or junction district in the way: it ends there
+            }
             a = na;
             c = nc;
             spine.pts.add(new Pt(wx(a, c), wz(a, c)));
@@ -555,7 +570,8 @@ final class WindingTown {
                     l = 1;
                 }
                 double t = 0;
-                while (t < 200 && inside(tip.x + dx / l * (t + 1), tip.z + dz / l * (t + 1), spine.style.halfOuter())) {   // the whole road stays inside
+                while (t < 200 && inside(tip.x + dx / l * (t + 1), tip.z + dz / l * (t + 1), spine.style.halfOuter())   // the whole road stays inside
+                        && !keptAlong(tip.x, tip.z, tip.x + dx / l * (t + 1), tip.z + dz / l * (t + 1), spine.style.halfOuter() + 2)) {
                     t++;
                 }
                 if (t >= 6) {
@@ -860,7 +876,17 @@ final class WindingTown {
 
     private void roads() {
         Map<Pt, RoadPlan.Node> nodes = new IdentityHashMap<>();
+        // some towns' main roads get cycle lanes; some back streets that join two others are one way
+        boolean cycle = Math.floorMod(town.x0 * 31 + town.z0 * 17, 2) == 0;
+        RoadStyle oneWay = res.copy();
+        oneWay.name = "One-way street";
+        oneWay.oneWay = true;
+        oneWay.laneWidth = 2 * res.laneWidth + 1;             // as wide as a two-way one
+        int count = 0;
         for (Street st : all) {
+            Pt last = st.pts.get(st.pts.size() - 1);
+            boolean oneWayHere = st.level >= 2 && last.junction && !last.out && st.length() >= 70 && st.length() <= 260
+                    && Math.floorMod(count++ * 7 + town.x0, 3) == 0;
             double total = st.length(), run = 0;
             for (int i = 0; i + 1 < st.pts.size(); i++) {
                 Pt a = st.pts.get(i), b = st.pts.get(i + 1);
@@ -871,8 +897,13 @@ final class WindingTown {
                 boolean main = st.level >= 0 && st.level <= 1 && in != null && in.district == RoadPlan.District.MAIN_ROAD;
                 RoadPlan.Node na = nodes.computeIfAbsent(a, p -> plan.addNode(Math.floor(p.x), Math.floor(p.z)));
                 RoadPlan.Node nb = nodes.computeIfAbsent(b, p -> plan.addNode(Math.floor(p.x), Math.floor(p.z)));
-                RoadPlan.Segment seg = plan.addSegment(na.id, nb.id, high ? TownLayout.kerbed(RoadStyle.busyHighStreet(), town)
-                        : through(st) || main ? TownLayout.kerbed(RoadStyle.mainRoad(), town) : st.style);
+                RoadStyle style = high ? TownLayout.kerbed(RoadStyle.busyHighStreet(), town)
+                        : through(st) || main ? TownLayout.kerbed(RoadStyle.mainRoad(), town) : oneWayHere ? oneWay : st.style;
+                if (cycle && style.laneWidth >= 6 && !style.oneWay && !style.dual) {
+                    style = style.copy();
+                    style.cycleLane = true;
+                }
+                RoadPlan.Segment seg = plan.addSegment(na.id, nb.id, style);
                 seg.name = st.name;
                 streetOf.put(seg, st);
                 startOf.put(seg, run);
@@ -1091,13 +1122,14 @@ final class WindingTown {
         return districts.stream().anyMatch(d -> d.district == kind);
     }
 
-    /** Where across the town the main road goes at a: the middle of a main road district there, or NaN for none. */
+    /** Where across the town the main road goes at a: the middle of a main road district there (else a high street one), or NaN for none. */
     private double target(double a) {
         double sum = 0;
         int n = 0;
+        RoadPlan.District want = drawn(RoadPlan.District.MAIN_ROAD) ? RoadPlan.District.MAIN_ROAD : RoadPlan.District.HIGH_STREET;
         for (double cc = 0; cc <= wide; cc += 2) {
             RoadPlan.Site d = districtAt(wx(a, cc), wz(a, cc));
-            if (d != null && d.district == RoadPlan.District.MAIN_ROAD) {
+            if (d != null && d.district == want) {
                 sum += cc;
                 n++;
             }

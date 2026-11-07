@@ -83,4 +83,27 @@ public final class UkBlockSwapGameTests {
         helper.assertTrue(BlockSwap.suggestions("minecraft:coal_block").get(0).equals("ptmuk:tarmac"), "coal should become tarmac first");
         helper.succeed();
     }
+
+    /** Paving registers with PTM2 so pedestrians spawn on it, and a builder covering it (no neighbour update) takes it off again. */
+    @GameTest(template = "empty5x4x5")
+    public static void pavingSpawnsPedestrians(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        var id = com.rinventor.ptm2.core.properties.VDMemoryIDs.SIDEWALK_BLOCK;
+        int flags = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+        for (String paving : List.of("paving_slabs", "block_paving_red_slab", "tactile_paving_buff")) {
+            BlockPos p = helper.absolutePos(new BlockPos(1, 1, 1));
+            level.setBlock(p, ForgeRegistries.BLOCKS.getValue(PtmUk.id(paving)).defaultBlockState(), flags);
+            String e = com.rinventor.ptm2.dimension.virtual.storage.VDStorageHandler.get(level, p, id);
+            helper.assertTrue(e != null && new com.rinventor.ptm2.dimension.virtual.types.VDSidewalkBlock(e).topLayer, paving + " not walkable: " + e);
+            level.setBlock(p.above(), Blocks.STONE.defaultBlockState(), flags);
+            com.ptmuk.block.Walkways.placed(level, p.above());
+            e = com.rinventor.ptm2.dimension.virtual.storage.VDStorageHandler.get(level, p, id);
+            helper.assertFalse(new com.rinventor.ptm2.dimension.virtual.types.VDSidewalkBlock(e).topLayer, paving + " still spawns under a block");
+            level.setBlock(p.above(), Blocks.AIR.defaultBlockState(), flags);
+            level.setBlock(p, Blocks.AIR.defaultBlockState(), flags);
+            e = com.rinventor.ptm2.dimension.virtual.storage.VDStorageHandler.get(level, p, id);
+            helper.assertTrue(e == null || e.isEmpty(), paving + " left behind: " + e);
+        }
+        helper.succeed();
+    }
 }

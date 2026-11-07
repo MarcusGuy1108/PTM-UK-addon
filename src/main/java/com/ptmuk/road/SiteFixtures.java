@@ -31,6 +31,11 @@ final class SiteFixtures {
             case BIN -> out.set(at, facing(pal.get("ptmuk:litter_bin", "composter"), facing));
             case BOLLARD -> out.set(at, facing(pal.get("ptmuk:bollard_steel", "stone_brick_wall"), facing));
             case BENCH -> out.set(at, facing(pal.get("ptmuk:bench_metal", "spruce_slab"), facing));
+            case PILLAR_BOX -> out.set(at, facing(pal.get("ptmuk:pillar_box", "red_concrete"), facing));
+            case PHONE_BOX -> out.set(at, facing(pal.get("ptmuk:phone_box", "red_concrete"), facing));
+            case GRIT_BIN -> out.set(at, facing(pal.get("ptmuk:grit_bin", "yellow_concrete"), facing));
+            case PLANTER -> out.set(at, facing(pal.get("ptmuk:flower_trough", "flower_pot"), facing));
+            case BIKE_STAND -> out.set(at, facing(pal.get("ptmuk:bike_stand", "iron_bars"), facing));
             case DISABLED_BAY -> out.set(at, facing(pal.get("ptmuk:disabled_bay_marking", "white_carpet"), facing));
             case PARENT_BAY -> out.set(at, facing(pal.get("ptmuk:parent_child_bay_marking", "white_carpet"), facing));
             case EV_BAY -> out.set(at, facing(pal.get("ptmuk:ev_bay_marking", "green_carpet"), facing));

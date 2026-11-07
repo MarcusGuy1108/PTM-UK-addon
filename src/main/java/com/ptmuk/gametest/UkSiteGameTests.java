@@ -225,6 +225,56 @@ public final class UkSiteGameTests {
         helper.succeed();
     }
 
+    /**
+     * Districts drawn without a town round them, side by side with gaps between (one drawn round,
+     * one an L of two boxes): laid out together as one town shaped to them, shops in the high
+     * street, houses in the houses, a retail park in the shopping, nothing left to lay out, and
+     * nothing outside them and the gaps between.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void districtsMakeTheirOwnTown(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Site high = district(plan, RoadPlan.District.HIGH_STREET, 0, 0, 399, 159);
+        RoadPlan.Site houses = district(plan, RoadPlan.District.HOUSES, 0, 175, 399, 399);
+        RoadPlan.Site houses2 = district(plan, RoadPlan.District.HOUSES, 410, 175, 639, 399);
+        RoadPlan.Site shops = district(plan, RoadPlan.District.SHOPPING, 410, 0, 639, 165);
+        shops.outline = new int[]{410, 0, 640, 0, 640, 166, 410, 166};
+        RoadPlan.Site far = district(plan, RoadPlan.District.HOUSES, 2000, 0, 2299, 199);
+        houses.houses = 0;
+        String said = com.ptmuk.road.layout.TownLayout.layOutAll(plan, net.minecraft.util.RandomSource.create(3));
+        helper.assertTrue(said != null && said.startsWith("Laid out"), "laying out: " + said);
+        helper.assertTrue(plan.sites.stream().noneMatch(st -> st.type == RoadPlan.SiteType.DISTRICT || st.type == RoadPlan.SiteType.TOWN),
+                "districts left to lay out");
+        java.util.List<RoadPlan.Site> greens = plan.sites.stream().filter(st -> st.type == RoadPlan.SiteType.GREEN).toList();
+        helper.assertTrue(greens.size() == 2, greens.size() + " towns from two lots of districts");
+        RoadPlan.Site town = greens.stream().filter(g -> g.x0 < 1000).findFirst().orElseThrow();
+        helper.assertTrue(town.x0 <= 0 && town.z0 <= 0 && town.x1 >= 639 && town.z1 >= 399 && town.x1 < 660 && town.z1 < 420,
+                "the town isn't round its districts: " + town.x0 + "," + town.z0 + "-" + town.x1 + "," + town.z1);
+        int parades = 0, homes = 0;
+        for (RoadPlan.Site st : plan.sites) {
+            if (!st.type.ground() || st.x0 >= 1000) {
+                continue;
+            }
+            helper.assertTrue(town.inOutline(st.x0 + 0.5, st.z0 + 0.5) && town.inOutline(st.x1 + 0.5, st.z1 + 0.5),
+                    "a " + st.type + " outside the districts at " + st.x0 + "," + st.z0);
+            boolean inHigh = high.contains(st.x0, st.z0) && high.contains(st.x1, st.z1);
+            boolean inHouses = houses.contains(st.x0, st.z0) && houses.contains(st.x1, st.z1);
+            parades += inHigh && st.type == RoadPlan.SiteType.PARADE ? 1 : 0;
+            homes += inHouses && st.type == RoadPlan.SiteType.TERRACES ? 1 : 0;
+            helper.assertTrue(!inHouses || st.type == RoadPlan.SiteType.TERRACES, "a " + st.type + " among the terraces");
+        }
+        helper.assertTrue(parades >= 3 && homes >= 6, parades + " parades in the high street, " + homes + " terraces in the houses");
+        helper.assertTrue(plan.sites.stream().anyMatch(st -> st.type == RoadPlan.SiteType.RETAIL_PARK && shops.contains(st.x0, st.z0)),
+                "no retail park in the shopping district");
+        helper.assertTrue(plan.sites.stream().anyMatch(st -> st.type.ground() && far.contains(st.x0, st.z0)), "nothing in the district on its own");
+        // too small on its own: it stays, and says so
+        RoadPlan small = new RoadPlan();
+        district(small, RoadPlan.District.HOUSES, 0, 0, 60, 60);
+        said = com.ptmuk.road.layout.TownLayout.layOutAll(small, net.minecraft.util.RandomSource.create(3));
+        helper.assertTrue(said.startsWith("Districts together need") && small.sites.size() == 1, "a small district: " + said);
+        helper.succeed();
+    }
+
     private static RoadPlan.Site district(RoadPlan plan, RoadPlan.District kind, int x0, int z0, int x1, int z1) {
         RoadPlan.Site d = plan.addSite(RoadPlan.SiteType.DISTRICT, x0, z0, x1, z1);
         d.district = kind;
