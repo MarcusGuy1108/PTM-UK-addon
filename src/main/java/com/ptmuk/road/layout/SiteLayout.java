@@ -31,7 +31,7 @@ public final class SiteLayout {
 
     public enum ItemType {
         TREE, LAMP, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH,
-        DISABLED_BAY, PARENT_BAY, EV_BAY, ORDER_POINT, MENU_BOARD, PICNIC_TABLE
+        DISABLED_BAY, PARENT_BAY, EV_BAY, ORDER_POINT, MENU_BOARD, PICNIC_TABLE, HEDGE
     }
 
     /** Something stood on the site: where, and the local direction it faces. */
@@ -194,28 +194,57 @@ public final class SiteLayout {
      */
     private void row(List<String> units) {
         fill(0, 0, w - 1, d - 1, site.type == RoadPlan.SiteType.PARADE ? T_FOOT : T_GREEN);
-        int n = units.size(), used = 0;
+        int n = units.size();
+        // which lengths the buildings can fill exactly between them, and the most of the frontage that is
+        boolean[] reach = new boolean[w + 1];
+        reach[0] = true;
+        for (int k = 1; k <= w; k++) {
+            for (String id : units) {
+                PrefabCatalog.Entry e = PrefabCatalog.get(id);
+                if (e != null && e.depth() <= d && e.width() <= k && reach[k - e.width()]) {
+                    reach[k] = true;
+                    break;
+                }
+            }
+        }
+        int used = w;
+        while (used > 0 && !reach[used]) {
+            used--;
+        }
+        if (used == 0) {
+            warning = "Too small for a " + site.type.title.toLowerCase() + " row (it needs about 10 wide and " + depth(site.type) + " deep)";
+            return;
+        }
+        // the mix in turn from the brand, each one taken if what's left can still be filled exactly
         List<int[]> row = new ArrayList<>();                    // {unit, width, depth}
-        for (int next = Math.floorMod(site.brand, n), tries = 0; tries < n; ) {
+        for (int next = Math.floorMod(site.brand, n), rem = used, tries = 0; rem > 0 && tries < n; next = (next + 1) % n) {
             PrefabCatalog.Entry e = PrefabCatalog.get(units.get(next));
-            next = (next + 1) % n;
-            if (e != null && e.width() <= w - used && e.depth() <= d) {
+            if (e != null && e.depth() <= d && e.width() <= rem && reach[rem - e.width()]) {
                 row.add(new int[]{UNITS.indexOf(e.id()), e.width(), e.depth()});
-                used += e.width();
+                rem -= e.width();
                 tries = 0;
             } else {
                 tries++;
             }
         }
-        if (row.isEmpty()) {
-            warning = "Too small for a " + site.type.title.toLowerCase() + " row (it needs about 10 wide and " + depth(site.type) + " deep)";
-            return;
-        }
-        int u = (w - used) / 2;
-        for (int[] r : row) {
+        // shops and terraces wall to wall, what's over split at the ends; semis, detached houses and the rest with it
+        // shared out between them (side gardens, drives)
+        boolean joined = site.type == RoadPlan.SiteType.PARADE || site.type == RoadPlan.SiteType.TERRACES;
+        int spare = w - used, gaps = joined ? 0 : row.size() + 1, u = joined ? spare / 2 : 0;
+        for (int i = 0; i < row.size(); i++) {
+            int[] r = row.get(i);
+            u += joined ? 0 : spare * (i + 1) / gaps - spare * i / gaps;
             fill(u, 0, u + r[1] - 1, r[2] - 1, T_PLOT);
             buildings.add(new Building("prefab", u, 0, u + r[1] - 1, r[2] - 1, FRONT, r[0]));
             u += r[1];
+        }
+        // a hedge round the grass the houses leave (behind them, at the ends of the row), so it's gardens, not open ground
+        for (int uu = 0; uu < w && site.type != RoadPlan.SiteType.PARADE; uu++) {
+            for (int vv = 1; vv < d; vv++) {
+                if ((vv == d - 1 || uu == 0 || uu == w - 1) && type[at(uu, vv)] == T_GREEN) {
+                    item(ItemType.HEDGE, uu, vv, FRONT);
+                }
+            }
         }
     }
 

@@ -71,6 +71,7 @@ final class SiteFixtures {
                     out.set(at.relative(side), RoadBuilder.with(RoadBuilder.with(bench, "half", "bottom"), "shape", "straight"));
                 }
             }
+            case HEDGE -> out.set(at, RoadBuilder.with(pal.get("oak_leaves", "oak_leaves"), "persistent", true));
             default -> {
             }
         }

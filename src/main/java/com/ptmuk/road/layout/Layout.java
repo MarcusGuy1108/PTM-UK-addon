@@ -44,7 +44,7 @@ public final class Layout {
         ROUNDABOUT_AHEAD_SIGN,
         // on sites
         TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
-        ORDER_POINT, MENU_BOARD, PICNIC_TABLE,
+        ORDER_POINT, MENU_BOARD, PICNIC_TABLE, HEDGE,
         // in a town's green space
         PARK_TREE
     }
@@ -2232,7 +2232,8 @@ public final class Layout {
             Map.entry(SiteLayout.ItemType.EV_BAY, FixtureType.EV_BAY),
             Map.entry(SiteLayout.ItemType.ORDER_POINT, FixtureType.ORDER_POINT),
             Map.entry(SiteLayout.ItemType.MENU_BOARD, FixtureType.MENU_BOARD),
-            Map.entry(SiteLayout.ItemType.PICNIC_TABLE, FixtureType.PICNIC_TABLE));
+            Map.entry(SiteLayout.ItemType.PICNIC_TABLE, FixtureType.PICNIC_TABLE),
+            Map.entry(SiteLayout.ItemType.HEDGE, FixtureType.HEDGE));
 
     /** A road reaching a site, in world terms: the side (0 south, 1 west, 2 north, 3 east), where on it and how wide. */
     private record Way(int side, int x, int z, int width) {
