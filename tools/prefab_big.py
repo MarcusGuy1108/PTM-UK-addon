@@ -847,7 +847,7 @@ def residential_tower(ident="residential_tower", name="Modern Residential Tower 
         b.walls(x0, y, z0, x1, y, z1, dark if i == 0 else clad)
         for (side_v, step) in ((z0, -1), (z1, 1)):
             for u in range(x0 + 1, x1):
-                solid = (u - x0) % 4 == 0 and not penthouse
+                solid = ((u - x0) % 4 == 0 or u in (8, 13)) and not penthouse     # (8, 13: the flats' walls)
                 b.fill(u, y + 1, side_v, u, y + 3, side_v, clad if solid else pane(win))
             if not penthouse and i % 2 == 0:
                 for (a, z) in ((x0 + 2, x0 + 6), (x1 - 6, x1 - 2)):
@@ -855,10 +855,26 @@ def residential_tower(ident="residential_tower", name="Modern Residential Tower 
                     b.fill(a, y + 1, side_v + step, z, y + 1, side_v + step, pane("glass_pane"))
         for side_u in (x0, x1):
             for v in range(z0 + 1, z1):
-                solid = (v - z0) % 4 == 0 and not penthouse
+                solid = ((v - z0) % 4 == 0 or v == 12) and not penthouse
                 b.fill(side_u, y + 1, v, side_u, y + 3, v, clad if solid else pane(win))
-        lights(b, [(5, y + 3, 6), (17, y + 3, 6), (5, y + 3, 18), (17, y + 3, 18)], level=11)
+        # four flats round a lobby that goes all the way round the stairs, a front door each off it
+        b.fill(8, y + 1, z0 + 1, 8, y + 3, z1 - 1, "calcite")
+        b.fill(13, y + 1, z0 + 1, 13, y + 3, z1 - 1, "calcite")
+        b.fill(x0 + 1, y + 1, 12, 7, y + 3, 12, "calcite")
+        b.fill(14, y + 1, 12, x1 - 1, y + 3, 12, "calcite")
+        for (u, v, f) in ((8, 6, "left"), (8, 18, "left"), (13, 6, "right"), (13, 18, "right")):
+            b.door(u, y + 1, v, "birch", facing=f, hinge="left")
+        lights(b, [(5, y + 3, 6), (17, y + 3, 6), (5, y + 3, 18), (17, y + 3, 18), (10, y + 3, 6), (10, y + 3, 18)],
+               level=11)
     P.stair_core(b, 10, 9, floors[:-1], material="stone_brick")
+    # the lobby: a concierge desk, seats round a table, plants (furnished, so it isn't fitted out as flats)
+    P.counter(b, 14, 17, 7, top="smooth_quartz_slab")
+    b.set(15, 1, 8, home("office_chair", facing="south", lit=False))
+    P.sofa(b, 4, 6, 1, 4, "back", "spruce")
+    P.sofa(b, 4, 6, 1, 8, "front", "spruce")
+    P.table(b, 5, 1, 6)
+    for (u, v) in ((3, 20), (19, 20), (3, 10), (19, 10)):
+        P.plant(b, u, 1, v)
     # crown: a lit band and a plant screen
     P.flat_roof(b, x0, x1, z0, z1, top, deck="gray_concrete", parapet=None)
     b.walls(x0, top + 1, z0, x1, top + 1, z1, "sea_lantern")
@@ -953,6 +969,11 @@ def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Bloc
         P.tree(b, u, v, h=3, r=1, leaves="birch_leaves", log="birch_log")
     for u in (16, 20):
         b.set(u, 1, 16, B("ptmuk:bench_wood", facing="south"))
+    for y in floors[1:-1]:                         # each floor in four, round a stair core each (prefab_dress
+        for v0, v1 in ((p0 + 1, q0 - 1), (q1 + 1, p1 - 1)):     # lays out the flats)
+            b.fill(16, y + 1, v0, 16, y + 3, v1, "calcite")
+        for u0, u1 in ((o0 + 1, i0 - 1), (i1 + 1, o1 - 1)):
+            b.fill(u0, y + 1, 17, u1, y + 3, 17, "calcite")
     for (cu, cv) in ((7, 5), (28, 5), (7, 25), (28, 25)):
         P.stair_core(b, cu, cv, floors, material="stone_brick")
     return b

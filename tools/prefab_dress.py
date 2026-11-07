@@ -46,13 +46,55 @@ EMPTY, FLAT = 40, 110
 BEDS = ("white_bed", "light_blue_bed", "blue_bed", "red_bed", "green_bed", "gray_bed")
 
 
+def _narrowest(r):
+    """The room's narrowest span across (a strip or a passage is one or two)."""
+    us, vs = [c[0] for c in r.cells], [c[2] for c in r.cells]
+    return min(max(us) - min(us), max(vs) - min(vs)) + 1
+
+
 def _doors(g, r):
-    """How many doors open off a room (a hall or a landing has three or more)."""
+    """How many doors open off a room (a flat has its one front door; a hall or a landing has more)."""
     return len({n for (u, y, v) in r.cells for du, dv in VEC.values()
                 if (blk := g.get(*(n := (u + du, y, v + dv)))) is not None and blk.name.endswith("_door")})
 
 
 def dress(b):
+    _dress(b)
+    _unblock(b)
+
+
+def _unblock(b):
+    """Furniture that shuts part of a room off (a bed or a telly placed across the way): take it out, a piece
+    at a time, until you can walk everywhere again (prefab_check would refuse the building otherwise)."""
+    for _ in range(8):
+        g = pc.Grid(b)
+        out = pc.outside(g)
+        if not pc.walk_in_problems(g, out):
+            return
+        stand, seen = pc.walk_in(g, out)
+        lost = {p for p in stand - seen if p not in out}
+        piece = next((n for (u, y, v) in sorted(lost) for du, dv in VEC.values()
+                      if _movable(g.get(*(n := (u + du, y, v + dv))))
+                      and any((n[0] + a, y, n[2] + c) in seen for a, c in VEC.values())), None)
+        if piece is None:
+            return
+        u, y, v = piece
+        blk = g.get(u, y, v)
+        if blk.name.endswith("_bed"):                        # both halves
+            for du, dv in VEC.values():
+                if (other := g.get(u + du, y, v + dv)) is not None and other.name == blk.name:
+                    b.set(u + du, y, v + dv, "air")
+        if _movable(g.get(u, y + 1, v)):                     # a telly on its stand, a lamp on a table
+            b.set(u, y + 1, v, "air")
+        b.set(u, y, v, "air")
+
+
+def _movable(blk):
+    return blk is not None and (blk.name.endswith("_bed") or blk.name.startswith("ptmuk:") and not pc._ptmuk_full(blk.name)
+                                and not blk.name.endswith(("_door", "_window", "_pane", "_stairs", "_slab")))
+
+
+def _dress(b):
     if b.category == "Offices":
         offices(b)
         return
@@ -64,7 +106,8 @@ def dress(b):
     pick = zlib.crc32(b.ident.encode())
     fitted = False
     for i, r in enumerate(rooms):
-        if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2) and _doors(g, r) < 3:
+        if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2) and _doors(g, r) < 2 \
+                and _narrowest(r) >= 3:
             for j, part in enumerate(Dresser(b, g, out, r, pick + i).flats()):
                 Dresser(b, g, out, part, pick + i + j).fit_flat()
             fitted = True
@@ -562,6 +605,8 @@ class Dresser:
         if len(cells) <= FLAT + 20 or _doors(self.g, self.r) == 1 and len(cells) <= 2 * FLAT + 60:
             return [self.r]                                    # about a flat's worth, or behind its own front door
         done = self._corridor(cells)
+        if done is None and len(cells) <= 3 * FLAT:
+            return [self.r]                                    # one big flat beats flats you walk through
         return done if done is not None else self.split(FLAT)
 
     def _corridor(self, cells):
@@ -580,11 +625,10 @@ class Dresser:
             return None
         s_lo, s_hi = min(S(c) for c in cells), max(S(c) for c in cells)
         depth = s_hi - s_lo + 1
-        if depth >= 15:
-            rows = sorted(range(s_lo + 6, s_hi - 5), key=lambda r: abs(r - (s_lo + s_hi) / 2))
-        else:
-            mean = sum(S(e) for e in entries) / len(entries)
-            rows = [s_lo, s_hi] if mean - s_lo <= s_hi - mean else [s_hi, s_lo]
+        mean = sum(S(e) for e in entries) / len(entries)
+        rows = [s_lo, s_hi] if mean - s_lo <= s_hi - mean else [s_hi, s_lo]    # along a side, near the way in
+        if depth >= 13:                                                          # down the middle first if deep
+            rows = sorted(range(s_lo + 6, s_hi - 5), key=lambda r: abs(r - (s_lo + s_hi) / 2)) + rows
         for r in rows:
             plan = self._try_corridor(cells, entries, r, A, S, at)
             if plan is not None:
@@ -604,14 +648,13 @@ class Dresser:
         corridor = {c for c in cells if S(c) == r}
         if not corridor:
             return None
-        # a passage from each way in that isn't on the corridor, straight across to it
+        # a passage from each way in that isn't on the corridor, the shortest way to it (round the stairs)
         passages = set()
         for e in entries:
             if S(e) == r:
                 continue
-            step = 1 if r > S(e) else -1
-            path = [at(A(e), s) for s in range(S(e), r, step)]
-            if not all(p in cells for p in path):
+            path = self._path(e, corridor, cells)
+            if path is None:
                 return None
             passages.update(path)
         hall = corridor | passages
@@ -632,7 +675,7 @@ class Dresser:
         for comp in self._components(rest):
             span = sorted({A(c) for c in comp})
             d = max(S(c) for c in comp) - min(S(c) for c in comp) + 1
-            length = max(5, round(85 / max(d, 1)))
+            length = max(5, round(FLAT / max(d, 1)))
             pieces, start = [], span[0]
             while start <= span[-1]:
                 end = start + length - 1
@@ -640,11 +683,23 @@ class Dresser:
                     end = span[-1]
                 pieces.append((start, end))
                 start = end + 2                                    # a block for the wall between
+            # a scrap too small for a flat (beside the stairs, say) goes in with the one next to it
+            size = lambda piece: sum(1 for c in comp if piece[0] <= A(c) <= piece[1])
+            k = 0
+            while len(pieces) > 1 and k < len(pieces):
+                if size(pieces[k]) < 50:
+                    j = k - 1 if k else 1
+                    lo, hi = min(pieces[j][0], pieces[k][0]), max(pieces[j][1], pieces[k][1])
+                    pieces[min(j, k)] = (lo, hi)
+                    del pieces[max(j, k)]
+                    k = 0
+                    continue
+                k += 1
             for k, (a0, a1) in enumerate(pieces):
                 room = {c for c in comp if a0 <= A(c) <= a1}
                 if k + 1 < len(pieces):
                     cut |= {c for c in comp if A(c) == a1 + 1}
-                if len(room) < 16 or not self._connected(room):
+                if len(room) < 40 or not self._connected(room):
                     return None
                 # its front door: a wall cell between it and the hall, nearest its end by the stairs
                 options = []
@@ -663,6 +718,23 @@ class Dresser:
                 rooms.append(room)
         walls |= cut
         return hall, walls, {"rooms": rooms, "doors": doors}
+
+    def _path(self, start, goal, cells):
+        """The cells from start up to (not into) goal, the shortest way through cells; None if there's none."""
+        back, todo = {start: None}, [start]
+        for c in todo:
+            if c in goal:
+                path = []
+                c = back[c]
+                while c is not None:
+                    path.append(c)
+                    c = back[c]
+                return path
+            for n in self._nbrs(c):
+                if n in cells and n not in back:
+                    back[n] = c
+                    todo.append(n)
+        return None
 
     def _nbrs(self, c):
         return [(c[0] + du, c[1], c[2] + dv) for du, dv in VEC.values()]
@@ -751,7 +823,8 @@ class Dresser:
                 return -min((abs(c[0] - p[0]) + abs(c[2] - p[2]) for p in placed), default=0)
             return sorted(options, key=gap)
 
-        bath = self._enclose(3, 2, want_window=False) if len(self.free) >= 30 else None
+        bath = (self._enclose(3, 2, want_window=False) or self._enclose(2, 2, want_window=False)) \
+            if len(self.free) >= 30 else None
         if bath is not None:
             Dresser(self.b, self.g, self.out, bath, self.seed).fit_bathroom()
             placed += list(bath.cells)
@@ -761,6 +834,12 @@ class Dresser:
         if bed is not None:
             Dresser(self.b, self.g, self.out, bed, self.seed).fit_bedroom()
             placed += list(bed.cells)
+            for _ in range(2):                                 # a big flat: another bedroom or two
+                more = self._enclose(4, 3, want_window=True) if len(self.free) >= 90 else None
+                if more is None:
+                    break
+                Dresser(self.b, self.g, self.out, more, self.seed + 1).fit_bedroom()
+                placed += list(more.cells)
         run = self._run(4) or self._run(3)
         if run:
             cells, f = run
@@ -786,8 +865,9 @@ class Dresser:
     def _bed(self, spots, placed=None, double=False):
         for c, f in spots:
             foot = (c[0] + VEC[f][0], c[1], c[2] + VEC[f][1])
-            if foot not in self.free or foot in self.keep or not self._can_take_all([c, foot]):
-                continue
+            if foot not in self.free or foot in self.keep or not self._can_take_all([c, foot]) or \
+                    any(n in self.keep for n in self._nbrs(c) + self._nbrs(foot)):
+                continue                                       # (not hard by a doorway either)
             bed = BEDS[self.seed % len(BEDS)]                  # its head to the wall
             pair = [(c, foot)]
             if double:

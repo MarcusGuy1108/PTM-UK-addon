@@ -1236,6 +1236,13 @@ def mansion_block(ident="mansion_block", name="1930s Mansion Block"):
     b.hipped_roof(0, W - 1, 2, 13, top + 1, "ptmuk:roof_slate")
     for u in (3, 17):
         b.chimney(u, 7, top + 2, top + 7, brick, w=1, d=2, pots=2)
+    # a flat either side of the stairs on every floor, the front doors off the hall in front of them
+    for y in floors[:-1]:
+        b.fill(8, y + 1, 3, 8, y + 3, 12, "calcite")
+        b.fill(12, y + 1, 3, 12, y + 3, 12, "calcite")
+        b.door(8, y + 1, 4, "dark_oak", facing="left", hinge="left")
+        b.door(12, y + 1, 4, "dark_oak", facing="right", hinge="right")
+        b.set(10, y + 3, 4, light(11))
     P.stair_core(b, 9, 6, floors[:-1], material="oak")
     return b
 
@@ -1267,6 +1274,13 @@ def modern_apartments(ident="modern_apartments", name="Modern Apartment Block"):
     b.fill(6, 1, 2, 9, 3, 2, P.pane("ptmuk:shop_window"))
     b.door(8, 1, 2, "birch", facing="back", hinge="left")
     name_plate(b, 6, 9, STOREY, 1, "THE COBALT BUILDING", "", 0xFF2A2E34, WHITE_INK, True)
+    # a flat either side of the stairs on every floor, the front doors off the hall in front of them
+    for y in floors[:-1]:
+        b.fill(5, y + 1, 3, 5, y + 3, 13, "calcite")
+        b.fill(10, y + 1, 3, 10, y + 3, 13, "calcite")
+        b.door(5, y + 1, 4, "birch", facing="left", hinge="left")
+        b.door(10, y + 1, 4, "birch", facing="right", hinge="right")
+        b.set(7, y + 3, 4, light(11))
     P.stair_core(b, 8, 7, floors[:-1], material="stone_brick")
     P.flat_roof(b, 0, W - 1, 2, 14, top, deck="gray_concrete", parapet=clad, coping="polished_deepslate")
     for u in range(2, W - 2, 2):
