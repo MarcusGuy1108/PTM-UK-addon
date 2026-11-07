@@ -101,7 +101,8 @@ public class RoadPlannerScreen extends Screen {
     private int dragX0, dragZ0, dragX1, dragZ1;
     private double grabX, grabZ;
     private int[] siteStart;
-    private static boolean drawTown;    // a new town is drawn round by hand, not marked out as a box
+    private static boolean drawTown;    // a new town (or district) is drawn round by hand, not marked out as a box
+    private static RoadPlan.District newDistrict = RoadPlan.District.HIGH_STREET;
     private final List<int[]> lasso = new ArrayList<>();
 
     // a real map: the files to pick from, one being read (and what to do with it), its buildings drawn over the map
@@ -636,8 +637,14 @@ public class RoadPlannerScreen extends Screen {
                 newSiteType = all[(newSiteType.ordinal() + 1) % all.length];
                 rebuildPanel();
             });
-            if (newSiteType == SiteType.TOWN) {
+            if (newSiteType == SiteType.TOWN || newSiteType == SiteType.DISTRICT) {
                 button(y + ROW, () -> "Shape: " + (drawTown ? "draw round it" : "box"), b -> drawTown = !drawTown);
+            }
+            if (newSiteType == SiteType.DISTRICT) {
+                button(y + 2 * ROW, () -> "Kind: " + newDistrict.title, b -> {
+                    RoadPlan.District[] all = RoadPlan.District.values();
+                    newDistrict = all[(newDistrict.ordinal() + 1) % all.length];
+                });
             }
             return;
         }
@@ -650,8 +657,8 @@ public class RoadPlannerScreen extends Screen {
         button(y, () -> "Type: " + st.type.title, b -> edit.accept(() -> {
             SiteType[] all = SiteType.values();
             st.type = all[(st.type.ordinal() + 1) % all.length];
-            if (st.type != SiteType.TOWN && st.type != SiteType.GREEN) {
-                st.outline = null;                    // only a town (and the green it leaves) keeps a drawn shape
+            if (st.type != SiteType.TOWN && st.type != SiteType.GREEN && st.type != SiteType.DISTRICT) {
+                st.outline = null;                    // only a town, a district and the green a town leaves keep a drawn shape
             }
             siteDefaults(st);
         }));
@@ -669,9 +676,9 @@ public class RoadPlannerScreen extends Screen {
             y += ROW;
             button(y, () -> "Church, pub etc: " + (st.civic ? "yes" : "no"), b -> edit.accept(() -> st.civic = !st.civic));
             y += ROW;
-            halfButtons(y, () -> "Streets: " + (st.winding || st.outline != null ? "winding" : "grid"), b -> {
+            halfButtons(y, () -> "Streets: " + (st.winding || st.outline != null ? "natural" : "grid"), b -> {
                         if (st.outline != null) {
-                            flash("A drawn town's streets wind to follow its shape");
+                            flash("A drawn town's streets follow its shape");
                         } else {
                             edit.accept(() -> st.winding = !st.winding);
                         }
@@ -686,6 +693,19 @@ public class RoadPlannerScreen extends Screen {
                 rebuildPanel();
             });
             y += ROW;
+            button(y, () -> "Delete site", b -> deleteSelection());
+            return;
+        }
+        if (st.type == SiteType.DISTRICT) {
+            button(y, () -> "Kind: " + st.district.title, b -> edit.accept(() -> {
+                RoadPlan.District[] all = RoadPlan.District.values();
+                st.district = all[(st.district.ordinal() + 1) % all.length];
+            }));
+            y += ROW;
+            if (st.district == RoadPlan.District.HOUSES) {
+                button(y, () -> "Houses: " + TOWN_HOUSES[st.houses % TOWN_HOUSES.length], b -> edit.accept(() -> st.houses = (st.houses + 1) % TOWN_HOUSES.length));
+                y += ROW;
+            }
             button(y, () -> "Delete site", b -> deleteSelection());
             return;
         }
@@ -1197,7 +1217,7 @@ public class RoadPlannerScreen extends Screen {
             return;
         }
         selSite = null;
-        if (newSiteType == SiteType.TOWN && drawTown) {
+        if ((newSiteType == SiteType.TOWN || newSiteType == SiteType.DISTRICT) && drawTown) {
             siteDrag = 4;
             lasso.clear();
             lasso.add(new int[]{(int) Math.round(worldX(mx)), (int) Math.round(worldZ(my))});
@@ -1467,7 +1487,8 @@ public class RoadPlannerScreen extends Screen {
                 }
                 if (lasso.size() >= 3 && x1 - x0 >= MIN_SITE && z1 - z0 >= MIN_SITE) {
                     remember();
-                    Site st = plan.addSite(SiteType.TOWN, x0, z0, x1 - 1, z1 - 1);   // the corners are block edges
+                    Site st = plan.addSite(newSiteType, x0, z0, x1 - 1, z1 - 1);   // the corners are block edges
+                    st.district = newDistrict;
                     st.outline = new int[lasso.size() * 2];
                     for (int i = 0; i < lasso.size(); i++) {
                         st.outline[2 * i] = lasso.get(i)[0];
@@ -1476,7 +1497,7 @@ public class RoadPlannerScreen extends Screen {
                     selSite = st.id;
                     changed();
                 } else if (moved) {
-                    flash("Draw right round where the town goes");
+                    flash("Draw right round where the " + (newSiteType == SiteType.DISTRICT ? "district" : "town") + " goes");
                 }
                 lasso.clear();
             } else if (siteDrag == 1) {
@@ -1484,6 +1505,7 @@ public class RoadPlannerScreen extends Screen {
                 if (w >= MIN_SITE && d >= MIN_SITE) {
                     remember();
                     Site st = plan.addSite(newSiteType, dragX0, dragZ0, dragX1, dragZ1);
+                    st.district = newDistrict;
                     siteDefaults(st);
                     selSite = st.id;
                     changed();
@@ -1768,6 +1790,7 @@ public class RoadPlannerScreen extends Screen {
                 ? (plan.map == null ? "Move the map to where its middle goes, then pick a file." : "Click two points to measure.")
                 : mode == Mode.SITES
                 ? (selSite == null && newSiteType == SiteType.TOWN && drawTown ? "Hold the left button and draw round where the town goes."
+                : selSite == null && newSiteType == SiteType.DISTRICT ? "Mark out part of a town (before you lay it out) and pick what goes there."
                 : "Drag out a site; drag it to move, a corner to resize.")
                 : mode == Mode.DRAW && tracing
                 ? (tracePiece ? "Click an old road where a new road will join it: it follows " + PIECE + " blocks each way, ready for the junction."
@@ -1847,10 +1870,14 @@ public class RoadPlannerScreen extends Screen {
 
     /** The site's name in its corner, when selected or when it fits inside (a town's plots would bury the map in labels). */
     private void siteLabel(GuiGraphics g, Site st, boolean sel) {
-        if (sel || zoom >= 1 && font.width(st.type.title) + 6 <= screenX(st.x1 + 1) - screenX(st.x0)) {
-            g.drawString(font, st.type.title, (int) screenX(st.x0) + 3, (int) screenY(st.z0) + 3, sel ? 0xFFFFD24A : 0xFFE0E0E0);
+        String title = st.type == SiteType.DISTRICT ? st.district.title : st.type.title;
+        if (sel || zoom >= 1 && font.width(title) + 6 <= screenX(st.x1 + 1) - screenX(st.x0)) {
+            g.drawString(font, title, (int) screenX(st.x0) + 3, (int) screenY(st.z0) + 3, sel ? 0xFFFFD24A : 0xFFE0E0E0);
         }
     }
+
+    /** A district's tint on the map: what it is at a glance. */
+    private static final int[] DISTRICT_TINT = {0x50E050E0, 0x5050C0E0, 0x50E0C040, 0x504080FF, 0x5040D040, 0x50FF8030};
 
     /** Site outlines, the road side picked out, handles on the selected one, and one being marked out. */
     private void drawSites(GuiGraphics g) {
@@ -1866,6 +1893,14 @@ public class RoadPlannerScreen extends Screen {
             }
             if (st.type == SiteType.KEEP_CLEAR) {
                 g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), 0x50E04040);
+            }
+            if (st.type == SiteType.DISTRICT) {
+                int tint = DISTRICT_TINT[st.district.ordinal() % DISTRICT_TINT.length];
+                if (st.outline != null) {
+                    fillPolygon(g, st.outline, tint);
+                } else {
+                    g.fill((int) screenX(st.x0), (int) screenY(st.z0), (int) screenX(st.x1 + 1), (int) screenY(st.z1 + 1), tint);
+                }
             }
             if (st.outline != null) {
                 polygon(g, st.outline, sel ? 2 : 1, sel ? 0xFFFFD24A : 0xA0FFFFFF);
@@ -1998,6 +2033,10 @@ public class RoadPlannerScreen extends Screen {
     /** Along the bottom of the map: how many bays the selected site got, and any warning. */
     private void sitePanelText(GuiGraphics g, Site st) {
         SiteLayout sl = st == null ? null : siteLayout(st.id);
+        if (st != null && st.type == SiteType.DISTRICT) {
+            g.drawString(font, DISTRICT_HELP[st.district.ordinal()], PANEL + 4, height - 24, 0xFFE0E0E0);
+            return;
+        }
         if (st != null && (st.type == SiteType.KEEP_CLEAR || st.type == SiteType.GREEN)) {
             g.drawString(font, st.type == SiteType.GREEN ? "Grass filling whatever the roads and sites leave, level with them"
                     : "Left as it is: a town lays no buildings here and the ground isn't touched", PANEL + 4, height - 24, 0xFFE0E0E0);
@@ -2018,6 +2057,14 @@ public class RoadPlannerScreen extends Screen {
             g.drawString(font, sl.warning, PANEL + 4, height - 34, 0xFFFF9050);
         }
     }
+
+    private static final String[] DISTRICT_HELP = {
+            "High street: shops along all its streets, a church, pub and surgery at its edges",
+            "Houses: only houses along its streets (pick which)",
+            "Main road: the town's main road runs through here",
+            "Shopping: a retail park and its car park, with a road in",
+            "Park: grass and trees, no streets or buildings",
+            "Motorway junction: a dual carriageway across it with a roundabout the town joins"};
 
     private static String paradeNames(SiteLayout sl) {
         StringBuilder s = new StringBuilder(":");

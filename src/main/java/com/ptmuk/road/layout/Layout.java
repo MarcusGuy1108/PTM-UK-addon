@@ -2311,6 +2311,9 @@ public final class Layout {
                 greens.add(st);
                 continue;
             }
+            if (st.type == RoadPlan.SiteType.DISTRICT) {
+                continue;                                    // a part of a town still to be laid out: nothing of its own
+            }
             List<Way> ways = ways(st);
             int front = st.front >= 0 ? st.front & 3 : ways.isEmpty() ? 0 : ways.get(0).side;
             SiteFrame frame = new SiteFrame(st.x0, st.z0, st.x1, st.z1, front);

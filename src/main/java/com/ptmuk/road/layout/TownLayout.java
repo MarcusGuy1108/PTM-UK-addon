@@ -79,7 +79,9 @@ public final class TownLayout {
             return "A town needs at least 120 x 80 blocks";
         }
         String said;
-        if (town.winding || town.outline != null) {            // a drawn outline takes winding streets: a grid doesn't follow a shape
+        boolean districts = plan.sites.stream().anyMatch(d -> d.type == RoadPlan.SiteType.DISTRICT && d.x1 >= town.x0 && d.x0 <= town.x1
+                && d.z1 >= town.z0 && d.z0 <= town.z1);
+        if (town.winding || town.outline != null || districts) {   // a drawn outline or districts take these streets: a grid doesn't fit them
             WindingTown t = new WindingTown(plan, town, rand);
             t.run();
             if (!t.fits) {

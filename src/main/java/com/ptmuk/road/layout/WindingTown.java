@@ -86,6 +86,8 @@ final class WindingTown {
     private final List<Street> all = new ArrayList<>();
     private final Set<String> names = new HashSet<>();
     private final List<RoadPlan.Site> kept;
+    /** The districts drawn over the town (District sites), saying what goes where. */
+    private final List<RoadPlan.Site> districts = new ArrayList<>();
     /** What crowds() says when it's ground kept clear in the way. */
     private static final Street KEPT = new Street(RoadStyle.residential(), -1);
     private Street spine;
@@ -99,6 +101,14 @@ final class WindingTown {
         this.rand = rand;
         this.res = TownLayout.kerbed(RoadStyle.residential(), town);
         this.kept = TownLayout.kept(plan, town);
+        for (RoadPlan.Site d : plan.sites) {
+            if (d.type == RoadPlan.SiteType.DISTRICT && d.x1 >= town.x0 && d.x0 <= town.x1 && d.z1 >= town.z0 && d.z0 <= town.z1) {
+                districts.add(d);
+                if (d.district.whole()) {
+                    kept.add(d);                             // streets and houses keep out: it's laid out on its own
+                }
+            }
+        }
         if (town.outline == null) {
             boolean alongX = town.width() >= town.depth();
             ox = town.x0;
@@ -195,6 +205,13 @@ final class WindingTown {
             }
         }
         fill();
+        for (RoadPlan.Site d : districts) {
+            if (d.district == RoadPlan.District.SHOPPING) {
+                shopping(d);
+            } else if (d.district == RoadPlan.District.JUNCTION) {
+                junction(d);
+            }
+        }
         roads();
         plots();
     }
@@ -494,7 +511,8 @@ final class WindingTown {
         if (mid0 == null) {
             mid0 = new double[]{wide / 2, wide};
         }
-        double a = a0, c = Math.round(mid0[0]), bendAt = a0 + BEND_APART * (0.4 + rand.nextDouble() * 0.6);
+        double t0 = target(a0);
+        double a = a0, c = Math.round(Double.isNaN(t0) ? mid0[0] : t0), bendAt = a0 + BEND_APART * (0.4 + rand.nextDouble() * 0.6), lastBend = a0;
         spine.pts.add(new Pt(wx(a, c), wz(a, c)));
         while (a < a1) {
             double step = STEP_MIN + rand.nextDouble() * (STEP_MAX - STEP_MIN);
@@ -505,11 +523,14 @@ final class WindingTown {
             // straight on, but now and then a gentle bend across and straight on again (back towards the middle of a
             // drawn town if it's wandered off it): straight where it can be, never dead straight end to end
             double na = a + step, nc = c;
-            boolean off = Math.abs(c - mid[0]) > mid[1] * 0.12;
-            if (a + step >= bendAt && a + BEND_LENGTH < a1 - STEP_MIN) {
+            // (through a main road district drawn over the town, bending over to it as soon as it can)
+            double t = target(a + step);
+            boolean steer = !Double.isNaN(t) && Math.abs(t - c) > 4 && a >= lastBend + BEND_LENGTH;
+            if ((a + step >= bendAt || steer) && a + BEND_LENGTH < a1 - STEP_MIN) {
                 na = a + BEND_LENGTH;
-                nc = c + (off ? -Math.signum(c - mid[0]) : rand.nextBoolean() ? 1 : -1) * (5 + rand.nextInt(9));
+                nc = c + (steer ? Math.round(Math.max(-13, Math.min(13, t - c))) : (rand.nextBoolean() ? 1 : -1) * (5 + rand.nextInt(9)));
                 bendAt = na + BEND_APART * (0.6 + rand.nextDouble() * 0.8);
+                lastBend = na;
             }
             if (na > a1 - STEP_MIN * 0.6) {
                 na = a1;
@@ -830,6 +851,9 @@ final class WindingTown {
 
     // ------------------------------------------------------------------ into the plan
 
+    /** The middles of motorway junctions: roundabouts. */
+    private final List<Pt> roundabouts = new ArrayList<>();
+
     /** Which street each new road belongs to, and how far along that street it starts. */
     private final Map<RoadPlan.Segment, Street> streetOf = new LinkedHashMap<>();
     private final Map<RoadPlan.Segment, Double> startOf = new LinkedHashMap<>();
@@ -841,11 +865,14 @@ final class WindingTown {
             for (int i = 0; i + 1 < st.pts.size(); i++) {
                 Pt a = st.pts.get(i), b = st.pts.get(i + 1);
                 double l = Math.hypot(b.x - a.x, b.z - a.z);
-                boolean high = st == spine && town.highStreet && run + l / 2 > total * 0.25 && run + l / 2 < total * 0.75;
+                RoadPlan.Site in = districtAt((a.x + b.x) / 2, (a.z + b.z) / 2);
+                boolean high = st.level >= 0 && (drawn(RoadPlan.District.HIGH_STREET) ? in != null && in.district == RoadPlan.District.HIGH_STREET
+                        : st == spine && town.highStreet && run + l / 2 > total * 0.25 && run + l / 2 < total * 0.75);
+                boolean main = st.level >= 0 && st.level <= 1 && in != null && in.district == RoadPlan.District.MAIN_ROAD;
                 RoadPlan.Node na = nodes.computeIfAbsent(a, p -> plan.addNode(Math.floor(p.x), Math.floor(p.z)));
                 RoadPlan.Node nb = nodes.computeIfAbsent(b, p -> plan.addNode(Math.floor(p.x), Math.floor(p.z)));
                 RoadPlan.Segment seg = plan.addSegment(na.id, nb.id, high ? TownLayout.kerbed(RoadStyle.busyHighStreet(), town)
-                        : through(st) ? TownLayout.kerbed(RoadStyle.mainRoad(), town) : st.style);
+                        : through(st) || main ? TownLayout.kerbed(RoadStyle.mainRoad(), town) : st.style);
                 seg.name = st.name;
                 streetOf.put(seg, st);
                 startOf.put(seg, run);
@@ -858,7 +885,7 @@ final class WindingTown {
         boolean big = spine.length() >= TownLayout.BIG;
         Map<Pt, Double> side = new IdentityHashMap<>();
         for (Street st : all) {
-            if (st.level == 1) {
+            if (st.level == 1 && spine.pts.contains(st.pts.get(0))) {
                 side.merge(st.pts.get(0), st.length() + (plan.segmentsAt(nodes.get(st.pts.get(0)).id).size() >= 4 ? 10000 : 0), Math::max);
             } else if (big && st.level == 2 && plan.segmentsAt(nodes.get(st.pts.get(0)).id).size() >= 4) {
                 nodes.get(st.pts.get(0)).junction = RoadPlan.Junction.MINI_ROUNDABOUT;
@@ -875,6 +902,9 @@ final class WindingTown {
                 chosen.add(s);
                 nodes.get(p).junction = RoadPlan.Junction.SIGNALS;
             }
+        }
+        for (Pt p : roundabouts) {
+            nodes.get(p).junction = RoadPlan.Junction.ROUNDABOUT;
         }
     }
 
@@ -937,7 +967,7 @@ final class WindingTown {
             for (int z = k.z0; z <= k.z1; z++) {
                 for (int x = k.x0; x <= k.x1; x++) {
                     int c = cell(x, z);
-                    if (c >= 0) {
+                    if (c >= 0 && k.inOutline(x + 0.5, z + 0.5)) {
                         blocked[c] = true;
                     }
                 }
@@ -960,12 +990,13 @@ final class WindingTown {
         }
         // the church, pub and surgery first, one of each, on the main road either side of the high street
         int civic = 0;
+        boolean highDrawn = drawn(RoadPlan.District.HIGH_STREET);
         for (Map.Entry<RoadPlan.Segment, Street> e : streetOf.entrySet()) {
             Curve c = full.curves.get(e.getKey().id);
-            for (int side = -1; side <= 1 && c != null && e.getValue() == spine && town.civic; side += 2) {
+            for (int side = -1; side <= 1 && c != null && (e.getValue() == spine || highDrawn && e.getValue().level >= 0) && town.civic; side += 2) {
                 for (int i = 0; i < c.n && civic < SiteLayout.CIVIC_UNITS.size(); i += 4) {
                     double f = (startOf.get(e.getKey()) + c.s(i)) / spine.length();
-                    if (town.highStreet ? f > 0.1 && f <= 0.25 || f >= 0.75 && f < 0.9 : f > 0.4 && f < 0.6) {
+                    if (highDrawn ? highEdge(c.x[i], c.z[i]) : town.highStreet ? f > 0.1 && f <= 0.25 || f >= 0.75 && f < 0.9 : f > 0.4 && f < 0.6) {
                         double lx = c.leftX(i) * side, lz = c.leftZ(i) * side, off = e.getKey().style.halfOuter() + 1;
                         if (plot(RoadPlan.SiteType.CIVIC, SiteLayout.CIVIC_UNITS.get(civic), c.x[i] + lx * off, c.z[i] + lz * off, front(lx, lz))) {
                             civic++;
@@ -979,8 +1010,8 @@ final class WindingTown {
         for (Map.Entry<RoadPlan.Segment, Street> e : streetOf.entrySet()) {
             RoadPlan.Segment seg = e.getKey();
             Curve c = full.curves.get(seg.id);
-            if (c == null) {
-                continue;
+            if (c == null || e.getValue().level < 0) {
+                continue;                                    // (nothing along a dual carriageway)
             }
             for (int side = -1; side <= 1; side += 2) {
                 int run = -1;
@@ -997,7 +1028,7 @@ final class WindingTown {
                     if (!square && i < c.n && i % 4 == 0) {
                         double lx = c.leftX(i) * side, lz = c.leftZ(i) * side, off = seg.style.halfOuter() + 1;
                         double px = c.x[i] + lx * off, pz = c.z[i] + lz * off;
-                        RoadPlan.SiteType type = typeAt(e.getValue(), seg, c, i, px, pz);
+                        RoadPlan.SiteType type = typeAt(e.getValue(), seg, c, i, px + lx * 12, pz + lz * 12);
                         List<String> units = SiteLayout.units(type);
                         int first = rand.nextInt(units.size());
                         for (int k = 0; k < units.size() && !plot(type, units.get(Math.floorMod(first + k, units.size())), px, pz, front(lx, lz)); k++) {
@@ -1009,6 +1040,21 @@ final class WindingTown {
         }
     }
 
+    /** In a drawn high street, near its edge: where its church, pub and surgery go. */
+    private boolean highEdge(double x, double z) {
+        RoadPlan.Site d = districtAt(x, z);
+        if (d == null || d.district != RoadPlan.District.HIGH_STREET) {
+            return false;
+        }
+        for (double[] o : new double[][]{{30, 0}, {-30, 0}, {0, 30}, {0, -30}}) {
+            RoadPlan.Site e = districtAt(x + o[0], z + o[1]);
+            if (e == null || e.district != RoadPlan.District.HIGH_STREET) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Which way a building faces the road it's beside, from the way out from the road to it: 0 south, 1 west, 2 north, 3 east. */
     private static int front(double lx, double lz) {
         return Math.abs(lx) > Math.abs(lz) ? (lx > 0 ? 1 : 3) : (lz > 0 ? 2 : 0);
@@ -1016,9 +1062,158 @@ final class WindingTown {
 
     /** What goes beside a street at sample i: shops along the middle of the high street, houses everywhere else. */
     private RoadPlan.SiteType typeAt(Street st, RoadPlan.Segment seg, Curve c, int i, double px, double pz) {
+        RoadPlan.Site d = districtAt(px, pz);
+        if (d != null && d.district == RoadPlan.District.HIGH_STREET) {
+            return RoadPlan.SiteType.PARADE;
+        }
+        if (d != null && d.district == RoadPlan.District.HOUSES) {
+            return TownLayout.houses(d, ring(px, pz));
+        }
         double f = (startOf.get(seg) + c.s(i)) / spine.length();
-        return st == spine && town.highStreet && f > 0.25 && f < 0.75 ? RoadPlan.SiteType.PARADE
+        return st == spine && town.highStreet && !drawn(RoadPlan.District.HIGH_STREET) && f > 0.25 && f < 0.75 ? RoadPlan.SiteType.PARADE
                 : TownLayout.houses(town, st == spine ? 1 : ring(px, pz));
+    }
+
+    // ------------------------------------------------------------------ districts
+
+    /** The district drawn over (x, z), or null. */
+    private RoadPlan.Site districtAt(double x, double z) {
+        for (RoadPlan.Site d : districts) {
+            if (d.inOutline(x, z)) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    /** Whether a district of this kind is drawn over the town. */
+    private boolean drawn(RoadPlan.District kind) {
+        return districts.stream().anyMatch(d -> d.district == kind);
+    }
+
+    /** Where across the town the main road goes at a: the middle of a main road district there, or NaN for none. */
+    private double target(double a) {
+        double sum = 0;
+        int n = 0;
+        for (double cc = 0; cc <= wide; cc += 2) {
+            RoadPlan.Site d = districtAt(wx(a, cc), wz(a, cc));
+            if (d != null && d.district == RoadPlan.District.MAIN_ROAD) {
+                sum += cc;
+                n++;
+            }
+        }
+        return n == 0 ? Double.NaN : sum / n;
+    }
+
+    /**
+     * The first street a straight way from (x, z) heading (dx, dz) meets square on (within `max`),
+     * with room for a junction there: {street index, how far along it, how far away}; or null.
+     */
+    private double[] meets(double x, double z, double dx, double dz, double max) {
+        double[] best = null;
+        for (int k = 0; k < all.size(); k++) {
+            Street st = all.get(k);
+            double run = 0;
+            for (int i = 0; i + 1 < st.pts.size(); i++) {
+                Pt p = st.pts.get(i), q = st.pts.get(i + 1);
+                double ex = q.x - p.x, ez = q.z - p.z, l = Math.hypot(ex, ez), den = dx * ez - dz * ex;
+                if (l > 1e-6 && Math.abs(den) / l > 0.999) {          // square on
+                    double u = ((p.x - x) * ez - (p.z - z) * ex) / den, f = ((p.x - x) * dz - (p.z - z) * dx) / den;
+                    if (u > 1 && u <= max && f >= 0 && f <= 1 && (best == null || u < best[2]) && room(st, run + f * l, false)) {
+                        best = new double[]{k, run + f * l, u};
+                    }
+                }
+                run += l;
+            }
+        }
+        return best;
+    }
+
+    /** A straight road from the street `hit` meets (see meets) to (x, z), where it ends (ready to go on, or a site's way in). */
+    private Pt link(double[] hit, double x, double z, String name) {
+        Street from = all.get((int) hit[0]);
+        Street st = new Street(res, Math.max(2, from.level + 1));
+        st.name = name;
+        st.pts.add(join(from, hit[1]));
+        Pt end = new Pt(x, z);
+        end.out = true;
+        st.pts.add(end);
+        all.add(st);
+        return end;
+    }
+
+    /** A shopping district: a retail park over it, with a road in from the nearest street, straight and square to it. */
+    private void shopping(RoadPlan.Site d) {
+        int x0 = Math.max(d.x0, town.x0), z0 = Math.max(d.z0, town.z0), x1 = Math.min(d.x1, town.x1), z1 = Math.min(d.z1, town.z1);
+        if (x1 - x0 < 40 || z1 - z0 < 40) {
+            return;
+        }
+        // the way in: from the middle of one side (or near it), whichever meets a street soonest
+        double[] best = null;
+        int bestSide = -1;
+        double bx = 0, bz = 0;
+        for (int side = 0; side < 4; side++) {
+            boolean ew = side % 2 == 0;                       // 0 south, 1 west, 2 north, 3 east (a site's front)
+            int len = ew ? x1 - x0 : z1 - z0;
+            for (int off = 0; off <= len / 3; off = off <= 0 ? -off + 6 : -off) {
+                double ex = ew ? (x0 + x1 + 1) / 2.0 + off : side == 1 ? x0 : x1 + 1;
+                double ez = ew ? (side == 0 ? z1 + 1 : z0) : (z0 + z1 + 1) / 2.0 + off;
+                double dx = side == 1 ? -1 : side == 3 ? 1 : 0, dz = side == 0 ? 1 : side == 2 ? -1 : 0;
+                double[] hit = meets(ex, ez, dx, dz, 160);
+                if (hit != null && (best == null || hit[2] < best[2])) {
+                    best = hit;
+                    bestSide = side;
+                    bx = ex;
+                    bz = ez;
+                }
+                if (hit != null) {
+                    break;
+                }
+            }
+        }
+        if (best == null) {
+            return;
+        }
+        link(best, bx, bz, StreetNames.pick(rand, names)).junction = true;
+        RoadPlan.Site park = plan.addSite(RoadPlan.SiteType.RETAIL_PARK, x0, z0, x1, z1);
+        park.front = bestSide;
+        park.brand = rand.nextInt(16);
+        plots++;
+    }
+
+    /**
+     * A motorway junction district: a dual carriageway the long way across it, edge to edge (ready
+     * to carry on out of town), with a roundabout in the middle and a road from it straight to the
+     * nearest street of the town.
+     */
+    private void junction(RoadPlan.Site d) {
+        boolean alongX = d.width() >= d.depth();
+        double mx = (d.x0 + d.x1 + 1) / 2.0, mz = (d.z0 + d.z1 + 1) / 2.0;
+        Street dual = new Street(RoadStyle.dualCarriageway(), -1);
+        dual.name = "A" + (10 + rand.nextInt(80));
+        Pt a = new Pt(alongX ? d.x0 + 2 : mx, alongX ? mz : d.z0 + 2), m = new Pt(mx, mz), b = new Pt(alongX ? d.x1 - 1 : mx, alongX ? mz : d.z1 - 1);
+        a.out = b.out = true;
+        m.junction = true;
+        // out to the sides of the district at the edge of town (ready to carry on); both if neither is
+        boolean ea = !inside(a.x, a.z, 8), eb = !inside(b.x, b.z, 8);
+        dual.pts.addAll(ea == eb ? List.of(a, m, b) : ea ? List.of(a, m) : List.of(m, b));
+        all.add(dual);
+        roundabouts.add(m);
+        // the road into town: off the roundabout square to the dual carriageway, towards the middle of town, to the first street
+        double cx = wx(len / 2, wide / 2), cz = wz(len / 2, wide / 2);
+        double dx = alongX ? 0 : Math.signum(cx - mx), dz = alongX ? Math.signum(cz - mz) : 0;
+        if (dx == 0 && dz == 0) {
+            dz = 1;
+        }
+        double[] hit = meets(mx, mz, dx, dz, 400);
+        if (hit != null) {
+            Street from = all.get((int) hit[0]);
+            Street st = new Street(TownLayout.kerbed(RoadStyle.mainRoad(), town), 1);
+            st.name = StreetNames.pick(rand, names);
+            st.pts.add(m);
+            st.pts.add(join(from, hit[1]));
+            all.add(st);
+        }
     }
 
     /**
@@ -1037,7 +1232,7 @@ final class WindingTown {
         RoadPlan.SiteType[] types = new RoadPlan.SiteType[a1 - a0 + 1];
         for (int a = a0; a <= a1; a++) {
             int i = i0 + (int) Math.round((double) (a - a0) / Math.max(1, a1 - a0) * (i1 - i0));
-            types[a - a0] = typeAt(st, seg, c, i, alongX ? a : line, alongX ? line : a);
+            types[a - a0] = typeAt(st, seg, c, i, alongX ? a : line + out * 12, alongX ? line + out * 12 : a);   // (by the middle of the plot)
         }
         // how far back: the first line behind the pavement where most of the row is free (deep enough for its shallowest)
         int best = -1, bestFree = 0;
@@ -1065,7 +1260,9 @@ final class WindingTown {
             while (b + 1 <= a1 && types[b + 1 - a0] == type && column(b + 1, near, out, shallowest(type), alongX)) {
                 b++;
             }
-            if (b - a + 1 < shortest(type) && type != RoadPlan.SiteType.PARADE && b - a + 1 >= shortest(RoadPlan.SiteType.TERRACES)) {
+            RoadPlan.Site in = districtAt(alongX ? (a + b) / 2.0 : line + out * 12, alongX ? line + out * 12 : (a + b) / 2.0);
+            boolean mix = (in != null && in.district == RoadPlan.District.HOUSES ? in.houses : town.houses) == 3;
+            if (mix && b - a + 1 < shortest(type) && type != RoadPlan.SiteType.PARADE && b - a + 1 >= shortest(RoadPlan.SiteType.TERRACES)) {
                 type = RoadPlan.SiteType.TERRACES;
             }
             // as deep as the whole stretch is free, up to its deepest building (the row takes the ones that fit)

@@ -169,6 +169,69 @@ public final class UkSiteGameTests {
     }
 
     /**
+     * Districts drawn over a town before it's laid out: shops only along the high street's streets,
+     * only detached houses in a district of them, nothing in the park, a retail park with a way in
+     * in the shopping district, and a dual carriageway with a roundabout (joined to the town's
+     * streets) in the motorway junction; and the main road through a main road district drawn off
+     * to one side of a town.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void districtsSayWhatGoesWhere(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 759, 519);
+        RoadPlan.Site high = district(plan, RoadPlan.District.HIGH_STREET, 250, 170, 470, 330);
+        RoadPlan.Site park = district(plan, RoadPlan.District.PARK, 500, 20, 640, 140);
+        RoadPlan.Site shops = district(plan, RoadPlan.District.SHOPPING, 520, 380, 690, 500);
+        RoadPlan.Site junction = district(plan, RoadPlan.District.JUNCTION, 0, 380, 200, 519);
+        RoadPlan.Site houses = district(plan, RoadPlan.District.HOUSES, 0, 0, 200, 200);
+        houses.houses = 2;
+        String said = com.ptmuk.road.layout.TownLayout.layOut(plan, town, net.minecraft.util.RandomSource.create(1));
+        helper.assertTrue(said.startsWith("Laid out"), said);
+        long inHigh = 0;
+        for (RoadPlan.Site st : plan.sites) {
+            double cx = (st.x0 + st.x1 + 1) / 2.0, cz = (st.z0 + st.z1 + 1) / 2.0;
+            if (!st.type.ground()) {
+                continue;
+            }
+            if (high.contains(st.x0, st.z0) && high.contains(st.x1, st.z1)) {         // (one across its edge can be either)
+                helper.assertTrue(st.type == RoadPlan.SiteType.PARADE || st.type == RoadPlan.SiteType.CIVIC, "a " + st.type + " in the high street at " + st.x0 + "," + st.z0 + "-" + st.x1 + "," + st.z1 + " front " + st.front);
+                inHigh += st.type == RoadPlan.SiteType.PARADE ? 1 : 0;
+            }
+            helper.assertTrue(!(houses.contains(st.x0, st.z0) && houses.contains(st.x1, st.z1)) || st.type == RoadPlan.SiteType.DETACHED,
+                    "a " + st.type + " among the detached houses");
+            helper.assertTrue(st.x1 < park.x0 || st.x0 > park.x1 || st.z1 < park.z0 || st.z0 > park.z1, "a " + st.type + " in the park");
+        }
+        helper.assertTrue(inHigh >= 4, "only " + inHigh + " shop parades in the high street");
+        RoadPlan.Site retail = plan.sites.stream().filter(st -> st.type == RoadPlan.SiteType.RETAIL_PARK).findFirst().orElse(null);
+        helper.assertTrue(retail != null && shops.contains(retail.x0, retail.z0), "no retail park in the shopping district");
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        SiteLayout rp = l.sites.stream().filter(sl -> sl.site == retail).findFirst().orElse(null);
+        helper.assertTrue(rp != null && rp.bayCount() > 20 && rp.warning == null, "the retail park has no way in: " + (rp == null ? "-" : rp.warning));
+        RoadPlan.Node ring = plan.nodes.stream().filter(n -> n.junction == RoadPlan.Junction.ROUNDABOUT && junction.contains(n.x, n.z)).findFirst().orElse(null);
+        helper.assertTrue(ring != null && plan.segmentsAt(ring.id).size() >= 2, "no roundabout in the motorway junction");
+        helper.assertTrue(plan.segmentsAt(ring.id).stream().anyMatch(sg -> sg.style.dual), "no dual carriageway at the roundabout");
+        helper.assertTrue(plan.segmentsAt(ring.id).stream().anyMatch(sg -> !sg.style.dual), "the roundabout isn't joined to the town");
+        // a main road district along the top of a town: the main road runs through it
+        RoadPlan plan2 = new RoadPlan();
+        RoadPlan.Site town2 = plan2.addSite(RoadPlan.SiteType.TOWN, 0, 0, 599, 399);
+        RoadPlan.Site main = district(plan2, RoadPlan.District.MAIN_ROAD, 0, 40, 599, 110);
+        com.ptmuk.road.layout.TownLayout.layOut(plan2, town2, net.minecraft.util.RandomSource.create(2));
+        long through = plan2.segments.stream().filter(sg -> "High Street".equals(sg.name)).filter(sg -> {
+            RoadPlan.Node a = plan2.node(sg.a);
+            return main.contains(a.x, a.z);
+        }).count();
+        long all = plan2.segments.stream().filter(sg -> "High Street".equals(sg.name)).count();
+        helper.assertTrue(all > 0 && through >= all * 0.6, "the main road should run through its district: " + through + " of " + all);
+        helper.succeed();
+    }
+
+    private static RoadPlan.Site district(RoadPlan plan, RoadPlan.District kind, int x0, int z0, int x1, int z1) {
+        RoadPlan.Site d = plan.addSite(RoadPlan.SiteType.DISTRICT, x0, z0, x1, z1);
+        d.district = kind;
+        return d;
+    }
+
+    /**
      * A town drawn as an L: everything in it inside the L (no building, street or pavement out in
      * the corner it leaves, only the usual slope of ground at the edge), streets out into both arms,
      * and a shape too thin for a town says so and is left as it was.

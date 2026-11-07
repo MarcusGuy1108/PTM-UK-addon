@@ -75,7 +75,9 @@ public final class RoadPlan {
         /** Grass level with the roads and buildings round it, filling whatever they leave. */
         GREEN("Green space"),
         /** Left as it is: a town lays nothing out here and the builder doesn't touch the ground. */
-        KEEP_CLEAR("Keep clear");
+        KEEP_CLEAR("Keep clear"),
+        /** Not built itself: a part of a town drawn before it's laid out, saying what goes there (District). */
+        DISTRICT("District");
 
         public final String title;
 
@@ -85,7 +87,34 @@ public final class RoadPlan {
 
         /** Laid out on the ground itself (a road ending at it meets it level); not a town, green or area kept clear. */
         public boolean ground() {
-            return this != TOWN && this != GREEN && this != KEEP_CLEAR;
+            return this != TOWN && this != GREEN && this != KEEP_CLEAR && this != DISTRICT;
+        }
+    }
+
+    /** What a district of a town is (a District site over it, drawn before the town is laid out). */
+    public enum District {
+        /** Shops along all its streets (high street style), a church, pub and surgery at its ends. */
+        HIGH_STREET("High street"),
+        /** Houses only (which, the site's houses). */
+        HOUSES("Houses"),
+        /** The town's main road runs through it; its own streets are main roads. */
+        MAIN_ROAD("Main road"),
+        /** A retail park and its car park, with a road in. */
+        SHOPPING("Shopping"),
+        /** Grass and trees: no streets or buildings. */
+        PARK("Park"),
+        /** A dual carriageway across it (ready to carry on out of town) with a roundabout the town's roads join. */
+        JUNCTION("Motorway junction");
+
+        public final String title;
+
+        District(String title) {
+            this.title = title;
+        }
+
+        /** Streets keep out of it (it's one thing laid out on its own, or nothing). */
+        public boolean whole() {
+            return this == SHOPPING || this == PARK || this == JUNCTION;
         }
     }
 
@@ -115,6 +144,8 @@ public final class RoadPlan {
         public int houses = 3;
         /** Town: kerbs on its roads, and winding streets (else a grid). */
         public boolean kerbs = true, winding = true;
+        /** District: what this part of the town is. */
+        public District district = District.HIGH_STREET;
         /** A town drawn as an outline: its corners as x, z, x, z... (the site's box is round it); null for the box itself. */
         public int[] outline;
         public boolean built;

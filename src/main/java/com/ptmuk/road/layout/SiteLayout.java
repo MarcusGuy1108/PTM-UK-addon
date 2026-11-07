@@ -109,7 +109,7 @@ public final class SiteLayout {
             case DRIVE_THRU -> driveThru();
             case PARADE, TERRACES, SEMIS, DETACHED, CIVIC -> row(units(site.type));
             case TOWN -> warning = "Choose what the town has, then Lay out the town";
-            case GREEN, KEEP_CLEAR -> {
+            case GREEN, KEEP_CLEAR, DISTRICT -> {
                 fill(0, 0, w - 1, d - 1, T_GREEN);
                 finish();
                 return;
