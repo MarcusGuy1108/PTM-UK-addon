@@ -283,14 +283,23 @@ def arts_and_crafts(ident="arts_and_crafts_house", name="Edwardian Arts & Crafts
     P.kitchen_run(b, 11, 15, 1, 14, facing="front")
     P.table(b, 7, 1, 13)
     P.bookcase(b, 4, 1, 14)
+    # upstairs: a landing from the top of the stairs (v 9, then u 11) with a door into each room
     b.fill(10, 5, 6, 10, 7, 14, PLASTER)
     b.fill(4, 5, 10, 9, 7, 10, PLASTER)
-    for (u, v) in ((10, 8), (10, 12)):
-        opening(b, u, 5, v, u, 6, v)
+    b.fill(11, 5, 8, 15, 7, 8, PLASTER)                    # bathroom at the front
+    b.fill(15, 5, 6, 15, 7, 7, PLASTER)                    # beside the stairwell
+    b.fill(12, 5, 10, 16, 7, 10, PLASTER)                  # back bedroom
+    b.fill(12, 5, 11, 12, 7, 11, PLASTER)
+    b.fill(11, 5, 12, 11, 7, 12, PLASTER)
+    b.door(10, 5, 9, "oak", facing="left", hinge="left")
+    b.door(10, 5, 11, "oak", facing="left", hinge="right")
+    b.door(13, 5, 8, "oak", facing="front", hinge="left")
+    b.door(12, 5, 11, "oak", facing="right", hinge="left")
     P.bed(b, 6, 5, 6, "white", "front")
     P.bed(b, 6, 5, 14, "light_blue", "back")
     P.bed(b, 13, 5, 14, "red", "back")
     P.bath(b, 12, 14, 5, 6)
+    b.set(11, 5, 7, home("toilet", facing="east", lit=False))
     P.wardrobe(b, 8, 5, 6)
     # garden: terrace, lawn, pergola, apple tree, rose bed, fence
     P.paving(b, 4, 16, 16, 17, "mossy_stone_bricks")
@@ -378,16 +387,26 @@ def executive_house(ident="executive_house", name="Executive Detached House"):
     P.table(b, 6, 1, 15)
     b.set(5, 1, 14, stairs("oak", "front"))
     b.set(6, 1, 16, stairs("oak", "back"))
-    # upstairs: bedrooms either side of the landing, bathroom
+    # upstairs: a landing from the top of the stairs (u 9-10, v 11-14) with a door to each bedroom and the
+    # bathroom (back middle)
     b.fill(8, 5, 8, 8, 7, 17, PLASTER)
-    b.fill(3, 5, 12, 14, 7, 12, PLASTER)
-    for (u, v) in ((8, 10), (8, 14), (11, 12)):
-        opening(b, u, 5, v, u, 6, v)
+    b.fill(3, 5, 12, 7, 7, 12, PLASTER)
+    b.fill(11, 5, 12, 14, 7, 12, PLASTER)
+    b.fill(10, 5, 8, 10, 7, 10, PLASTER)                   # beside the stairwell
+    b.fill(9, 5, 15, 11, 7, 15, PLASTER)                   # bathroom
+    b.fill(12, 5, 16, 12, 7, 17, PLASTER)
+    b.fill(11, 5, 13, 11, 7, 14, PLASTER)                  # back bedroom
+    b.door(8, 5, 11, "oak", facing="left", hinge="left")
+    b.door(8, 5, 14, "oak", facing="left", hinge="right")
+    b.door(10, 5, 11, "oak", facing="right", hinge="left")
+    b.door(10, 5, 15, "oak", facing="back", hinge="left")
+    b.door(11, 5, 13, "oak", facing="right", hinge="right")
     P.bed(b, 4, 5, 8, "white", "front")
     P.bed(b, 12, 5, 8, "light_gray", "front")
     P.bed(b, 4, 5, 17, "blue", "back")
-    P.bed(b, 12, 5, 17, "lime", "back")
-    P.bath(b, 9, 10, 5, 17)
+    P.bed(b, 13, 5, 17, "lime", "back")
+    P.bath(b, 9, 11, 5, 17)
+    b.set(11, 5, 16, home("toilet", facing="west", lit=False))
     # garden
     P.paving(b, 2, 19, 15, 21, "ptmuk:paving_slabs")
     b.fill(0, 1, 19, 0, 2, D - 1, B("spruce_fence"))
@@ -398,7 +417,8 @@ def executive_house(ident="executive_house", name="Executive Detached House"):
     bench(b, 6, 21, "back")
     b.set(23, 1, 16, B("ptmuk:wheelie_bin_grey", facing="west"))
     b.set(23, 1, 17, B("ptmuk:wheelie_bin_blue", facing="west"))
-    lights(b, [(4, 3, 9), (12, 3, 9), (5, 3, 15), (11, 3, 15), (4, 7, 9), (12, 7, 9), (4, 7, 15), (12, 7, 15), (19, 3, 10)])
+    lights(b, [(4, 3, 9), (12, 3, 9), (5, 3, 15), (11, 3, 15), (4, 7, 9), (12, 7, 9), (4, 7, 15), (13, 7, 14), (19, 3, 10),
+               (10, 7, 16), (9, 7, 13)])
     return b
 
 
@@ -476,20 +496,28 @@ def tudorbethan_detached(ident="thirties_detached", name="1930s Detached House (
     P.rug(b, 4, 5, 6, 8, 1, "green")
     P.kitchen_run(b, 11, 13, 1, 14, facing="front")
     P.table(b, 5, 1, 12)
+    # upstairs: a landing round the stairwell (u 10, v 8-14) with a door to each bedroom and the bathroom
     b.fill(8, 5, 6, 8, 7, 14, PLASTER)
     b.fill(3, 5, 10, 7, 7, 10, PLASTER)
-    for (u, v) in ((8, 8), (8, 12)):
-        opening(b, u, 5, v, u, 6, v)
+    b.fill(11, 5, 8, 11, 7, 14, PLASTER)
+    b.fill(12, 5, 11, 13, 7, 11, PLASTER)                  # bathroom
+    b.fill(9, 5, 7, 10, 7, 7, PLASTER)                     # front bedroom
+    b.door(8, 5, 8, "oak", facing="left", hinge="left")
+    b.door(8, 5, 12, "oak", facing="left", hinge="right")
+    b.door(10, 5, 7, "oak", facing="front", hinge="left")
+    b.door(11, 5, 13, "oak", facing="right", hinge="left")
     P.bed(b, 5, 5, 6, "white", "front")
     P.bed(b, 5, 5, 14, "pink", "back")
-    P.bed(b, 12, 5, 6, "light_blue", "front")
-    P.bath(b, 11, 13, 5, 14)
+    P.bed(b, 13, 5, 10, "light_blue", "back")
+    P.bath(b, 12, 13, 5, 14)
+    b.set(13, 5, 12, home("toilet", facing="west", lit=False))
+    b.set(12, 5, 12, home("basin", facing="north", lit=False))
     b.fill(0, 1, 16, 0, 1, D - 1, B("oak_fence"))
     b.fill(W - 1, 1, 15, W - 1, 1, D - 1, B("oak_fence"))
     b.fill(0, 1, D - 1, W - 1, 1, D - 1, B("oak_fence"))
     P.tree(b, 15, 21, h=3, r=2)
     b.set(14, 1, 16, B("ptmuk:wheelie_bin_black", facing="west"))
-    lights(b, [(5, 3, 7), (5, 3, 12), (11, 3, 8), (11, 3, 12), (5, 7, 8), (5, 7, 12), (11, 7, 8), (11, 7, 12)])
+    lights(b, [(5, 3, 7), (5, 3, 12), (11, 3, 8), (11, 3, 12), (5, 7, 8), (5, 7, 12), (12, 7, 8), (12, 7, 13), (10, 7, 10)])
     return b
 
 
@@ -881,8 +909,18 @@ def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Bloc
             b.side_window(i1 + 1, y + 1, v, 1, 2, win)
         lights(b, [(5, y + 3, 6), (31, y + 3, 6), (5, y + 3, 28), (31, y + 3, 28), (18, y + 3, 6), (18, y + 3, 28),
                    (5, y + 3, 17), (31, y + 3, 17)], level=11)
-    for u in range(o0 + 2, o1 - 1, 3):
+    for u in range(o0 + 2, o1 - 1, 3):                     # the ground-floor flats' windows, all round
         b.window(u, 1, p0, 1, 2, win)
+        b.window(u, 1, p1, 1, 2, win)
+    for v in range(p0 + 2, p1 - 1, 3):
+        b.side_window(o0, 1, v, 1, 2, win)
+        b.side_window(o1, 1, v, 1, 2, win)
+    for u in range(i0, i1 + 1, 3):
+        b.window(u, 1, q0 - 1, 1, 2, win)
+        b.window(u, 1, q1 + 1, 1, 2, win)
+    for v in range(q0, q1 + 1, 3):
+        b.side_window(i0 - 1, 1, v, 1, 2, win)
+        b.side_window(i1 + 1, 1, v, 1, 2, win)
     # archway through the front range into the courtyard, with gates
     opening(b, 16, 1, p0, 20, 3, q0 - 1)
     b.fill(15, 1, p0, 15, 3, q0 - 1, brick)               # the passage has walls of its own,

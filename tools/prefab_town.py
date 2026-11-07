@@ -161,7 +161,9 @@ def dining(b, u0, u1, v0, v1, every=3, chair="dark_oak", y=1):
     """Tables for two with a chair either side, in rows across a dining room (a clear row
     between them)."""
     for v in range(v0, v1 + 1, 2):
-        for x in range(u0 + 1, u1, every):
+        # a row from wall to wall would shut the clear row behind it in: stop it a table short
+        walled = all(b.inside(u, y, v) and b.get(u, y, v).name != "minecraft:air" for u in (u0 - 1, u1 + 1))
+        for x in range(u0 + 1, u1 - 1 if walled else u1, every):
             P.table(b, x, y, v)
             b.set(x - 1, y, v, stairs(chair, "left"))
             b.set(x + 1, y, v, stairs(chair, "right"))

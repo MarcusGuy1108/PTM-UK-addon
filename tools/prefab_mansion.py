@@ -359,9 +359,12 @@ def mansion(ident="country_mansion", name="Country Mansion with Pool & Coach Hou
     home(b, "washing_machine", 31, 1, 22, "north")
     home(b, "kitchen_sink_white", 32, 1, 22, "north")
     home(b, "kitchen_unit_white", 33, 1, 22, "north")
-    home(b, "toilet", 36, 1, 22, "west")
-    home(b, "basin", 36, 1, 26, "west")
-    tall(b, "wardrobe_oak", 30, 1, 26, "south")
+    b.fill(30, 1, 24, 32, 3, 24, PLASTER)                            # the cloakroom in the back corner
+    b.fill(32, 1, 25, 32, 3, 26, PLASTER)
+    door(b, 31, 1, 24, "back", "oak")
+    home(b, "toilet", 30, 1, 26, "east")
+    home(b, "basin", 30, 1, 25, "east")
+    tall(b, "wardrobe_oak", 36, 1, 26, "west")
 
     # ------------------------------------------------------------ first floor
     # master bedroom: a double bed, bedside tables and lamps, wardrobes, a little sofa
@@ -484,9 +487,12 @@ def mansion(ident="country_mansion", name="Country Mansion with Pool & Coach Hou
     door(b, hx0, 1, 54, "left", "birch")
     b.fill(hx0 + 1, 4, hz0 + 1, hx1 - 1, 4, hz1 - 1, "spruce_planks")
     b.hipped_roof(hx0 - 1, hx1 + 1, hz0 - 1, hz1 + 1, 5, CLAY)
-    tall(b, "shower", hx1 - 1, 1, hz0 + 1, "west")
-    home(b, "toilet", hx1 - 1, 1, hz1 - 1, "west")
-    home(b, "basin", hx1 - 1, 1, 54, "west")
+    b.fill(hx1 - 3, 1, hz1 - 4, hx1 - 1, 3, hz1 - 4, PLASTER)     # a shower room in the back corner
+    b.fill(hx1 - 3, 1, hz1 - 3, hx1 - 3, 3, hz1 - 1, PLASTER)
+    door(b, hx1 - 3, 1, hz1 - 2, "right", "birch")
+    tall(b, "shower", hx1 - 1, 1, hz1 - 1, "west")
+    home(b, "toilet", hx1 - 1, 1, hz1 - 3, "west")
+    home(b, "basin", hx1 - 2, 1, hz1 - 1, "south")
     home(b, "towel_radiator", hx0 + 2, 1, hz1 - 1, "south")
     home(b, "kitchen_sink_white", hx0 + 2, 1, hz0 + 1, "north")
     tall(b, "fridge_freezer", hx0 + 3, 1, hz0 + 1, "north")

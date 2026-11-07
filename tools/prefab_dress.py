@@ -46,6 +46,12 @@ EMPTY, FLAT = 40, 110
 BEDS = ("white_bed", "light_blue_bed", "blue_bed", "red_bed", "green_bed", "gray_bed")
 
 
+def _doors(g, r):
+    """How many doors open off a room (a hall or a landing has three or more)."""
+    return len({n for (u, y, v) in r.cells for du, dv in VEC.values()
+                if (blk := g.get(*(n := (u + du, y, v + dv)))) is not None and blk.name.endswith("_door")})
+
+
 def dress(b):
     if b.category == "Offices":
         offices(b)
@@ -58,7 +64,7 @@ def dress(b):
     pick = zlib.crc32(b.ident.encode())
     fitted = False
     for i, r in enumerate(rooms):
-        if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2):
+        if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2) and _doors(g, r) < 3:
             for j, part in enumerate(Dresser(b, g, out, r, pick + i).flats()):
                 Dresser(b, g, out, part, pick + i + j).fit_flat()
             fitted = True
@@ -553,8 +559,8 @@ class Dresser:
         """Cut a big empty floor into flats off a corridor from the stairs (see _corridor); a floor about
         one flat big is one flat. Returns the flats, as rooms."""
         cells = set(self.r.cells)
-        if len(cells) <= FLAT + 20:
-            return [self.r]
+        if len(cells) <= FLAT + 20 or _doors(self.g, self.r) == 1 and len(cells) <= 2 * FLAT + 60:
+            return [self.r]                                    # about a flat's worth, or behind its own front door
         done = self._corridor(cells)
         return done if done is not None else self.split(FLAT)
 
@@ -583,6 +589,8 @@ class Dresser:
             plan = self._try_corridor(cells, entries, r, A, S, at)
             if plan is not None:
                 corridor, walls, flats = plan
+                if len(flats["rooms"]) < 2:
+                    return [self.r]                            # a corridor to just one flat: the floor is the flat
                 for c in walls:
                     if c not in flats["doors"]:
                         self._partition(c)
@@ -693,8 +701,8 @@ class Dresser:
                 wall &= cells
                 if not rect <= self.free or rect & self.keep or not wall <= self.free or wall & self.keep:
                     continue
-                if not wall:
-                    continue
+                if not wall or any(not self._shut(n) for c in rect for n in self._nbrs(c) if n not in rect | wall):
+                    continue                                   # the corner isn't walled on its other sides
                 rest = self.free - rect - wall
                 if len(rest) < min_rest:
                     continue
@@ -726,6 +734,11 @@ class Dresser:
         self.free -= rect | wall
         self.keep.add(outer)                                   # the way to the door stays clear
         return Room(rect, y)
+
+    def _shut(self, c):
+        """Whether c is wall or glass (not floor, furniture or a doorway)."""
+        blk = self.g.get(*c)
+        return blk is not None and (pc.is_pane(blk) or pc.full_cube(blk))
 
     def fit_flat(self):
         """A flat: a bathroom and (room permitting) a bedroom walled off with doors, then a kitchen along a wall

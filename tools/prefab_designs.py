@@ -846,8 +846,8 @@ def landlords_flat(b):
     back by u 8): a living room and a bedroom at the front, a bathroom and a kitchen-diner behind."""
     y = 6
     b.fill(1, y, 6, 11, 9, 6, "calcite")                   # front rooms | back
-    b.fill(6, y, 6, 6, y + 1, 6, AIR)                     # past the end of the sofa
-    b.fill(9, y, 6, 9, y + 1, 6, AIR)
+    b.door(6, y, 6, "oak", facing="front", hinge="left")  # past the end of the sofa
+    b.door(9, y, 6, "oak", facing="front", hinge="right")
     b.fill(7, y, 2, 7, 9, 5, "calcite")                    # living room | bedroom
     # living room: a sofa against the partition facing a TV on the side wall
     P.sofa(b, 2, 4, y, 5, "back", "spruce")
@@ -857,11 +857,11 @@ def landlords_flat(b):
     b.set(10, y, 3, B("red_bed", facing="south", part="foot", occupied=False))
     b.set(8, y, 5, B("barrel", facing="south", open=False))
     b.set(8, y + 1, 5, "spruce_planks")
-    # bathroom in the back corner, through a doorway
+    # bathroom in the back corner
     b.fill(4, y, 7, 4, 9, 9, "calcite")
     b.fill(1, y, 10, 3, 9, 10, "calcite")
-    b.fill(4, y, 8, 4, y + 1, 8, AIR)
-    P.bath(b, 1, 2, y, 7)
+    b.door(4, y, 8, "oak", facing="left", hinge="left")
+    P.bath(b, 1, 3, y, 7)
     b.set(1, y, 9, B("quartz_stairs", facing="south", half="bottom", shape="straight", waterlogged=False))
     # kitchen-diner: units along the back wall, a table clear of the top of the stairs
     P.kitchen_run(b, 9, 11, y, 11, "front")
@@ -1160,11 +1160,37 @@ def tower_block(ident="tower_block", name="Council Tower Block (16 Storeys)", st
     b.fill(6, 1, 2, 10, 2, 2, P.pane("ptmuk:shop_window"))
     b.door(8, 1, 2, "birch", facing="back", hinge="left")
     b.fill(5, 3, 1, 11, 3, 1, slab("smooth_stone", "top"))
-    name_plate(b, 6, 10, 4, 1, house_name, f"Flats 1 - {storeys * 4}", 0xFFF2F0EA, 0xFF121214, False)
+    name_plate(b, 6, 10, 4, 1, house_name, f"Flats 1 - {storeys * 2}", 0xFFF2F0EA, 0xFF121214, False)
     b.set(1, 1, 1, B("ptmuk:communal_bin", facing="south"))
     b.set(15, 1, 1, B("ptmuk:communal_bin", facing="south"))
+    # a flat either side of the stairs on every floor (prefab_dress fits them out), the front doors off the
+    # entrance hall on the ground floor, and above off the landing the stairs come up to: the back one on
+    # odd floors, the front one on even floors
+    for k, y in enumerate(floors[:-1]):
+        f = y + 1
+        if k == 0:
+            b.fill(5, f, 3, 5, f + 2, 14, "calcite")
+            b.fill(10, f, 3, 10, f + 2, 14, "calcite")
+            b.fill(6, f, 9, 6, f + 2, 14, "calcite")
+            b.fill(9, f, 9, 9, f + 2, 14, "calcite")
+            b.door(5, f, 5, "birch", facing="left", hinge="left")
+            b.door(10, f, 5, "birch", facing="right", hinge="right")
+            continue
+        b.fill(6, f, 7, 6, f + 2, 14, "calcite")
+        b.fill(9, f, 7, 9, f + 2, 14, "calcite")
+        b.fill(7, f, 7, 8, f + 2, 7, "calcite")
+        b.fill(8, f, 3, 8, f + 2, 6, "calcite")
+        landing = 13 if k % 2 else 8
+        b.door(6, f, landing, "birch", facing="left", hinge="left")
+        b.door(9, f, landing, "birch", facing="right", hinge="right")
     # core and roof
     P.stair_core(b, 7, 8, floors[:-1], material="stone_brick")
+    for k, y in enumerate(floors[:-1]):                    # the landing a floor's stairs don't use: shut in, fill it
+        for v in ((13, 14) if k % 2 == 0 else (8,)):
+            for u in (7, 8):
+                for yy in range(y + 1, y + 4):
+                    if b.get(u, yy, v).name == "minecraft:air":
+                        b.set(u, yy, v, "stone_bricks")
     P.flat_roof(b, 0, W - 1, 2, 15, top, deck="gray_concrete", parapet="light_gray_concrete", coping="smooth_stone")
     b.fill(6, top + 1, 7, 10, top + 3, 12, "light_gray_concrete")
     b.fill(7, top + 4, 8, 9, top + 4, 11, slab("smooth_stone"))

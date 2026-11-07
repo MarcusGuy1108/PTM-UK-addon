@@ -315,12 +315,23 @@ def estate_pub(ident="estate_pub", name="1960s Estate Pub"):
     dining(b, 11, 18, 18, 20)
     P.rug(b, 3, 15, 18, 22, 1, "red")
     ceiling_lights(b, 3, 15, 18, 26, 4, step=3)
-    # stairs at the back right to the landlord's flat
+    # stairs at the back right to the landlord's flat: a hall across the middle, the living room and the
+    # kitchen at the front where the windows are, the bedroom and the bathroom at the back
     P.dogleg_stairs(b, 16, 22, [0, 4], "oak")
+    b.fill(3, 5, 20, 18, 7, 20, "calcite")
+    b.fill(3, 5, 22, 15, 7, 22, "calcite")
+    b.fill(11, 5, 15, 11, 7, 19, "calcite")
+    b.fill(9, 5, 23, 9, 7, 26, "calcite")
+    b.fill(15, 5, 23, 15, 7, 26, "calcite")
+    b.fill(18, 5, 22, 18, 7, 26, "calcite")                # beside the stairs
+    for u, v, f in ((8, 20, "front"), (12, 20, "front"), (6, 22, "back"), (12, 22, "back")):
+        b.door(u, 5, v, "oak", facing=f, hinge="left")
     P.sofa(b, 3, 4, 5, 15, "front", "spruce")
-    P.kitchen_run(b, 3, 6, 5, 26, "front")
-    P.bed(b, 10, 5, 26, "white", "back")
-    P.table(b, 8, 5, 19)
+    P.kitchen_run(b, 13, 17, 5, 19, "front")
+    P.table(b, 15, 5, 16)
+    P.bed(b, 5, 5, 26, "white", "back")
+    P.bath(b, 10, 12, 5, 26)
+    fit(b, "toilet", 14, 5, 26, "front")
     b.light_grid(3, 15, 18, 26, 7, step=3, level=12)
     return b
 
@@ -528,10 +539,14 @@ def grand_hotel(ident="grand_hotel", name="Grand Victorian Hotel"):
     ceiling_lights(b, 1, v0 + 1, W - 2, v1 - 1, 4, step=3)
     for k in range(1, 6):
         y = STOREY * k + 1
-        hotel_floor(b, 1, 10, y, (v0, 12), (v1, 15), (13, 14), colour="white")
+        hotel_floor(b, 1, 9, y, (v0, 12), (v1, 15), (13, 14), colour="white")
         hotel_floor(b, 15, W - 2, y, (v0, 12), (v1, 15), (13, 14), colour="white")
-        b.fill(11, y, 12, 14, y + 2, 12, "calcite")
-        b.fill(11, y, 15, 14, y + 2, 15, AIR)
+        for u in (10, 14):                                 # the rooms' walls either side of the stairs
+            b.fill(u, y, v0 + 1, u, y + 2, 12, "calcite")
+            b.fill(u, y, 15, u, y + 2, v1 - 1, "calcite")
+        b.fill(11, y, 12, 13, y + 2, 12, "calcite")
+        guest_room(b, 11, 13, v0, 12, y, "white")          # a single room over the stairs at the front
+        b.fill(11, y, 15, 13, y + 2, 15, AIR)
         b.light_grid(11, 13, 14, 17, y + 2, step=2, level=12)
     return b
 

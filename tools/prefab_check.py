@@ -499,6 +499,28 @@ def walk_in(g, out_cells):
     return stand, seen
 
 
+def _in_walked_room(g, group, seen, out_cells):
+    """Whether the group is part of a room you walk about in, cut off only by furniture (a bed or a table
+    across the way), rather than a space walled off on its own: flood level by level through anything but
+    walls, glass and roof."""
+    todo, done = list(group), set(group)
+    while todo and len(done) < 600:
+        u, y, v = todo.pop()
+        for du, dv in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            n = (u + du, y, v + dv)
+            if n in done or n in out_cells:
+                continue
+            blk = g.get(*n)
+            if blk is None or is_pane(blk) or "roof_" in blk.name or "thatch" in blk.name or \
+                    full_cube(blk) and not blk.name.endswith(FURNITURE_TOPS):
+                continue
+            if n in seen:
+                return True
+            done.add(n)
+            todo.append(n)
+    return False
+
+
 def walk_in_problems(g, out_cells):
     """Floors inside you can't walk to: rooms with no way in, stairs that don't reach, landings cut off.
     Roof tops, lofts with no window, and little raised platforms (a window display, a seat) are left out."""
@@ -528,8 +550,8 @@ def walk_in_problems(g, out_cells):
         under_roof = all(any((u, yy, v) in b.roof_cells for yy in range(y + 1, b.H)) for (u, y, v) in group)
         lit = any((n := g.get(u + du, y + dy, v + dv)) is not None and (is_pane(n) or n.name.endswith("_door"))
                   for (u, y, v) in group for du, dv in ((1, 0), (-1, 0), (0, 1), (0, -1)) for dy in (0, 1))
-        if under_roof and not lit:
-            continue                                         # a loft
+        if under_roof and not lit and not _in_walked_room(g, group, seen, out_cells):
+            continue                                         # a loft: shut off under the roof, no window
         if len(group) <= 8 and all(g.get(u, y - 1, v).name.endswith("_slab") for (u, y, v) in group):
             continue                                         # a window display or a seat
         out.append(((min(us), min(ys), min(vs)), f"floor of {len(group)} you can't walk to: u {min(us)}-{max(us)}, "
