@@ -403,7 +403,8 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
                       render="ptmuk:white_render", roof="ptmuk:roof_concrete_tiles", door="dark_oak", bin_colour="grey"):
     W, D = 16, 21
     b = Build(ident, name, "Houses", W, 15, D,
-              "A 2020s new-build: red brick with a rendered front gable, grey windows, a canopy porch, garage and block-paved drive.")
+              "A 2020s new-build: red brick with a rendered front gable, grey windows, a canopy porch, a garage with a bedroom "
+              "over it and a block-paved drive.")
     P.lawn(b, 0, 0, W - 1, D - 1)
     b.fill(10, 0, 0, 14, 0, 4, "ptmuk:block_paving_grey")
     b.fill(6, 0, 0, 6, 0, 4, "ptmuk:block_paving_grey")
@@ -423,20 +424,20 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     for u in (6, 7, 8):
         b.set(u, 4, 4, stairs(roof, "back"))
     b.window(7, 5, 5, 2, 2, "ptmuk:grey_framed_window")
-    # garage: u10..u14, single storey
+    # garage: u10..u14, with a bedroom over it
     b.fill(10, 0, 5, 14, 0, 13, "smooth_stone")
-    b.walls(10, 1, 5, 14, 3, 13, brick)
+    b.walls(10, 1, 5, 14, 7, 13, brick)
+    b.fill(11, 4, 6, 13, 4, 12, "oak_planks")
     P.garage_door(b, 11, 13, 5, 1, 2)
+    b.window(11, 5, 5, 3, 2, "ptmuk:grey_framed_window")
+    b.window(12, 5, 13, 1, 2, "ptmuk:grey_framed_window")
     b.door(9, 1, 10, "spruce", facing="right", hinge="left")        # from the hall into the garage
     P.garage_kit(b, 11, 13, 12)
     b.fill(10, 1, 10, 10, 2, 10, AIR)
-    b.gable_roof_side(10, 14, 4, 13, 4, roof)
-    P.close_gable_front(b, 5, 11, 13, 4, brick)
-    P.close_gable_front(b, 13, 11, 13, 4, brick)
-    # roofs: main ridge across, the wing's gable facing the street
-    b.gable_roof(0, 10, 4, 14, 8, roof)
+    # roofs: main ridge across (over the garage too), the wing's gable facing the street
+    b.gable_roof(0, 15, 4, 14, 8, roof)
     P.close_gable(b, 1, 5, 13, 8, brick)
-    P.close_gable(b, 9, 5, 13, 8, brick)
+    P.close_gable(b, 14, 5, 13, 8, brick)
     b.gable_roof_side(0, 6, 3, 8, 8, roof)
     P.close_gable_front(b, 4, 1, 5, 8, render)
     # back: french doors and windows
@@ -467,8 +468,14 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     P.bath(b, 2, 3, 5, 12)
     b.set(4, 5, 12, home("toilet", facing="south", lit=False))
     b.set(2, 5, 10, home("basin", facing="east", lit=False))
+    # the second bedroom, over the garage, through the side wall from the top of the stairs
+    b.door(9, 5, 11, "oak", facing="right", hinge="left")
+    b.fill(10, 5, 11, 10, 6, 11, AIR)
+    for u in (12, 13):
+        P.bed(b, u, 5, 12, "blue", "back")
+    P.wardrobe(b, 11, 5, 6, facing="back")
     b.set(9, 1, 3, B(f"ptmuk:wheelie_bin_{bin_colour}", facing="south"))
-    for (u, y, v) in ((3, 3, 7), (3, 3, 11), (7, 3, 6), (3, 7, 7), (3, 7, 11), (7, 7, 10), (12, 3, 9)):
+    for (u, y, v) in ((3, 3, 7), (3, 3, 11), (7, 3, 6), (3, 7, 7), (3, 7, 11), (7, 7, 10), (12, 3, 9), (12, 7, 9)):
         if b.get(u, y, v).name == "minecraft:air":
             b.set(u, y, v, light(12))
     return b
@@ -635,53 +642,71 @@ def hanging_sign(b, u, y, v, lines, facing="right", wood="dark_oak"):
 
 
 def shop_interior(b, kind, u0, u1, v0, v1, y=1):
-    """Fit-out seen through a shop window."""
+    """Fit-out seen through a shop window, in the mod's shop fittings (chairs and tables made of stairs,
+    fences and plates become furniture in prefab_furnish)."""
+    def fit(name, u, v, facing, yy=y, **props):
+        b.set(u, yy, v, home(name, facing=DIRS[facing], lit=False, **props))
+
+    def tall(name, u, v, facing):
+        fit(name, u, v, facing, half="lower")
+        fit(name, u, v, facing, yy=y + 1, half="upper")
+
+    def counter(c0, c1, v, items):
+        """Fitted units with things standing on them ({u: name}); displays stand in the run instead."""
+        for u in range(c0, c1 + 1):
+            name = items.get(u)
+            if name == "cake_display":
+                fit(name, u, v, "front")
+                continue
+            fit("kitchen_unit_white", u, v, "front")
+            if name:
+                fit(name, u, v, "front", yy=y + 1, level="counter")
     if kind == "grocer":
-        P.shop_shelves(b, u0, u0, v0 + 1, y, 2)
         for v in range(v0 + 1, v1):
-            b.set(u0, y, v, "bookshelf")
-            b.set(u0, y + 1, v, "bookshelf")
-        P.fridge_row(b, u0 + 1, u1 - 2, v1)
-        b.fill((u0 + u1) // 2, y, v0 + 2, (u0 + u1) // 2, y, v1 - 2, "bookshelf")
-        P.counter(b, u1 - 1, u1, v1 - 2, y)
+            tall("shelves_groceries", u0, v, "right")
+        for u in range(u0 + 1, u1 - 1):
+            tall("chiller_cabinet", u, v1, "front")
+        for v in range(v0 + 2, v1 - 1):
+            tall("shelves_snacks", (u0 + u1) // 2, v, "right")
+        counter(u1 - 1, u1, v1 - 2, {u1: "till"})
     elif kind == "bakery":
-        P.counter(b, u0 + 1, u1 - 1, v0 + 2, y, top="birch_slab")
-        for u in range(u0 + 1, u1, 2):
-            b.set(u, y + 2, v0 + 2, B("cake", bites=0))
-        b.fill(u0, y, v1, u1, y + 1, v1, B("barrel", facing="south", open=False))
-        b.fill(u0, y + 2, v1, u1, y + 2, v1, "hay_block")
+        counter(u0 + 1, u1 - 1, v0 + 2, {u0 + 1: "cake_display", u0 + 2: "cake_display", u0 + 3: "till",
+                                         u0 + 4: "coffee_machine"})
+        for u in range(u0, u1):                           # bread on the back wall, a gap at the end
+            tall("shelves_snacks", u, v1, "front")
     elif kind == "charity":
-        P.shop_shelves(b, u0, u0, v0 + 1, y, 2)
         for v in range(v0 + 1, v1 + 1):
             b.set(u0, y, v, "bookshelf")
-            b.set(u1, y, v, B("chest", facing="west", type="single", waterlogged=False))
-        P.counter(b, u1 - 1, u1, v1 - 1, y)
-        P.rug(b, u0 + 1, v0 + 1, u1 - 1, v1 - 1, y, "purple")
+            b.set(u0, y + 1, v, "bookshelf")
+        for v in range(v0 + 1, v1 - 1):
+            fit("clothes_rail", u1, v, "left")
+        counter(u1 - 1, u1, v1 - 1, {u1: "till"})
+        P.rug(b, u0 + 1, v0 + 1, u1 - 2, v1 - 2, y, "purple")
     elif kind == "barber":
         for u in range(u0 + 1, u1, 2):
-            b.set(u, y, v1 - 1, stairs("red_nether_brick", "back"))
-            b.fill(u, y + 1, v1, u, y + 2, v1, P.pane("glass_pane"))
-        b.fill(u0, y, v0 + 1, u0, y, v0 + 2, stairs("dark_oak", "left"))
+            fit("barber_chair", u, v1 - 1, "back")
+            b.fill(u, y + 1, v1, u, y + 2, v1, P.pane("glass_pane"))          # the mirror
+        b.fill(u0, y, v0 + 1, u0, y, v0 + 2, stairs("dark_oak", "left"))     # seats for people waiting
+        fit("basin", u1, v1, "front")
         P.rug(b, u0 + 1, v0 + 1, u1, v1 - 2, y, "white")
     elif kind == "cafe":
         for u in range(u0 + 1, u1, 2):
             b.set(u, y, v0 + 2, B("spruce_fence"))
             b.set(u, y + 1, v0 + 2, B("spruce_pressure_plate", powered=False))
             b.set(u, y, v0 + 3, stairs("spruce", "back"))
-        P.counter(b, u0, u1 - 1, v1 - 1, y, top="smooth_quartz_slab")       # a gap at the end to get behind
-        b.set(u0 + 1, y + 2, v1 - 1, B("cake", bites=1))
-        b.set(u1 - 1, y + 2, v1 - 1, B("brewing_stand", has_bottle_0=False, has_bottle_1=False, has_bottle_2=False))
+        counter(u0, u1 - 1, v1 - 1, {u0: "cake_display", u0 + 1: "coffee_machine", u0 + 2: "till"})   # a gap to get behind
     elif kind == "takeaway":
-        P.counter(b, u0, u1 - 1, v0 + 2, y, top="smooth_quartz_slab")       # a gap at the end to get behind
-        b.fill(u0, y, v1, u1, y, v1, B("smoker", facing="north", lit=False))
-        b.fill(u0, y + 1, v1, u1, y + 1, v1, "iron_block")
+        counter(u0, u1 - 1, v0 + 2, {u0 + 1: "till"})                       # a gap at the end to get behind
+        for u in range(u0, u1 + 1):
+            fit("fryer", u, v1, "front")
     elif kind == "convenience":
         s0, s1 = v0 + (2 if v1 - v0 > 4 else 1), v1 - 2      # aisles front and back, in front of the fridges
         for u in range(u0 + 2, u1 - 2, 3):
-            if s1 >= s0:
-                b.fill(u, y, s0, u, y + 1, s1, "bookshelf")
-        P.fridge_row(b, u0, u1 - 3, v1)
-        P.counter(b, u1 - 2, u1, v0 + 2, y)
+            for v in range(s0, s1 + 1):
+                tall("shelves_groceries" if u % 2 else "shelves_snacks", u, v, "right")
+        for u in range(u0, u1 - 2):
+            tall("chiller_cabinet", u, v1, "front")
+        counter(u1 - 2, u1, v0 + 2, {u1 - 1: "till"})
 
 
 def corner_shop(ident="corner_shop", name="Corner Shop with Flat Above"):
@@ -886,6 +911,9 @@ def cafe_takeaway(ident="cafe_takeaway", name="Cafe and Takeaway (Pair)"):
         P.shopfront(b, o + 1, o + 6, 1, 1, text, sub, board, ink, door_u=o + 1 if i == 0 else o + 6, stall="calcite")
         b.fill(o + 1, 4, 2, o + 6, 4, 10, "oak_planks")
         shop_interior(b, kind, o + 1, o + 6, 2, 6)
+        if kind == "takeaway":                             # stools by the window for people waiting
+            for u in range(o + 2, o + 5):
+                b.set(u, 1, 2, home("bar_stool", facing="south", lit=False))
         P.ceiling_lights(b, o + 1, 2, o + 6, 6, 4, step=3)
         b.window(o + 2, 5, 1, 2, 2, "ptmuk:upvc_window")
         b.window(o + 5, 5, 1, 1, 2, "ptmuk:upvc_window")
@@ -1293,28 +1321,28 @@ def modern_apartments(ident="modern_apartments", name="Modern Apartment Block"):
 
 
 def deck_access_flats(ident="deck_access_flats", name="1960s Deck-Access Flats"):
-    W, D = 25, 12
+    W, D = 25, 15
     floors = [0, 4, 8, 12]
     top = floors[-1]
     b = Build(ident, name, "Flats", W, top + 3, D,
               "Low-rise 1960s council flats: brown brick, concrete walkway decks with front doors, stair towers at each end.")
     brick, conc = "ptmuk:red_brick", "light_gray_concrete"
     P.lawn(b, 0, 0, W - 1, 0)
-    b.fill(0, 0, 1, W - 1, 0, 11, "polished_andesite")
-    b.walls(3, 1, 3, W - 4, top - 1, 11, brick)
+    b.fill(0, 0, 1, W - 1, 0, D - 1, "polished_andesite")
+    b.walls(3, 1, 3, W - 4, top - 1, D - 1, brick)
     for y in floors[1:-1]:
-        b.fill(4, y, 4, W - 5, y, 10, "oak_planks")
+        b.fill(4, y, 4, W - 5, y, D - 2, "oak_planks")
         # walkway deck in front, two blocks wide, with a concrete parapet along the edge
         b.fill(4, y, 1, W - 5, y, 2, conc)
         b.fill(4, y + 1, 1, W - 5, y + 1, 1, "polished_andesite")
     for y in floors[:-1]:
-        for i, u in enumerate(range(5, W - 5, 4)):      # a door, then a window clear of it
+        for i, u in enumerate(range(5, W - 5, 6)):      # three flats a floor: a door, then a window clear of it
             b.door(u, y + 1, 3, ["oak", "spruce", "birch", "dark_oak"][i % 4], facing="back", hinge="left")
-            b.window(u + 2, y + 1, 3, 1, 2, "ptmuk:upvc_window")
-            b.window(u, y + 1, 11, 3, 2, "ptmuk:upvc_window")
-            b.set(u + 1, y + 3, 7, light(11))
-        for u in range(8, W - 5, 4):                   # party walls between the flats
-            b.fill(u, y + 1, 4, u, y + 3, 10, brick)
+            b.window(u + 2, y + 1, 3, 2, 2, "ptmuk:upvc_window")
+            b.window(u, y + 1, D - 1, 3, 2, "ptmuk:upvc_window")
+            b.set(u + 1, y + 3, 8, light(11))
+        for u in range(9, W - 5, 6):                   # party walls between the flats
+            b.fill(u, y + 1, 4, u, y + 3, D - 2, brick)
         # each flat is laid out by prefab_dress: a bathroom walled off, a kitchen, a sofa and the bed
     # stair towers at each end: dog-leg stairs that land at the front on every floor, beside the deck
     for a in (0, W - 4):
@@ -1333,7 +1361,7 @@ def deck_access_flats(ident="deck_access_flats", name="1960s Deck-Access Flats")
             b.fill(inner, y + 1, 2, inner, y + 2, 2, AIR)
         for y in floors[:-1]:
             b.set(a + 2, y + 3, 2, light(11))
-    P.flat_roof(b, 3, W - 4, 3, 11, top, deck="gray_concrete", parapet=None)
+    P.flat_roof(b, 3, W - 4, 3, D - 1, top, deck="gray_concrete", parapet=None)
     b.fill(3, top + 1, 3, W - 4, top + 1, 3, slab("smooth_stone"))
     return b
 

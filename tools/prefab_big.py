@@ -969,11 +969,14 @@ def courtyard_block(ident="courtyard_apartments", name="Courtyard Apartment Bloc
         P.tree(b, u, v, h=3, r=1, leaves="birch_leaves", log="birch_log")
     for u in (16, 20):
         b.set(u, 1, 16, B("ptmuk:bench_wood", facing="south"))
-    for y in floors[1:-1]:                         # each floor in four, round a stair core each (prefab_dress
-        for v0, v1 in ((p0 + 1, q0 - 1), (q1 + 1, p1 - 1)):     # lays out the flats)
-            b.fill(16, y + 1, v0, 16, y + 3, v1, "calcite")
-        for u0, u1 in ((o0 + 1, i0 - 1), (i1 + 1, o1 - 1)):
+    for y in floors:                               # each floor in four, round a stair core each (prefab_dress
+        inset = 2 if y == roof else 0               # lays out the flats; the top floor is set back)
+        for v0, v1 in ((p0 + 1 + inset, q0 - 1), (q1 + 1, p1 - 1 - inset))[1 if y == 0 else 0:]:   # (the arch
+            b.fill(16, y + 1, v0, 16, y + 3, v1, "calcite")                                        # splits the front)
+        for u0, u1 in ((o0 + 1 + inset, i0 - 1), (i1 + 1, o1 - 1 - inset)):
             b.fill(u0, y + 1, 17, u1, y + 3, 17, "calcite")
+    b.door(i0 - 1, 1, 20, "dark_oak", facing="left", hinge="left")     # the back quarters' ways in, from the garden
+    b.door(i1 + 1, 1, 20, "dark_oak", facing="right", hinge="right")
     for (cu, cv) in ((7, 5), (28, 5), (7, 25), (28, 25)):
         P.stair_core(b, cu, cv, floors, material="stone_brick")
     return b

@@ -106,8 +106,8 @@ def _dress(b):
     pick = zlib.crc32(b.ident.encode())
     fitted = False
     for i, r in enumerate(rooms):
-        if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2) and _doors(g, r) < 2 \
-                and _narrowest(r) >= 3:
+        if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2) and _narrowest(r) >= 3 \
+                and (_doors(g, r) < 2 or _doors(g, r) == 2 and len(r.cells) > FLAT + 20):   # (not a lobby)
             for j, part in enumerate(Dresser(b, g, out, r, pick + i).flats()):
                 Dresser(b, g, out, part, pick + i + j).fit_flat()
             fitted = True
@@ -602,7 +602,9 @@ class Dresser:
         """Cut a big empty floor into flats off a corridor from the stairs (see _corridor); a floor about
         one flat big is one flat. Returns the flats, as rooms."""
         cells = set(self.r.cells)
-        if len(cells) <= FLAT + 20 or _doors(self.g, self.r) == 1 and len(cells) <= 2 * FLAT + 60:
+        stairs = any(_stairs(self.g.get(u + du, y + dy, v + dv)) for (u, y, v) in cells for du, dv in VEC.values()
+                     for dy in (0, -1))
+        if len(cells) <= FLAT + 20 or _doors(self.g, self.r) == 1 and not stairs and len(cells) <= 2 * FLAT + 60:
             return [self.r]                                    # about a flat's worth, or behind its own front door
         done = self._corridor(cells)
         if done is None and len(cells) <= 3 * FLAT:
@@ -765,13 +767,18 @@ class Dresser:
         u0, u1, v0, v1 = min(us), max(us), min(vs), max(vs)
         y = self.y
         best = None
-        for (ou, ov, su, sv) in ((u0, v0, 1, 1), (u1, v0, -1, 1), (u0, v1, 1, -1), (u1, v1, -1, -1)):
-            for iw, idp in ((w, d), (d, w)):
-                rect = {(ou + su * i, y, ov + sv * j) for i in range(iw) for j in range(idp)}
-                wall = {(ou + su * iw, y, ov + sv * j) for j in range(idp + 1)} | \
-                       {(ou + su * i, y, ov + sv * idp) for i in range(iw + 1)}
+        for iw, idp in {(w, d), (d, w)}:
+            for (a, c) in ((a, c) for a in range(u0, u1 - iw + 2) for c in range(v0, v1 - idp + 2)):
+                rect = {(a + i, y, c + j) for i in range(iw) for j in range(idp)}
+                if not rect <= self.free or rect & self.keep:
+                    continue
+                sides = ([(a + i, y, c - 1) for i in range(iw)], [(a + i, y, c + idp) for i in range(iw)],
+                         [(a - 1, y, c + j) for j in range(idp)], [(a + iw, y, c + j) for j in range(idp)])
+                if not any(all(n not in cells for n in side) for side in sides):
+                    continue                                   # against an outside wall on one side at least
+                wall = {(a + i, y, c + j) for i in range(-1, iw + 1) for j in range(-1, idp + 1)} - rect
                 wall &= cells
-                if not rect <= self.free or rect & self.keep or not wall <= self.free or wall & self.keep:
+                if not wall <= self.free or wall & self.keep:
                     continue
                 if not wall or any(not self._shut(n) for c in rect for n in self._nbrs(c) if n not in rect | wall):
                     continue                                   # the corner isn't walled on its other sides
@@ -791,7 +798,7 @@ class Dresser:
                         continue
                     # a door in the middle of a side leaves room for things round the walls either side of it
                     middle = sum(1 for n in self._nbrs(inside[0]) if n in rect)
-                    score = cuts * 10 + (0 if want_window else windows) - 2 * middle
+                    score = cuts * 10 + (0 if want_window else windows) - 2 * middle + len(wall) / 10
                     if best is None or score < best[0]:
                         di = (inside[0][0] - dc[0], inside[0][2] - dc[2])
                         best = (score, rect, wall, dc, next(k for k, vv in VEC.items() if vv == di), outer[0])
@@ -812,8 +819,50 @@ class Dresser:
         blk = self.g.get(*c)
         return blk is not None and (pc.is_pane(blk) or pc.full_cube(blk))
 
+    def _bed_and_bath(self, placed, bed_first):
+        """Wall off a bedroom (a 3 x 3 one still takes a double bed) and a bathroom, in that order or the other."""
+        def bedroom():
+            need = 48 if bed_first else 36                     # bedroom first: leave room for the bathroom
+            if len(self.free) < need:
+                return None
+            r = (self._enclose(4, 3, want_window=True) if len(self.free) >= need + 12 else None) or \
+                self._enclose(3, 3, want_window=True)
+            if r is not None:
+                Dresser(self.b, self.g, self.out, r, self.seed).fit_bedroom()
+                placed.extend(r.cells)
+            return r
+
+        def bathroom():
+            if len(self.free) < (24 if bed_first else 30):
+                return None
+            r = self._enclose(3, 2, want_window=False) or self._enclose(2, 2, want_window=False)
+            if r is not None:
+                Dresser(self.b, self.g, self.out, r, self.seed).fit_bathroom()
+                placed.extend(r.cells)
+            return r
+        if bed_first:
+            bed = bedroom()
+            return bed, bathroom()
+        bath = bathroom()
+        return bedroom(), bath
+
+    def _snapshot(self):
+        """The blocks round this room, floor to above the ceiling, and what's free: to put back with _restore."""
+        us, vs = [c[0] for c in self.r.cells], [c[2] for c in self.r.cells]
+        box = [(u, y, v) for u in range(min(us) - 1, max(us) + 2) for v in range(min(vs) - 1, max(vs) + 2)
+               for y in range(self.y - 1, self.y + 9)]
+        return {c: self.b.cells.get(c) for c in box}, set(self.free), set(self.keep)
+
+    def _restore(self, snap):
+        cells, self.free, self.keep = snap[0], set(snap[1]), set(snap[2])
+        for c, blk in cells.items():
+            if blk is None:
+                self.b.cells.pop(c, None)
+            else:
+                self.b.cells[c] = blk
+
     def fit_flat(self):
-        """A flat: a bathroom and (room permitting) a bedroom walled off with doors, then a kitchen along a wall
+        """A flat: a bedroom (room permitting) and a bathroom walled off with doors, then a kitchen along a wall
         and a sofa in the rest (with the bed there too if there's no bedroom)."""
         placed = []
 
@@ -823,17 +872,15 @@ class Dresser:
                 return -min((abs(c[0] - p[0]) + abs(c[2] - p[2]) for p in placed), default=0)
             return sorted(options, key=gap)
 
-        bath = (self._enclose(3, 2, want_window=False) or self._enclose(2, 2, want_window=False)) \
-            if len(self.free) >= 30 else None
-        if bath is not None:
-            Dresser(self.b, self.g, self.out, bath, self.seed).fit_bathroom()
-            placed += list(bath.cells)
-        bed = None
-        if len(self.free) >= 48:
-            bed = self._enclose(4, 3, want_window=True) or self._enclose(3, 3, want_window=True)
+        # the bedroom first, as it wants a window and the bathroom doesn't; if that leaves no room for a
+        # bathroom, start again the other way round
+        snap = self._snapshot()
+        bed, bath = self._bed_and_bath(placed, bed_first=True)
+        if bath is None and bed is not None:
+            self._restore(snap)
+            placed.clear()
+            bed, bath = self._bed_and_bath(placed, bed_first=False)
         if bed is not None:
-            Dresser(self.b, self.g, self.out, bed, self.seed).fit_bedroom()
-            placed += list(bed.cells)
             for _ in range(2):                                 # a big flat: another bedroom or two
                 more = self._enclose(4, 3, want_window=True) if len(self.free) >= 90 else None
                 if more is None:

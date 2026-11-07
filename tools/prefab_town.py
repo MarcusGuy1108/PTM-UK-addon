@@ -98,6 +98,8 @@ def high_street_unit(ident, name, category, W, D, storeys, sign, desc, interior,
             else:                                          # wide modern windows, a pier between them
                 w = 2 if x + 1 <= W - 2 and x + 1 not in cols else 1
                 b.window(x, y, 1, w, STOREY - 1, "ptmuk:grey_framed_window")
+        for x in cols:                                     # and at the back (the flats' bedrooms go there)
+            b.window(x, y, back, 1, 2, "ptmuk:upvc_window")
         if style == "victorian" and k > 1:
             b.fill(0, STOREY * k, 1, W - 1, STOREY * k, 1, P.STONE)
     if storeys > 1 and style == "victorian":
