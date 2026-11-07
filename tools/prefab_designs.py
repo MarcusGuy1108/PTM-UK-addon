@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from prefab_lib import AIR, B, Build, DIRS, light, render_thumbnail, shop_sign_nbt, sign_nbt, slab, stairs  # noqa: E402
 import prefab_parts as P  # noqa: E402
+from prefab_furnish import home  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src/main/resources/assets/ptmuk"
@@ -258,18 +259,18 @@ def semi_house(b, o, mirror, style, door, y_top=8):
     b.set(U(2), 2, 10, B("oak_pressure_plate", powered=False))
     P.kitchen_run(b, min(U(1), U(4)), max(U(1), U(4)), 1, 11, facing="front")
     b.set(U(3), 1, 10, stairs("oak", S("right")))
-    # first floor
+    # first floor: the front bedroom and the bathroom off the landing (the stairs run on into the back of it)
     b.fill(U(5), 5, 4, U(5), 7, 11, "calcite")
-    b.fill(U(5), 5, 9, U(5), 6, 9, AIR)
-    b.fill(U(5), 5, 6, U(5), 6, 6, AIR)
+    b.door(U(5), 5, 6, "oak", facing=S("left"), hinge="left")
+    b.door(U(5), 5, 9, "oak", facing=S("left"), hinge="right")
     b.fill(min(U(1), U(4)), 5, 8, max(U(1), U(4)), 7, 8, "calcite")
-    b.fill(U(4), 5, 8, U(4), 6, 8, AIR)
     for lu in (2, 3):
         P.bed(b, U(lu), 5, 7, "white", "back")
     P.wardrobe(b, U(1), 5, 7)
-    P.bed(b, U(2), 5, 11, "light_blue", "back")
-    P.wardrobe(b, U(4), 5, 11)
-    P.bath(b, min(U(6), U(7)), max(U(6), U(7)), 5, 11)
+    P.bath(b, min(U(1), U(2)), max(U(1), U(2)), 5, 11)
+    b.set(U(3), 5, 11, home("toilet", facing="south", lit=False))
+    b.set(U(1), 5, 9, home("basin", facing=DIRS[S("right")], lit=False))
+
     # back windows and back door
     P.back_window(b, U(2), 2, 12, kind=win)
     P.back_window(b, U(2), 5, 12, kind=win)
@@ -325,64 +326,74 @@ def semi_pair(ident, name, style, doors=None):
 # ================================================================== post-war council terrace
 
 def council_terrace(ident="council_terrace", name="Post-war Council Houses (Terrace of 4)", n=4):
-    W = 6 * n + 1
+    """Each house: a hall with the stairs up the party wall and doors off it to the front room and
+    the kitchen-diner at the back (and the back door); upstairs a landing, the front bedroom and the
+    bathroom at the back."""
+    W = 7 * n + 1
     b = Build(ident, name, "Houses", W, 15, 20,
               "Four plain post-war council houses: red brick, wide windows, concrete door canopies, concrete tile roof, hedged gardens.")
     brick, roof = "ptmuk:red_brick", "ptmuk:roof_concrete_tiles"
     doors = ["oak", "spruce", "birch", "dark_oak"]
     for i in range(n):
-        o, mirror = 6 * i, i % 2 == 1
+        o, mirror = 7 * i, i % 2 == 1
 
         def U(lu, o=o, mirror=mirror):
-            return o + (6 - lu if mirror else lu)
-        lo, hi = min(U(0), U(6)), max(U(0), U(6))
+            return o + (7 - lu if mirror else lu)
+        lo, hi = min(U(0), U(7)), max(U(0), U(7))
+        room = "right" if mirror else "left"                  # the side the rooms are on, seen from the hall
         P.lawn(b, lo, 0, hi, 3)
         b.fill(U(5), 0, 0, U(5), 0, 3, "ptmuk:paving_slabs")
         P.hedge(b, min(U(0), U(4)), max(U(0), U(4)), 0)
-        b.set(U(6), 1, 0, B("oak_leaves", persistent=True, distance=1, waterlogged=False)) if i == n - 1 and not mirror else None
+        b.set(U(7), 1, 0, B("oak_leaves", persistent=True, distance=1, waterlogged=False)) if i == n - 1 and not mirror else None
         b.fill(lo, 0, 4, hi, 0, 11, "oak_planks")
         P.lawn(b, lo, 12, hi, 19)
         b.fill(lo, 0, 12, hi, 0, 13, "ptmuk:paving_slabs")
         b.fill(lo, 1, 4, hi, 7, 4, brick)
         b.fill(lo, 1, 11, hi, 7, 11, brick)
-        for lu in (0, 6):
+        for lu in (0, 7):
             b.fill(U(lu), 1, 4, U(lu), 7, 11, brick)
-        b.fill(min(U(1), U(5)), 4, 5, max(U(1), U(5)), 4, 10, "oak_planks")
+        b.fill(min(U(1), U(6)), 4, 5, max(U(1), U(6)), 4, 10, "oak_planks")
         b.window(min(U(1), U(3)), 2, 4, 3, 2, "ptmuk:upvc_window")
         b.door(U(5), 1, 4, doors[i % len(doors)], facing="back", hinge="left")
-        for lu in (4, 5):
+        for lu in (4, 5, 6):
             b.set(U(lu), 3, 3, slab("smooth_stone", "top"))
-        b.window(min(U(1), U(2)), 5, 4, 2, 2, "ptmuk:upvc_window")
-        b.window(U(4), 5, 4, 1, 2, "ptmuk:upvc_window")
-        b.window(U(5), 6, 4, 1, 1, "ptmuk:upvc_window")
-        # inside
+        b.window(min(U(1), U(3)), 5, 4, 3, 2, "ptmuk:upvc_window")
+        b.window(U(6), 5, 4, 1, 2, "ptmuk:upvc_window")
+        # the hall: stairs up the party wall, doors to the front room and the kitchen
         b.fill(U(4), 1, 5, U(4), 3, 10, "calcite")
-        b.fill(U(4), 1, 6, U(4), 2, 6, AIR)
-        b.fill(U(4), 1, 9, U(4), 2, 9, AIR)
+        b.door(U(4), 1, 5, "oak", facing=room, hinge="left")
+        b.door(U(4), 1, 9, "oak", facing=room, hinge="right")
         for k in range(4):
-            b.set(U(5), 1 + k, 6 + k, stairs("oak", "back"))
-        b.fill(U(5), 4, 6, U(5), 4, 8, AIR)
-        P.sofa(b, U(2), U(3), 1, 7, "back", "spruce")
+            b.set(U(6), 1 + k, 6 + k, stairs("oak", "back"))
+        b.fill(U(6), 4, 6, U(6), 4, 8, AIR)
+        P.sofa(b, min(U(2), U(3)), max(U(2), U(3)), 1, 7, "back", "spruce")
         P.kitchen_run(b, min(U(1), U(3)), max(U(1), U(3)), 1, 10, facing="front")
+        P.table(b, U(2), 1, 8)
+        # upstairs: the landing over the hall, the front bedroom and the bathroom at the back
         b.fill(U(4), 5, 5, U(4), 7, 10, "calcite")
-        b.fill(U(4), 5, 10, U(4), 6, 10, AIR)
-        P.bed(b, U(2), 5, 6, "red", "front")
-        P.bed(b, U(2), 5, 10, "lime", "back")
+        b.fill(min(U(1), U(3)), 5, 8, max(U(1), U(3)), 7, 8, "calcite")
+        b.door(U(4), 5, 5, "oak", facing=room, hinge="left")
+        b.door(U(4), 5, 9, "oak", facing=room, hinge="right")
+        P.bed(b, U(2), 5, 7, "red", "back")
+        P.wardrobe(b, U(1), 5, 7, facing="front")
+        P.bath(b, min(U(1), U(2)), max(U(1), U(2)), 5, 10)
+        b.set(U(3), 5, 10, home("toilet", facing="south", lit=False))
+        b.set(U(1), 5, 9, home("basin", facing=DIRS["left" if mirror else "right"], lit=False))
         b.window(U(2), 2, 11, 1, 2, "ptmuk:upvc_window")
         b.window(U(2), 5, 11, 1, 2, "ptmuk:upvc_window")
         b.door(U(5), 1, 11, "spruce", facing="front", hinge="left")
         b.fill(U(0), 1, 12, U(0), 1, 19, B("spruce_fence"))
         b.fill(lo, 1, 19, hi, 1, 19, B("spruce_fence"))
         b.set(U(3), 1, 12, B("ptmuk:wheelie_bin_" + ["green", "black", "blue", "grey"][i % 4], facing="south"))
-        for (lu, y, v) in ((2, 3, 6), (2, 3, 9), (2, 7, 7), (5, 7, 10)):
+        for (lu, y, v) in ((2, 3, 6), (2, 3, 9), (5, 3, 7), (2, 7, 6), (5, 7, 7), (2, 7, 10)):
             if b.get(U(lu), y, v).name == "minecraft:air":
                 b.set(U(lu), y, v, light(12))
     b.fill(W - 1, 1, 12, W - 1, 1, 19, B("spruce_fence"))
     b.gable_roof(0, W - 1, 3, 12, 8, roof)
     for i in range(n + 1):
-        P.close_gable(b, 6 * i, 4, 11, 8, brick)
+        P.close_gable(b, 7 * i, 4, 11, 8, brick)
         if i % 2 == 0:
-            b.chimney(6 * i, 7, 9, 13, brick, w=1, d=1, pots=1)
+            b.chimney(7 * i, 7, 9, 13, brick, w=1, d=1, pots=1)
     return b
 
 
@@ -445,11 +456,17 @@ def newbuild_detached(ident="newbuild_detached", name="New-Build Detached House"
     b.fill(8, 4, 7, 8, 4, 9, AIR)
     P.sofa(b, 2, 3, 1, 8, "back", "spruce")
     P.kitchen_run(b, 2, 4, 1, 12, facing="front")
+    # upstairs off the landing: the main bedroom at the front, the bathroom at the back
     b.fill(5, 5, 6, 5, 7, 12, "calcite")
-    b.fill(5, 5, 11, 5, 6, 11, AIR)
-    b.fill(5, 5, 6, 5, 6, 6, AIR)
-    P.bed(b, 3, 5, 8, "light_gray", "back")
-    P.bed(b, 3, 5, 12, "blue", "back")
+    b.fill(2, 5, 9, 4, 7, 9, "calcite")
+    b.door(5, 5, 7, "oak", facing="left", hinge="left")
+    b.door(5, 5, 11, "oak", facing="left", hinge="right")
+    for u in (2, 3):
+        P.bed(b, u, 5, 8, "light_gray", "back")
+    P.wardrobe(b, 4, 5, 5, facing="back")
+    P.bath(b, 2, 3, 5, 12)
+    b.set(4, 5, 12, home("toilet", facing="south", lit=False))
+    b.set(2, 5, 10, home("basin", facing="east", lit=False))
     b.set(9, 1, 3, B(f"ptmuk:wheelie_bin_{bin_colour}", facing="south"))
     for (u, y, v) in ((3, 3, 7), (3, 3, 11), (7, 3, 6), (3, 7, 7), (3, 7, 11), (7, 7, 10), (12, 3, 9)):
         if b.get(u, y, v).name == "minecraft:air":
@@ -471,10 +488,11 @@ def bungalow(ident="bungalow", name="1960s Bungalow"):
     b.window(2, 1, 3, 4, 3, "ptmuk:upvc_window")
     b.fill(2, 1, 3, 5, 1, 3, brick)
     b.window(2, 2, 3, 4, 2, "ptmuk:upvc_window")
-    b.door(8, 1, 3, "birch", facing="back", hinge="left")
-    b.set(9, 1, 3, P.pane("ptmuk:leaded_window"))
-    b.set(9, 2, 3, P.pane("ptmuk:leaded_window"))
-    b.set(8, 3, 3, P.pane("ptmuk:upvc_window"))
+    b.door(7, 1, 3, "birch", facing="back", hinge="left")
+    b.set(8, 1, 3, P.pane("ptmuk:leaded_window"))
+    b.set(8, 2, 3, P.pane("ptmuk:leaded_window"))
+    b.set(7, 3, 3, P.pane("ptmuk:upvc_window"))
+    b.set(10, 2, 3, P.pane("ptmuk:leaded_window"))           # the bathroom's (frosted) window
     b.window(3, 2, 11, 2, 1, "ptmuk:upvc_window")
     b.window(8, 2, 11, 2, 1, "ptmuk:upvc_window")
     b.side_window(1, 2, 6, 2, 1, "ptmuk:upvc_window")
@@ -482,16 +500,22 @@ def bungalow(ident="bungalow", name="1960s Bungalow"):
     b.hipped_roof(0, 12, 2, 12, 4, roof)
     b.chimney(4, 8, 4, 8, brick, w=1, d=1, pots=1)
     P.hedge(b, 0, 11, 0)
-    b.fill(7, 0, 0, 8, 0, 2, "ptmuk:paving_slabs")
-    b.fill(7, 1, 0, 8, 1, 0, AIR)
+    b.fill(6, 0, 0, 7, 0, 2, "ptmuk:paving_slabs")
+    b.fill(6, 1, 0, 7, 1, 0, AIR)
     b.fill(0, 1, D - 1, W - 1, 1, D - 1, B("oak_fence"))
-    # inside: lounge, kitchen, two bedrooms
+    # inside: a hall from the front door to the lounge, the bathroom and the kitchen; the bedroom off the lounge
     b.fill(6, 1, 4, 6, 3, 10, "calcite")
     b.fill(6, 1, 5, 6, 2, 5, AIR)
     b.fill(2, 1, 7, 5, 3, 7, "calcite")
     b.fill(4, 1, 7, 4, 2, 7, AIR)
     b.fill(7, 1, 7, 10, 3, 7, "calcite")
-    b.fill(9, 1, 7, 9, 2, 7, AIR)
+    b.fill(7, 1, 7, 7, 2, 7, AIR)
+    b.fill(8, 1, 4, 8, 3, 6, "calcite")
+    b.door(8, 1, 5, "oak", facing="right", hinge="left")
+    import prefab_furnish
+    prefab_furnish.bath(b, [(10, 5), (10, 6)], 1)
+    b.set(10, 1, 4, home("toilet", facing="west", lit=False))
+    b.set(9, 1, 6, home("basin", facing="south", lit=False))
     P.sofa(b, 2, 3, 1, 6, "back", "spruce")                  # clear of the bedroom door
     P.bed(b, 3, 1, 10, "pink", "back")
     P.kitchen_run(b, 7, 10, 1, 10, facing="front")
@@ -562,11 +586,29 @@ def georgian_townhouse(ident="georgian_townhouse", name="Georgian Townhouse"):
         P.rug(b, 1, 4, 2, 6, y + 1, ["red", "blue", "green", "purple"][i])
         b.set(1, y + 3, 5, light(12)) if b.get(1, y + 3, 5).name == "minecraft:air" else None
         b.set(2, y + 3, 10, light(12)) if b.get(2, y + 3, 10).name == "minecraft:air" else None
-    P.bookcase(b, 1, 6, 12, 3)
-    P.sofa(b, 1, 2, 6, 7, "back", "dark_oak")
-    P.bed(b, 2, 11, 12, "red", "back")
-    P.bed(b, 2, 15, 12, "white", "back")
+    # ground floor: the dining room at the front, the kitchen behind
+    b.fill(1, 1, 8, 3, 3, 8, "calcite")
+    b.door(2, 1, 8, "dark_oak", facing="back", hinge="left")
     P.kitchen_run(b, 1, 3, 1, 12, facing="front")
+    for u in (1, 2):
+        P.table(b, u, 1, 5)
+    # first floor: the drawing room, a fire on the party wall, a sofa and armchairs round it
+    P.bookcase(b, 1, 6, 12, 3)
+    b.set(1, 6, 9, B("blast_furnace", facing="east", lit=False))
+    P.sofa(b, 1, 2, 6, 6, "front", "dark_oak")
+    P.armchair(b, 3, 6, 10, "right", "dark_oak")
+    # second floor: a bedroom at the front, the bathroom across the back
+    b.fill(1, 11, 8, 3, 13, 8, "calcite")
+    b.door(2, 11, 8, "oak", facing="back", hinge="left")
+    P.bed(b, 1, 11, 7, "red", "back")
+    P.wardrobe(b, 3, 11, 7, facing="front")
+    b.set(1, 11, 12, home("toilet", facing="south", lit=False))
+    b.set(2, 11, 12, home("basin", facing="south", lit=False))
+    import prefab_furnish
+    prefab_furnish.bath(b, [(1, 9), (1, 10)], 11)
+    # top floor: a bedroom
+    P.bed(b, 2, 15, 12, "white", "back")
+    P.wardrobe(b, 1, 15, 9, facing="right")
     return b
 
 
@@ -720,9 +762,7 @@ def high_street_parade(ident="high_street_parade", name="Victorian High Street P
         b.window(o + 5, 9, 12, 1, 2, "ptmuk:upvc_window")
         # stairs up from the back room to the two flats over the shop
         P.flight(b, o + 2, 1, 10, 1, 0, 4, "oak")
-        P.flight(b, o + 5, 5, 11, -1, 0, 4, "oak")
-        for y in (5, 9):
-            shop_flat(b, o, y, 9)
+        P.flight(b, o + 5, 5, 11, -1, 0, 4, "oak")         # the flats over it are laid out by prefab_dress
     # pilasters with console brackets between the shops
     for u in (0, 7, 14, 21):
         b.fill(u, 1, 1, u, 4, 1, stone)
@@ -801,21 +841,6 @@ def corner_pub(ident="corner_pub", name="Victorian Corner Pub"):
     return b
 
 
-def shop_flat(b, o, y, last):
-    """A flat over a six-wide shop (u o+1..o+6, v 2..last, the stairs behind it): a sofa and the bed at the
-    front, a kitchen along the left wall, a table, and a bath and toilet across the back left (the right
-    of the back row is the way in from the stairs; the row behind them is left to the stairwell)."""
-    P.sofa(b, o + 1, o + 2, y, 2, "front", "spruce")
-    b.set(o + 6, y, 3, B("blue_bed", facing="east", part="head", occupied=False))
-    b.set(o + 5, y, 3, B("blue_bed", facing="east", part="foot", occupied=False))
-    P.kitchen_run(b, 5, 7, y, o + 1, "right", side=True)
-    P.table(b, o + 4, y, 6)
-    b.set(o + 3, y, 6, stairs("spruce", "right"))
-    b.set(o + 5, y, 6, stairs("spruce", "left"))
-    P.bath(b, o + 2, o + 3, y, last)
-    b.set(o + 1, y, last, B("quartz_stairs", facing="south", half="bottom", shape="straight", waterlogged=False))
-
-
 def landlords_flat(b):
     """The flat over the corner pub (floor at y 5, the stairs up from behind the bar arriving at the
     back by u 8): a living room and a bedroom at the front, a bathroom and a kitchen-diner behind."""
@@ -866,8 +891,7 @@ def cafe_takeaway(ident="cafe_takeaway", name="Cafe and Takeaway (Pair)"):
         b.window(o + 5, 5, 1, 1, 2, "ptmuk:upvc_window")
         b.set(o + 3, 7, 4, light(11))
         b.door(o + 3, 1, 11, "spruce", facing="front", hinge="left")
-        P.flight(b, o + 2, 1, 9, 1, 0, 4, "oak")              # up to the flat from the back
-        shop_flat(b, o, 5, 7)
+        P.flight(b, o + 2, 1, 9, 1, 0, 4, "oak")              # up to the flat from the back (laid out by prefab_dress)
     P.flat_roof(b, 0, W - 1, 1, 11, 8, deck="gray_concrete", parapet=brick, coping=P.STONE)
     return b
 
@@ -1251,13 +1275,7 @@ def deck_access_flats(ident="deck_access_flats", name="1960s Deck-Access Flats")
             b.set(u + 1, y + 3, 7, light(11))
         for u in range(8, W - 5, 4):                   # party walls between the flats
             b.fill(u, y + 1, 4, u, y + 3, 10, brick)
-        # each flat: a kitchen along the front beside the door, a table, a sofa and a bed at the back
-        for x0, x1, door in ((4, 7, 5), (9, 11, 9), (13, 15, 13), (17, 20, 17)):
-            P.kitchen_run(b, door + 1, x1, y + 1, 4, "back")
-            P.table(b, x0 + 1, y + 1, 7)
-            b.set(x0 + 2, y + 1, 7, stairs("oak", "right"))
-            P.sofa(b, x0, x0 + 1, y + 1, 10, "back", "spruce")
-            P.bed(b, x1, y + 1, 10, ("light_blue", "white", "lime", "pink")[x0 % 4], "back")
+        # each flat is laid out by prefab_dress: a bathroom walled off, a kitchen, a sofa and the bed
     # stair towers at each end: dog-leg stairs that land at the front on every floor, beside the deck
     for a in (0, W - 4):
         b.walls(a, 1, 1, a + 3, top + 1, 6, conc)
@@ -1325,7 +1343,8 @@ def church(ident="church", name="Victorian Parish Church"):
         for u in (3, 4, 5, 9, 10, 11):
             b.set(u, 1, v, stairs("dark_oak", "front"))
     P.rug(b, 6, 8, 8, 23, 1, "red")
-    b.fill(5, 1, 23, 9, 1, 24, "smooth_quartz")
+    b.fill(5, 1, 23, 9, 1, 23, slab("smooth_quartz"))           # a step up to the sanctuary
+    b.fill(5, 1, 24, 9, 1, 24, "smooth_quartz")
     b.fill(6, 2, 24, 8, 2, 24, slab("smooth_quartz"))
     for (u, v) in ((7, 11), (7, 17), (7, 22)):
         b.set(u, 7, v, B("lantern", hanging=True, waterlogged=False))

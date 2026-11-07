@@ -3,6 +3,7 @@ housing estates laid out from the smaller buildings (turned to face their street
 Coordinates as in prefab_lib: u across the front, y up, v from the front boundary back."""
 from prefab_lib import AIR, B, Build, DIRS, light, slab, stairs
 import prefab_parts as P
+from prefab_furnish import home
 import prefab_designs as PD
 from prefab_stretch import enlarge
 
@@ -311,7 +312,7 @@ def executive_house(ident="executive_house", name="Executive Detached House"):
     brick, render, roof, win = STOCK, "ptmuk:white_render", SLATE, "ptmuk:grey_framed_window"
     P.lawn(b, 0, 0, W - 1, D - 1)
     P.paving(b, 16, 0, 22, 6, "ptmuk:block_paving_grey")
-    P.paving(b, 10, 0, 10, 6, "ptmuk:block_paving_grey")
+    P.paving(b, 11, 0, 11, 6, "ptmuk:block_paving_grey")
     # main house u2..15 v7..18, gable wing u2..7 forward to v5
     b.fill(2, 0, 5, 15, 0, 18, "smooth_stone")
     b.walls(2, 1, 7, 15, 7, 18, brick)
@@ -321,9 +322,9 @@ def executive_house(ident="executive_house", name="Executive Detached House"):
     b.fill(3, 5, 7, 6, 6, 7, AIR)
     b.window(3, 2, 5, 4, 2, win)
     b.window(3, 5, 5, 4, 3, win)
-    b.door(10, 1, 7, "dark_oak", facing="back", hinge="left")
-    b.fill(9, 1, 7, 9, 2, 7, pane(win))
-    b.fill(9, 3, 6, 11, 3, 6, slab("smooth_stone", "top"))
+    b.door(11, 1, 7, "dark_oak", facing="back", hinge="left")      # a step along from the stairs: a hall inside
+    b.fill(10, 1, 7, 10, 2, 7, pane(win))
+    b.fill(10, 3, 6, 12, 3, 6, slab("smooth_stone", "top"))
     b.window(12, 2, 7, 3, 2, win)
     b.window(9, 5, 7, 2, 2, win)
     b.window(12, 5, 7, 3, 2, win)
@@ -613,11 +614,32 @@ def country_house(ident="georgian_country_house", name="Georgian Country House")
         b.set(10, 6, v, stairs("dark_oak", "left"))
         b.set(12, 6, v, stairs("dark_oak", "right"))
     b.set(11, 9, 21, B("lantern", hanging=True, waterlogged=False))
+    # top floor: walls between the rooms as on the floors below
+    b.fill(14, 11, 15, 14, 13, 28, PLASTER)
+    b.fill(26, 11, 15, 26, 13, 28, PLASTER)
+    for u in (14, 26):
+        for v in (18, 25):
+            opening(b, u, 11, v, u, 12, v)
+    # the east rooms upstairs: a bedroom at the front, a bathroom behind it
+    for y in (6, 11):
+        b.fill(27, y, 22, 32, y + 2, 22, PLASTER)
+        import prefab_furnish
+        prefab_furnish.bath(b, [(30, 28), (31, 28)], y)
+        b.set(32, y, 28, home("toilet", facing="west", lit=False))
+        b.set(28, y, 28, home("basin", facing="south", lit=False))
     P.bed(b, 29, 6, 16, "purple", "front")
-    P.bed(b, 29, 6, 27, "cyan", "back")
     P.bed(b, 11, 11, 16, "white", "front")
     P.bed(b, 29, 11, 16, "red", "front")
-    P.bed(b, 29, 11, 27, "blue", "back")
+    # the service wing (west pavilion): the kitchen; the east one a garden room
+    P.kitchen_run(b, 19, 22, 1, 2, facing="right", side=True)
+    P.table(b, 4, 1, 23)
+    b.set(4, 1, 24, stairs("oak", "front"))
+    b.set(3, 1, 23, stairs("oak", "right"))
+    for (u, v) in ((35, 18), (38, 18), (35, 25), (38, 25)):
+        b.set(u, 1, v, B("potted_azalea_bush"))
+    P.table(b, 36, 1, 21)
+    P.armchair(b, 37, 1, 21, "right")
+    P.armchair(b, 36, 1, 22, "back")
     # back terrace with balustrade, formal garden with clipped hedges, topiary and trees
     b.fill(7, 0, 30, 33, 0, 32, "smooth_stone")
     b.fill(7, 1, 33, 33, 1, 33, balustrade)
@@ -689,15 +711,22 @@ def thatched_cottage(ident="thatched_cottage", name="Thatched Cottage"):
     b.set(3, 1, 6, B("campfire", facing="east", lit=False, signal_fire=False, waterlogged=False))
     b.fill(3, 2, 6, 3, 3, 7, brick)
     b.set(3, 1, 7, brick)
-    P.table(b, 9, 1, 7)
-    b.set(9, 1, 6, stairs("oak", "back"))
-    b.set(9, 1, 8, stairs("oak", "front"))
-    b.fill(11, 1, 5, 11, 2, 5, B("barrel", facing="west", open=False))
+    P.table(b, 8, 1, 7)
+    b.set(7, 1, 7, stairs("oak", "right"))
+    P.kitchen_run(b, 3, 5, 1, 5, facing="back")          # into the corner by the inglenook
     P.armchair(b, 5, 1, 7, "left")
-    P.rug(b, 4, 5, 6, 8, 1, "red")
+    P.rug(b, 4, 6, 6, 8, 1, "red")
     for i in range(4):                                   # cottage stair along the back wall, up into the loft
-        b.set(11 - i, 1 + i, 8, stairs("oak", "left"))
-        P.clear_over(b, 11 - i, 1 + i, 8, 3 if i < 3 else 2)
+        b.set(8 + i, 1 + i, 8, stairs("oak", "right"))
+        P.clear_over(b, 8 + i, 1 + i, 8, 3 if i < 3 else 2)
+    # the bathroom walled off at the end, running in under the stairs
+    b.fill(9, 1, 5, 9, 3, 7, render)
+    b.door(9, 1, 6, "spruce", facing="right", hinge="left")
+    b.fill(10, 1, 5, 10, 1, 6, AIR)
+    import prefab_furnish
+    prefab_furnish.bath(b, [(11, 5), (11, 6)], 1)
+    b.set(11, 1, 7, home("toilet", facing="west", lit=False))
+    b.set(10, 1, 5, home("basin", facing="south", lit=False))
     P.bed(b, 5, 5, 6, "white", "back")
     b.set(9, 5, 7, B("barrel", facing="south", open=False))
     # back garden: vegetable beds, compost bin, apple tree, fences

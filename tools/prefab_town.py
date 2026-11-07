@@ -57,21 +57,10 @@ def ceiling_lights(b, u0, v0, u1, v1, y, step=3):
 
 
 def flat(b, u, y):
-    """A one-bedroom flat over the shop: sofa and TV at the front, kitchen against the back wall,
-    a bed beside the stairs, a table, lights and a back window."""
-    x0, back = u.x0, u.back
-    P.sofa(b, x0, x0 + 1, y, 2, "front", "spruce")
-    kitchen_to = min(x0 + 2, u.core_u - 2)
-    if kitchen_to - x0 >= 2:
-        P.kitchen_run(b, x0, kitchen_to, y, back - 1, "front")
-    if u.core_u - 1 > kitchen_to:
-        P.bed(b, u.core_u - 1, y, back - 1, "white", "back")
-    mid = (2 + u.core_v) // 2
-    if x0 + 2 < u.core_u:
-        P.table(b, x0 + 2, y, mid)
-        b.set(x0 + 1, y, mid, stairs("spruce", "left"))
-    b.light_grid(x0, 2, u.x1, back - 1, y + 2, step=3, level=12)
-    b.window(x0 + 1, y + 1, back, 1, 2, "ptmuk:upvc_window")
+    """A flat over the shop: lights and a back window here; prefab_dress lays it out (a bathroom and a
+    bedroom walled off, a kitchen and a sofa)."""
+    b.light_grid(u.x0, 2, u.x1, u.back - 1, y + 2, step=3, level=12)
+    b.window(u.x0 + 1, y + 1, u.back, 1, 2, "ptmuk:upvc_window")
 
 
 def high_street_unit(ident, name, category, W, D, storeys, sign, desc, interior, wall=STOCK, style="victorian",

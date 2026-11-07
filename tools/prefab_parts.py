@@ -323,6 +323,8 @@ def dogleg_stairs(b, cu, vs, y_floors, material="stone_brick"):
         half = (top - base) // 2
         room = stair_headroom(half)
         b.fill(cu, base + half, vs + half + 1, cu + 1, base + half, vs + half + 1, stringer)   # half landing
+        for u in (cu, cu + 1):                     # open over it up to the next one (the stairwell through the floor)
+            clear_over(b, u, base + half, vs + half + 1, top - base - 1)
         for k in range(half):
             u, y, v = cu, base + 1 + k, vs + 1 + k
             b.set(u, y, v, stairs(material, "back"))
@@ -333,7 +335,8 @@ def dogleg_stairs(b, cu, vs, y_floors, material="stone_brick"):
             u, y, v = cu + 1, base + half + 1 + k, vs + half - k
             b.set(u, y, v, stairs(material, "front"))
             clear_over(b, u, y, v, room[k])
-            b.set(u, y - 1, v, stringer)
+            if k:                                  # (the first step sits on the landing's edge: under it is headroom below)
+                b.set(u, y - 1, v, stringer)
 
 
 def shop_shelves(b, u0, u1, v, y=1, h=2, kind="bookshelf"):

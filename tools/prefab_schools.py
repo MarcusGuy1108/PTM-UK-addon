@@ -117,8 +117,16 @@ def teaching_block(b, u0, u1, v0, v1, storeys, wall, kinds, room_w=9, entrance=T
                         P.sofa(b, r1 - 2, r1 - 1, 1, sv0, "front", "warped")
                     b.light_grid(u, sv0, r1, sv1, y + 2, step=3, level=14)
                 else:
+                    cupboard = u == start and u - 1 > u0 + 1
+                    if cupboard:
+                        # the end of the row beside the stairs: a wall for the board, a stock cupboard behind it
+                        b.fill(u - 1, y, sv0, u - 1, y + 2, sv1, "calcite")
+                        for v in range(sv0 + 2, sv1 + 1):
+                            b.set(u0 + 1, y, v, "bookshelf")
                     b.door(u + 1, y, door_v, "birch", facing="front" if strip == 0 else "back", hinge="left")
                     classroom(b, u, r1, sv0, sv1, y, kinds(k, i), door_v)
+                    if cupboard:                       # (its door clear of the stair landing over the front corner)
+                        b.door(u - 1, y, sv0 + 1, "birch", facing="left", hinge="left")
                     i += 1
                 u = r1 + 2
         b.light_grid(u0 + 1, c0, u1 - 1, c1, y + 2, step=3, level=14)
@@ -154,6 +162,8 @@ def large_primary(ident="large_primary_school", name="Large Modern Primary Schoo
     b.door(36, 1, 46, "birch", facing="back", hinge="left")
     b.door(37, 1, 46, "birch", facing="back", hinge="right")
     b.fill(23, 1, 58, 50, 1, 61, slab("oak", "top"))
+    for u in (24, 49):                                     # steps up onto the stage at each end
+        b.set(u, 1, 57, stairs("oak", "back"))
     b.set(36, 2, 59, B("lectern", facing="south", has_book=False, powered=False))
     for u in (23, 50):
         b.set(u, 2, 61, B("potted_azalea_bush"))

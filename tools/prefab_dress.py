@@ -8,9 +8,11 @@ under the window, pictures, a clock, coat hooks by the front door, curtains at t
 in the ceiling if it has none. Nothing goes in front of a door, a piece of furniture or the stairs, or
 anywhere that would cut a room in two. Shops, bars and public rooms keep what they have.
 
-A big floor left empty (the storeys of a block of flats, rooms over a pub) is fitted out first: cut
-into flat-sized rooms by partition walls, each wall with a doorway, and each room given a kitchen, a
-sofa (with a TV across from it), a bed, and a toilet, basin and bath."""
+A big floor left empty (the storeys of a block of flats, rooms over a pub) is fitted out first as
+flats: a corridor from the stairs with a flat off it every few blocks, each behind its own front door
+(or the whole floor one flat if it's small). Each flat gets a bathroom walled off with its own door
+(bath, toilet and basin), a bedroom walled off with a door if there's room for one (else the bed goes
+in the living room), and a kitchen and a sofa in what's left; nothing cuts off the way through."""
 import zlib
 
 import prefab_check as pc
@@ -57,12 +59,22 @@ def dress(b):
     fitted = False
     for i, r in enumerate(rooms):
         if not r.tags and len(r.cells) >= EMPTY and (b.category in ("Flats", "Estates") or r.y > 2):
-            for j, part in enumerate(Dresser(b, g, out, r, pick + i).split(FLAT)):
-                Dresser(b, g, out, part, pick + i + j).fit_out()
+            for j, part in enumerate(Dresser(b, g, out, r, pick + i).flats()):
+                Dresser(b, g, out, part, pick + i + j).fit_flat()
             fitted = True
     if fitted:
         PF.joins(b)                                          # the new sofas' ends and middles
         PF.tvs(b)                                            # and a TV across from each
+        rooms = list(_rooms(b, g, out))
+    if b.category == "Hotels":
+        # every bedroom its own shower room or bathroom, walled off in a corner
+        for i, r in enumerate(rooms):
+            if "bed" in r.tags and "bath" not in r.tags:
+                d = Dresser(b, g, out, r, pick + i)
+                d.keep = d._inside_door()                     # a small room: only the way in has to stay clear
+                en_suite = d._enclose(3, 2, want_window=False, min_rest=8) or d._enclose(2, 2, want_window=False, min_rest=6)
+                if en_suite is not None:
+                    Dresser(b, g, out, en_suite, pick + i).fit_bathroom()
         rooms = list(_rooms(b, g, out))
     if not any(r.tags & HOME_TAGS for r in rooms):
         return                                               # not a home, or no home in it
@@ -396,7 +408,9 @@ class Dresser:
         self._radiator()
 
     def bathroom(self):
-        fittings = ("ptmuk:bath", "ptmuk:toilet", "ptmuk:shower")
+        fittings = ("ptmuk:bath", "ptmuk:toilet", "ptmuk:shower", "ptmuk:basin")
+        if not self._has("ptmuk:toilet"):
+            self._place_floor("toilet", under_window=False, near=fittings, reach=3)
         basin = self._has("ptmuk:basin") or self._place_floor("basin", under_window=False, near=fittings, reach=3)
         if basin and not self._has("bathroom_cabinet", "mirror"):
             self._above(("ptmuk:basin",), "bathroom_cabinet")
@@ -500,51 +514,333 @@ class Dresser:
             return True
         return False
 
-    def fit_out(self):
-        """An empty room made a home: a kitchen along a wall, a sofa away from it, a bed away from both, and a
-        toilet, basin and bath, each where it leaves the way through clear."""
+    # ------------------------------------------------------------------ flats
+
+    def _entries(self, cells):
+        """The cells of the room you come in by: next to a door, a stair or a landing outside it."""
+        out = []
+        for (u, y, v) in cells:
+            for du, dv in VEC.values():
+                n = (u + du, y, v + dv)
+                if n in cells:
+                    continue
+                blk, below = self.g.get(*n), self.g.get(u + du, y - 1, v + dv)
+                if blk is None:
+                    continue
+                if blk.name.endswith(("_door", "_fence_gate")) or _stairs(blk) or below is not None and _stairs(below) or \
+                        self.g.clear(*n) and self.g.clear(u + du, y + 1, v + dv):
+                    out.append((u, y, v))
+                    break
+        return out
+
+    def _partition(self, c):
+        """A partition wall up to the ceiling at floor cell c."""
+        u, y, v = c
+        for k in range(max(3, self._ceiling(u, v))):
+            if self._empty(u, y + k, v):
+                self.b.set(u, y + k, v, "calcite")
+
+    def _door(self, c, into, wood="oak"):
+        """A door in a partition at c, opening into the room the direction `into` lies."""
+        u, y, v = c
+        self.b.set(u, y, v, B(wood + "_door", facing=into, half="lower", hinge="left", open=False, powered=False))
+        self.b.set(u, y + 1, v, B(wood + "_door", facing=into, half="upper", hinge="left", open=False, powered=False))
+        for k in range(2, max(3, self._ceiling(u, v) + 2)):
+            if self._empty(u, y + k, v):
+                self.b.set(u, y + k, v, "calcite")
+
+    def flats(self):
+        """Cut a big empty floor into flats off a corridor from the stairs (see _corridor); a floor about
+        one flat big is one flat. Returns the flats, as rooms."""
+        cells = set(self.r.cells)
+        if len(cells) <= FLAT + 20:
+            return [self.r]
+        done = self._corridor(cells)
+        return done if done is not None else self.split(FLAT)
+
+    def _corridor(self, cells):
+        """A corridor the long way down the floor (down the middle with flats both sides if it's deep, else
+        along the side the stairs are nearer), a passage from each way in to it, and flats along it cut every
+        few blocks, each with a front door onto it. None if the floor won't take it (the old way is used)."""
+        us, vs = [c[0] for c in cells], [c[2] for c in cells]
+        along_u = max(us) - min(us) >= max(vs) - min(vs)
+        A = (lambda c: c[0]) if along_u else (lambda c: c[2])
+        S = (lambda c: c[2]) if along_u else (lambda c: c[0])
+
+        def at(a, s):
+            return (a, self.y, s) if along_u else (s, self.y, a)
+        entries = self._entries(cells)
+        if not entries:
+            return None
+        s_lo, s_hi = min(S(c) for c in cells), max(S(c) for c in cells)
+        depth = s_hi - s_lo + 1
+        if depth >= 15:
+            rows = sorted(range(s_lo + 6, s_hi - 5), key=lambda r: abs(r - (s_lo + s_hi) / 2))
+        else:
+            mean = sum(S(e) for e in entries) / len(entries)
+            rows = [s_lo, s_hi] if mean - s_lo <= s_hi - mean else [s_hi, s_lo]
+        for r in rows:
+            plan = self._try_corridor(cells, entries, r, A, S, at)
+            if plan is not None:
+                corridor, walls, flats = plan
+                for c in walls:
+                    if c not in flats["doors"]:
+                        self._partition(c)
+                for c, into in flats["doors"].items():
+                    self._door(c, into, "dark_oak")
+                self.free -= corridor | walls
+                return [Room(f, self.y) for f in flats["rooms"]]
+        return None
+
+    def _try_corridor(self, cells, entries, r, A, S, at):
+        corridor = {c for c in cells if S(c) == r}
+        if not corridor:
+            return None
+        # a passage from each way in that isn't on the corridor, straight across to it
+        passages = set()
+        for e in entries:
+            if S(e) == r:
+                continue
+            step = 1 if r > S(e) else -1
+            path = [at(A(e), s) for s in range(S(e), r, step)]
+            if not all(p in cells for p in path):
+                return None
+            passages.update(path)
+        hall = corridor | passages
+        if not self._connected(hall):
+            return None
+        # walls between the hall and the flats either side
+        walls = set()
+        for c in hall:
+            for du, dv in VEC.values():
+                n = (c[0] + du, c[1], c[2] + dv)
+                if n in cells and n not in hall:
+                    walls.add(n)
+        if walls & self.keep:
+            return None                                        # it would block a doorway or the stairs
+        rest = cells - hall - walls
+        # the flats: each run of floor beside the corridor, cut across every few blocks
+        rooms, doors, cut = [], {}, set()
+        for comp in self._components(rest):
+            span = sorted({A(c) for c in comp})
+            d = max(S(c) for c in comp) - min(S(c) for c in comp) + 1
+            length = max(5, round(85 / max(d, 1)))
+            pieces, start = [], span[0]
+            while start <= span[-1]:
+                end = start + length - 1
+                if span[-1] - end < 5:
+                    end = span[-1]
+                pieces.append((start, end))
+                start = end + 2                                    # a block for the wall between
+            for k, (a0, a1) in enumerate(pieces):
+                room = {c for c in comp if a0 <= A(c) <= a1}
+                if k + 1 < len(pieces):
+                    cut |= {c for c in comp if A(c) == a1 + 1}
+                if len(room) < 16 or not self._connected(room):
+                    return None
+                # its front door: a wall cell between it and the hall, nearest its end by the stairs
+                options = []
+                for w in walls:
+                    inside = [n for n in self._nbrs(w) if n in room]
+                    outside_ = [n for n in self._nbrs(w) if n in hall]
+                    if inside and outside_ and not any(n in doors for n in self._nbrs(w)):
+                        di = (inside[0][0] - w[0], inside[0][2] - w[2])
+                        into = next(k2 for k2, vv in VEC.items() if vv == di)
+                        options.append((min(abs(A(w) - A(e)) + abs(S(w) - S(e)) for e in entries), w, into))
+                if not options:
+                    return None
+                options.sort()
+                _, w, into = options[0]
+                doors[w] = into
+                rooms.append(room)
+        walls |= cut
+        return hall, walls, {"rooms": rooms, "doors": doors}
+
+    def _nbrs(self, c):
+        return [(c[0] + du, c[1], c[2] + dv) for du, dv in VEC.values()]
+
+    def _components(self, cells):
+        out, done = [], set()
+        for p in sorted(cells):
+            if p in done:
+                continue
+            comp, todo = {p}, [p]
+            done.add(p)
+            while todo:
+                c = todo.pop()
+                for n in self._nbrs(c):
+                    if n in cells and n not in done:
+                        done.add(n)
+                        comp.add(n)
+                        todo.append(n)
+            out.append(comp)
+        return out
+
+    def _enclose(self, w, d, want_window, min_rest=12):
+        """Wall off a w x d room in a corner of this one (or along a wall), with a door into it; the corner
+        where the rest stays in one piece, with a window if want_window (a bedroom) or without (a bathroom).
+        Returns the new room, or None."""
+        cells = set(self.r.cells)
+        us, vs = [c[0] for c in cells], [c[2] for c in cells]
+        u0, u1, v0, v1 = min(us), max(us), min(vs), max(vs)
+        y = self.y
+        best = None
+        for (ou, ov, su, sv) in ((u0, v0, 1, 1), (u1, v0, -1, 1), (u0, v1, 1, -1), (u1, v1, -1, -1)):
+            for iw, idp in ((w, d), (d, w)):
+                rect = {(ou + su * i, y, ov + sv * j) for i in range(iw) for j in range(idp)}
+                wall = {(ou + su * iw, y, ov + sv * j) for j in range(idp + 1)} | \
+                       {(ou + su * i, y, ov + sv * idp) for i in range(iw + 1)}
+                wall &= cells
+                if not rect <= self.free or rect & self.keep or not wall <= self.free or wall & self.keep:
+                    continue
+                if not wall:
+                    continue
+                rest = self.free - rect - wall
+                if len(rest) < min_rest:
+                    continue
+                windows = sum(1 for c in rect for dd in VEC if self._window(c, dd, 1))
+                if want_window and not windows:
+                    continue
+                # a partition ending against glass would cut a window in two
+                cuts = sum(1 for c in wall for dd in VEC
+                           if (c[0] + VEC[dd][0], y, c[2] + VEC[dd][1]) not in cells and self._window(c, dd, 1))
+                for dc in sorted(wall):
+                    inside = [n for n in self._nbrs(dc) if n in rect]
+                    outer = [n for n in self._nbrs(dc) if n in rest]
+                    if not inside or not outer or not self._connected(rest | {dc}) or not self._connected(rect):
+                        continue
+                    # a door in the middle of a side leaves room for things round the walls either side of it
+                    middle = sum(1 for n in self._nbrs(inside[0]) if n in rect)
+                    score = cuts * 10 + (0 if want_window else windows) - 2 * middle
+                    if best is None or score < best[0]:
+                        di = (inside[0][0] - dc[0], inside[0][2] - dc[2])
+                        best = (score, rect, wall, dc, next(k for k, vv in VEC.items() if vv == di), outer[0])
+                    break
+        if best is None:
+            return None
+        _, rect, wall, dc, into, outer = best
+        for c in wall:
+            if c != dc:
+                self._partition(c)
+        self._door(dc, into)
+        self.free -= rect | wall
+        self.keep.add(outer)                                   # the way to the door stays clear
+        return Room(rect, y)
+
+    def fit_flat(self):
+        """A flat: a bathroom and (room permitting) a bedroom walled off with doors, then a kitchen along a wall
+        and a sofa in the rest (with the bed there too if there's no bedroom)."""
         placed = []
 
         def far(options, runs=True):
-            """The options furthest from what's been placed first (a run by its first cell)."""
             def gap(o):
                 c = o[0][0] if runs else o[0]
                 return -min((abs(c[0] - p[0]) + abs(c[2] - p[2]) for p in placed), default=0)
             return sorted(options, key=gap)
 
+        bath = self._enclose(3, 2, want_window=False) if len(self.free) >= 30 else None
+        if bath is not None:
+            Dresser(self.b, self.g, self.out, bath, self.seed).fit_bathroom()
+            placed += list(bath.cells)
+        bed = None
+        if len(self.free) >= 48:
+            bed = self._enclose(4, 3, want_window=True) or self._enclose(3, 3, want_window=True)
+        if bed is not None:
+            Dresser(self.b, self.g, self.out, bed, self.seed).fit_bedroom()
+            placed += list(bed.cells)
         run = self._run(4) or self._run(3)
         if run:
             cells, f = run
             PF.kitchen(self.b, [(c[0], c[2]) for c in cells], self.y, f, "white" if self.seed % 2 else "oak")
             self._took(cells, placed)
-        run = next(iter(far(self._runs(2))), None)
+        run = next(iter(far(self._runs(3) or self._runs(2))), None)
         if run:
             cells, f = run
             colour = ("grey", "navy", "green", "brown", "cream")[self.seed % 5]
             for c in cells:
                 self.b.set(*c, home(f"sofa_{colour}", facing=f, lit=False, shape="single"))
             self._took(cells, placed)
-        for c, f in far(self._spots(), runs=False):
+        if bed is None:
+            self._bed(far(self._spots(), runs=False), placed)
+        if bath is None:                                       # too small to wall off: a shower room corner at least
+            run = next(iter(far(self._runs(2))), None)
+            if run:
+                cells, f = run
+                self.b.set(*cells[0], home("toilet", facing=f, lit=False))
+                self.b.set(*cells[1], home("basin", facing=f, lit=False))
+                self._took(cells, placed)
+
+    def _bed(self, spots, placed=None, double=False):
+        for c, f in spots:
             foot = (c[0] + VEC[f][0], c[1], c[2] + VEC[f][1])
-            if foot in self.free and foot not in self.keep and self._can_take_all([c, foot]):
-                bed = BEDS[self.seed % len(BEDS)]                  # its head to the wall
-                self.b.set(*c, B(bed, facing=OPP[f], part="head", occupied=False))
-                self.b.set(*foot, B(bed, facing=OPP[f], part="foot", occupied=False))
-                self._took([c, foot], placed)
-                break
-        run = next(iter(far(self._runs(3))), None) or next(iter(far(self._runs(2))), None)
-        if run:
-            cells, f = run
-            self.b.set(*cells[0], home("toilet", facing=f, lit=False))
-            self.b.set(*cells[1], home("basin", facing=f, lit=False))
-            if len(cells) > 2:
-                self.b.set(*cells[2], home("towel_radiator", facing=f, lit=False))
-            self._took(cells, placed)
-            bath = next(iter(sorted(self._runs(2), key=lambda r: abs(r[0][0][0] - cells[0][0]) + abs(r[0][0][2] - cells[0][2]))),
-                        None)
-            if bath and abs(bath[0][0][0] - cells[0][0]) + abs(bath[0][0][2] - cells[0][2]) <= 4:
-                PF.bath(self.b, [(c[0], c[2]) for c in bath[0]], self.y)
-                self._took(bath[0], placed)
+            if foot not in self.free or foot in self.keep or not self._can_take_all([c, foot]):
+                continue
+            bed = BEDS[self.seed % len(BEDS)]                  # its head to the wall
+            pair = [(c, foot)]
+            if double:
+                side = VEC[CW[f]]
+                c2, f2 = (c[0] + side[0], c[1], c[2] + side[1]), (foot[0] + side[0], c[1], foot[2] + side[1])
+                if self._can_take_all([c, foot, c2, f2]) and _wall(self.g.get(c2[0] - VEC[f][0], c[1], c2[2] - VEC[f][1])):
+                    pair.append((c2, f2))
+            for h, ft in pair:
+                self.b.set(*h, B(bed, facing=OPP[f], part="head", occupied=False))
+                self.b.set(*ft, B(bed, facing=OPP[f], part="foot", occupied=False))
+                self.free -= {h, ft}
+                if placed is not None:
+                    placed += [h, ft]
+            return True
+        return False
+
+    def _inside_door(self):
+        """The cells just inside this room's doors."""
+        return {c for c in self.r.cells if any((n := self.g.get(*x)) is not None and n.name.endswith("_door")
+                                               for x in self._nbrs(c))}
+
+    def fit_bathroom(self):
+        """A bath along a wall, a toilet and a basin against the walls, each reachable from the floor left
+        clear inside the door (tried every way; the bath goes furthest from the door)."""
+        cells = set(self.r.cells)
+        entry = self._inside_door()
+        walls = {c: [d for d in VEC if (c[0] + VEC[d][0], c[1], c[2] + VEC[d][1]) not in cells
+                     and _wall(self.g.get(c[0] + VEC[d][0], c[1], c[2] + VEC[d][1]))] for c in cells}
+        on_wall = sorted((c for c in cells if walls[c] and c not in entry),
+                         key=lambda c: -min((abs(c[0] - e[0]) + abs(c[2] - e[2]) for e in entry), default=0))
+        pairs = [(a, b_) for a in on_wall for b_ in on_wall if a < b_ and abs(a[0] - b_[0]) + abs(a[2] - b_[2]) == 1
+                 and set(walls[a]) & set(walls[b_])]
+
+        def ok(bath, taken):
+            free = cells - set(bath) - set(taken)
+            return entry <= free and self._connected(free) and all(any(n in free for n in self._nbrs(x)) for x in taken) \
+                and (not bath or any(n in free for x in bath for n in self._nbrs(x)))
+        for bath in pairs + [None]:
+            used = list(bath or ())
+            for t in on_wall:
+                if t in used:
+                    continue
+                for bs in on_wall:
+                    if bs in used or bs == t or not ok(used, [t, bs]):
+                        continue
+                    if bath:
+                        PF.bath(self.b, [(c[0], c[2]) for c in bath], self.y)
+                    self.b.set(*t, home("toilet", facing=OPP[walls[t][0]], lit=False))
+                    self.b.set(*bs, home("basin", facing=OPP[walls[bs][0]], lit=False))
+                    self.free -= set(used + [t, bs])
+                    if not bath:                                # a shower instead, if one fits
+                        for sh in on_wall:
+                            if sh not in (t, bs) and self._empty(sh[0], sh[1] + 1, sh[2]) and ok((), [t, bs, sh]):
+                                f = OPP[walls[sh][0]]
+                                self.b.set(*sh, home("shower", facing=f, lit=False, half="lower"))
+                                self.b.set(sh[0], sh[1] + 1, sh[2], home("shower", facing=f, lit=False, half="upper"))
+                                self.free.discard(sh)
+                                break
+                    return
+
+    def fit_bedroom(self):
+        """A bed (a double if it fits) with its head to the wall, and a wardrobe; a small room only keeps the
+        way in clear (the rule against blocking narrow passages would leave it empty)."""
+        self.keep = self._inside_door()
+        self._bed(self._spots(under_window=False) + self._spots(), double=True)
+        self._place_floor("wardrobe_oak", tall=True, under_window=False)
 
     def office(self):
         """Desks along the walls, two apart, each with a computer and a chair facing it, and plants in corners."""

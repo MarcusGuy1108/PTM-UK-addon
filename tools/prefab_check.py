@@ -6,6 +6,8 @@
 * staircases you can't use: a step with a ceiling or wall over it, a top step with no floor to
   step onto, or a bottom step you can't get to;
 * doors and gates you can't get through (something in the way on one side);
+* floors you can't walk to from the street: in through the doors, up the stairs and slabs (no jumping
+  onto furniture or counters indoors), so a room or a landing with no proper way in shows up;
 * rooms left empty (no furniture at all), corridors and stairwells aside.
 
 Run it with no arguments for a summary of every prefab, or name prefabs to list each problem.
@@ -448,10 +450,98 @@ def empty_rooms(g, out_cells):
     return out
 
 
+# ------------------------------------------------------------------ walking in properly
+
+_NOT_FLOOR = ("barrel", "bookshelf", "chest", "crafting_table", "furnace", "smoker", "loom", "jukebox", "note_block",
+              "hay_block")
+
+
+def _real_floor(blk, under):
+    """Something you'd walk on: a full block (furniture aside), a slab or a stair (one hung in the air is a
+    counter or a shelf, and a roof isn't a floor)."""
+    if blk is None or passable(blk) or blk.name.endswith(("_door", "_fence_gate", "_bed", "_trapdoor")) or "roof_" in blk.name:
+        return False
+    if blk.name.endswith(("_slab", "_stairs")):
+        top = blk.props.get("type") == "top" or blk.props.get("half") == "top"
+        return not top or (under is not None and not passable(under))
+    return full_cube(blk) and not blk.name.endswith(_NOT_FLOOR)
+
+
+def walk_in(g, out_cells):
+    """Where you can stand, and where you can get to from the street (the edge of the plot at ground level):
+    level, or a step up or down on stairs and slabs, or a jump outdoors."""
+    b = g.b
+    stand = set()
+    for (u, y, v) in g.cells:
+        if _walk_clear(g, u, y + 1, v) and _walk_clear(g, u, y + 2, v) and g.get(u, y + 1, v) is not None \
+                and g.get(u, y + 1, v).name != "minecraft:water" and _real_floor(g.get(u, y, v), g.get(u, y - 1, v)):
+            stand.add((u, y + 1, v))
+    seen = {p for p in stand if (p[0] in (0, b.W - 1) or p[2] in (0, b.D - 1)) and p[1] <= 3}
+    todo = list(seen)
+    while todo:
+        here = todo.pop()
+        u, y, v = here
+        for du, dv in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            for dy in (0, 1, -1):
+                n = (u + du, y + dy, v + dv)
+                if n not in stand or n in seen:
+                    continue
+                if dy:
+                    lo, hi = (here, n) if dy == 1 else (n, here)
+                    step = _low_step(g.get(hi[0], lo[1], hi[2])) or _low_step(g.get(lo[0], lo[1] - 1, lo[2]))
+                    jump = lo in out_cells and hi in out_cells
+                    # crossing between them your head is a step higher over the lower one (a lintel stops you)
+                    if not (step or jump) or not _walk_clear(g, lo[0], lo[1] + 2, lo[2]):
+                        continue
+                seen.add(n)
+                todo.append(n)
+                break
+    return stand, seen
+
+
+def walk_in_problems(g, out_cells):
+    """Floors inside you can't walk to: rooms with no way in, stairs that don't reach, landings cut off.
+    Roof tops, lofts with no window, and little raised platforms (a window display, a seat) are left out."""
+    b = g.b
+    stand, seen = walk_in(g, out_cells)
+    lost = {p for p in stand - seen if p not in out_cells and p[1] < b.H}
+    out, done = [], set()
+    for p in sorted(lost):
+        if p in done:
+            continue
+        group, todo = [], [p]
+        done.add(p)
+        while todo:
+            u, y, v = todo.pop()
+            group.append((u, y, v))
+            for du, dy, dv in ((1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1), (1, 1, 0), (-1, 1, 0), (0, 1, 1),
+                               (0, 1, -1), (1, -1, 0), (-1, -1, 0), (0, -1, 1), (0, -1, -1)):
+                n = (u + du, y + dy, v + dv)
+                if n in lost and n not in done:
+                    done.add(n)
+                    todo.append(n)
+        us, ys, vs = [c[0] for c in group], [c[1] for c in group], [c[2] for c in group]
+        if len(group) < 4 or min(us) == max(us) or min(vs) == max(vs):
+            continue
+        if all(all(g.clear(u, yy, v) for yy in range(y, b.H)) for (u, y, v) in group):
+            continue                                         # on the roof
+        under_roof = all(any((u, yy, v) in b.roof_cells for yy in range(y + 1, b.H)) for (u, y, v) in group)
+        lit = any((n := g.get(u + du, y + dy, v + dv)) is not None and (is_pane(n) or n.name.endswith("_door"))
+                  for (u, y, v) in group for du, dv in ((1, 0), (-1, 0), (0, 1), (0, -1)) for dy in (0, 1))
+        if under_roof and not lit:
+            continue                                         # a loft
+        if len(group) <= 8 and all(g.get(u, y - 1, v).name.endswith("_slab") for (u, y, v) in group):
+            continue                                         # a window display or a seat
+        out.append(((min(us), min(ys), min(vs)), f"floor of {len(group)} you can't walk to: u {min(us)}-{max(us)}, "
+                    f"level {min(ys)}-{max(ys)}, v {min(vs)}-{max(vs)}", ""))
+    return out
+
+
 def check(build):
     g = Grid(build)
     out_cells = outside(g)
-    return pane_problems(g, out_cells), stair_problems(g) + reach_problems(g, out_cells) + door_problems(g)
+    return pane_problems(g, out_cells), stair_problems(g) + reach_problems(g, out_cells) + door_problems(g) + \
+        walk_in_problems(g, out_cells)
 
 
 def audit(build):

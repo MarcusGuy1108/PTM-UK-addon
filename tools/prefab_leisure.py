@@ -98,9 +98,10 @@ def town_pub(ident="town_pub", name="Big Town Centre Pub"):
         fit(b, "kitchen_unit_oak", 14, 1, v, "right")
     for u in (10, 13):
         fit(b, "beer_pumps", u, 2, 9, "front", level="counter")
+    for u in (10, 12):                    # not over the gap: you'd hit your head on it
         fit(b, "beer_pumps", u, 2, 13, "back", level="counter")
     fit(b, "till", 11, 2, 9, "front", level="counter")
-    fit(b, "till", 12, 2, 13, "back", level="counter")
+    fit(b, "till", 11, 2, 13, "back", level="counter")
     fit(b, "beer_pumps", 9, 2, 11, "left", level="counter")
     fit(b, "beer_pumps", 14, 2, 11, "right", level="counter")
     for u in (11, 12):
@@ -145,7 +146,8 @@ def town_pub(ident="town_pub", name="Big Town Centre Pub"):
 def guest_room(b, u0, u1, v_wall, v_door_wall, y, colour="white"):
     """A hotel or inn bedroom between u0 and u1, from the outside wall (v_wall) back to the
     corridor wall (v_door_wall, its door at u0): a double bed with its head on the outside wall,
-    bedside tables, a TV, a wardrobe and lights."""
+    bedside tables, a TV on the side wall, a wardrobe in the corner by the window and lights; the
+    corner by the corridor is left for prefab_dress to wall off as the en-suite."""
     step = 1 if v_door_wall > v_wall else -1
     head = v_wall + step
     facing = "front" if step == 1 else "back"
@@ -157,10 +159,10 @@ def guest_room(b, u0, u1, v_wall, v_door_wall, y, colour="white"):
             fit(b, "table_lamp", x, y + 1, head, facing, level="low")
     far = v_door_wall - step
     if u1 - u0 >= 3:
-        fit(b, "tv_unit", u1, y, far, "left")
-        fit(b, "tv", u1, y + 1, far, "left", level="low")
-    if abs(far - head) > 2:
-        tall(b, "wardrobe_oak", u1, y, head + 2 * step, "left")
+        fit(b, "tv_unit", u1, y, head + step, "left")
+        fit(b, "tv", u1, y + 1, head + step, "left", level="low")
+    if abs(far - head) > 2 and bed_u - 1 > u0:
+        tall(b, "wardrobe_oak", u0, y, head, "right")
     b.door(u0, y, v_door_wall, "birch", facing="front" if step == -1 else "back", hinge="left")
     b.light_grid(u0, min(head, far), u1, max(head, far), y + 2, step=2, level=11)
 
@@ -385,6 +387,8 @@ def nightclub(ident="nightclub", name="Nightclub"):
         for v in range(13, D - 7):
             b.set(u, 0, v, B("ptmuk:dance_floor", facing="south", lit=True))
     b.fill(7, 1, D - 5, W - 8, 1, D - 3, slab("polished_blackstone", "top"))
+    for u in (7, W - 8):                                   # steps up onto the stage
+        b.set(u, 1, D - 6, stairs("polished_blackstone", "back"))
     for u in (10, 15):
         fit(b, "kitchen_unit_white", u, 2, D - 4, "front")
     fit(b, "dj_decks", 10, 3, D - 4, "front", level="counter")

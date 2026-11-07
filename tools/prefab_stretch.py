@@ -9,6 +9,10 @@ from prefab_lib import AIR, B, Build
 import prefab_check as C
 
 HANGING = ("pendant", "chain", "chandelier", "hanging_sign")
+# things a home has one of: a doubled slice mustn't make two toilets side by side (or two ovens, two fridges)
+SINGLE = ("ptmuk:toilet", "ptmuk:basin", "ptmuk:bath", "ptmuk:tv", "ptmuk:tv_unit", "ptmuk:washing_machine", "ptmuk:fireplace",
+          "ptmuk:fridge_freezer", "ptmuk:microwave", "ptmuk:kettle", "ptmuk:toaster", "minecraft:cauldron",
+          "minecraft:blast_furnace")
 # which way a block's two halves (or a door's swing) lie: along u for these facings
 _ALONG_U = {"north", "south"}
 _TOWARDS = {d: f for f, d in C.DELTA.items()}
@@ -125,6 +129,20 @@ def _flights(b):
     return out
 
 
+def _copy_of(b, p, blk):
+    """What the copy of a block in a doubled slice is: the same, except for a one-off fitting, whose copy
+    is left out (or, in a run of kitchen units, is a plain unit)."""
+    n = blk.name
+    if "kitchen_oven_" in n or "kitchen_sink_" in n:
+        return B(n.replace("kitchen_oven_", "kitchen_unit_").replace("kitchen_sink_", "kitchen_drawers_"), **blk.props)
+    if n in SINGLE:
+        return AIR
+    if n == "minecraft:quartz_stairs" and blk.props.get("half") == "bottom":
+        import prefab_furnish
+        return blk if prefab_furnish._is_staircase_step(b, *p, blk) else AIR      # a toilet, not a step
+    return blk
+
+
 def stretch(b, us=(), ys=(), vs=()):
     """A copy of b with each slice in us, ys and vs doubled (the copy goes just after it)."""
     us, ys, vs = sorted(us), sorted(ys), sorted(vs)
@@ -137,10 +155,13 @@ def stretch(b, us=(), ys=(), vs=()):
     for (u, y, v), blk in b.cells.items():
         hanging = any(h in blk.name for h in HANGING)
         ny = place(y, ys)
-        for nu in place(u, us):
+        copy = None
+        for i, nu in enumerate(place(u, us)):
             for k, yy in enumerate(ny):
-                for nv in place(v, vs):
-                    nb.cells[(nu, yy, nv)] = AIR if hanging and k < len(ny) - 1 else blk
+                for j, nv in enumerate(place(v, vs)):
+                    if (i or j) and copy is None:
+                        copy = _copy_of(b, (u, y, v), blk)
+                    nb.cells[(nu, yy, nv)] = AIR if hanging and k < len(ny) - 1 else copy if i or j else blk
                     if (u, y, v) in b.roof_cells:
                         nb.roof_cells.add((nu, yy, nv))
     # staircases a new layer cut through: re-laid a step longer (see _relay)
@@ -195,7 +216,7 @@ def _relay(nb, run, blk, us, ys, vs, place):
         lo, hi = min(s[1] for s in steps) - 1, max(s[1] for s in steps) + 4
         g = C.Grid(nb)
         if not [p for p in C.stair_problems(g) if (p[0][0], p[0][2]) in mine and lo <= p[0][1] <= hi]:
-            reached = len(C.walkable(g)[1])                    # and the most floor you can still get to
+            reached = len(C.walk_in(g, C.outside(g))[1])      # and the most floor you can still walk to
             if best is None or reached > best[0]:
                 best = (reached, steps)
         for p, x in before.items():                            # undo, try the next way
