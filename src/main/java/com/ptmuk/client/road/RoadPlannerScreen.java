@@ -90,6 +90,12 @@ public class RoadPlannerScreen extends Screen {
     private EditBox stopName;
     /** Map mode: dragging the imported map about (left button), how far so far, and whether dragging is on. */
     private boolean mapDrag;
+    /** Map mode, before a map's chosen: a place to fetch from OpenStreetMap, how big an area, and whether it's being fetched. */
+    private EditBox placeBox;
+    private static String placeTyped = "";
+    private static int downloadSize = 1;
+    private static final int[] DOWNLOAD_METRES = {400, 800, 1500, 3000};
+    private static boolean downloading;
     private double mapGrabX, mapGrabZ, mapDX, mapDZ;
     private static boolean dragMapMode = true;
     /** Where the preview of a big plan was last laid out round (it follows the view). */
@@ -276,6 +282,10 @@ public class RoadPlannerScreen extends Screen {
         if (stopName != null) {
             removeWidget(stopName);
             stopName = null;
+        }
+        if (placeBox != null) {
+            removeWidget(placeBox);
+            placeBox = null;
         }
         if (drawButton != null) {
             drawButton.active = mode != Mode.DRAW;
@@ -525,7 +535,19 @@ public class RoadPlannerScreen extends Screen {
             if (mapFiles == null) {
                 mapFiles = MapFiles.list();
             }
-            for (int i = 0; i < mapFiles.size() && i < 8; i++) {
+            // fetch one: a place's name (or lat, lon) and how big an area round it
+            placeBox = new EditBox(font, 4, y, PANEL - 8, ROW - 1, Component.literal("Place"));
+            placeBox.setMaxLength(80);
+            placeBox.setValue(placeTyped);
+            placeBox.setHint(Component.literal("place, or lat, lon"));
+            placeBox.setResponder(t -> placeTyped = t);
+            addRenderableWidget(placeBox);
+            y += ROW;
+            halfButtons(y, () -> "Area: " + (DOWNLOAD_METRES[downloadSize] >= 1000 ? DOWNLOAD_METRES[downloadSize] / 1000.0 + " km"
+                    : DOWNLOAD_METRES[downloadSize] + " m"), b -> downloadSize = (downloadSize + 1) % DOWNLOAD_METRES.length,
+                    () -> downloading ? "Fetching..." : "Download", b -> download());
+            y += ROW + 6;
+            for (int i = 0; i < mapFiles.size() && i < 7; i++) {
                 String f = mapFiles.get(i);
                 button(y, () -> f, b -> importMap(f));
                 y += ROW;
@@ -792,6 +814,40 @@ public class RoadPlannerScreen extends Screen {
     private void readMap(String file, Consumer<OsmMap> then) {
         mapJob = MapFiles.get(file);
         mapThen = then;
+    }
+
+    /**
+     * Fetch the typed place's map from OpenStreetMap (found by name, then its roads, buildings and
+     * bus stops downloaded), save it in the maps folder and import it at the middle of the view.
+     */
+    private void download() {
+        String place = placeTyped.trim();
+        if (place.isEmpty() || downloading) {
+            flash(downloading ? "Already fetching a map" : "Type a place (a town, street or postcode) or lat, lon first");
+            return;
+        }
+        downloading = true;
+        int metres = DOWNLOAD_METRES[downloadSize];
+        flash("Finding " + place + "...");
+        Minecraft mc = Minecraft.getInstance();
+        MapDownload.find(place).thenCompose(r -> {
+            mc.execute(() -> flash("Downloading " + metres + " m round " + r[2] + " from OpenStreetMap..."));
+            return MapDownload.download((String) r[2], (Double) r[0], (Double) r[1], metres / 2.0);
+        }).whenComplete((file, err) -> mc.execute(() -> {
+            downloading = false;
+            if (err != null) {
+                Throwable cause = err.getCause() != null ? err.getCause() : err;
+                flash("Couldn't fetch the map: " + cause.getMessage());
+                return;
+            }
+            mapFiles = MapFiles.list();
+            if (mc.screen == this && plan.map == null) {
+                importMap(file);
+            } else {
+                rebuildPanel();
+            }
+        }));
+        rebuildPanel();
     }
 
     /** A real map's roads into the plan, its middle at the middle of the map view. */
@@ -2073,6 +2129,19 @@ public class RoadPlannerScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
+        if (placeBox != null && placeBox.isFocused()) {
+            if (key == GLFW.GLFW_KEY_ENTER) {
+                download();
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                placeBox.setFocused(false);
+                setFocused(null);
+                return true;
+            }
+            placeBox.keyPressed(key, scan, mods);
+            return true;
+        }
         if (stopName != null && stopName.isFocused()) {
             if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_ESCAPE) {
                 stopName.setFocused(false);

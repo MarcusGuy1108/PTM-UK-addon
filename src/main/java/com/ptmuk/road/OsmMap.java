@@ -68,6 +68,28 @@ public final class OsmMap {
 
     // ------------------------------------------------------------------ reading
 
+    /**
+     * The Overpass API query for what the importer uses in a box (south, west, north, east in
+     * degrees): roads, buildings (outlines and multipolygons), bus stops and the junction points,
+     * with every node of each, as OSM XML.
+     */
+    public static String overpassQuery(double s, double w, double n, double e) {
+        String box = String.format(java.util.Locale.ROOT, "(%.6f,%.6f,%.6f,%.6f)", s, w, n, e);
+        return "[out:xml][timeout:180][maxsize:268435456];("
+                + "way[\"highway\"]" + box + ";"
+                + "way[\"building\"]" + box + ";"
+                + "relation[\"building\"][\"type\"=\"multipolygon\"]" + box + ";"
+                + "node[\"highway\"~\"^(bus_stop|traffic_signals|mini_roundabout|crossing)$\"]" + box + ";"
+                + "node[\"public_transport\"=\"platform\"][\"bus\"=\"yes\"]" + box + ";"
+                + ");(._;>;);out body;";
+    }
+
+    /** A box `half` metres each way round lat, lon: south, west, north, east in degrees. */
+    public static double[] box(double lat, double lon, double half) {
+        double dLat = half / 111250.0, dLon = half / (111320.0 * Math.cos(Math.toRadians(lat)));
+        return new double[]{lat - dLat, lon - dLon, lat + dLat, lon + dLon};
+    }
+
     public static OsmMap read(InputStream in) throws XMLStreamException {
         XMLInputFactory f = XMLInputFactory.newFactory();
         f.setProperty(XMLInputFactory.SUPPORT_DTD, false);

@@ -196,6 +196,10 @@ Follow the old roads (above) to rebuild them with proper markings and kerbs, and
 
 Build a real place without measuring: the Road Planner's **Map** mode (the Map button, or M) brings in a real area's roads and buildings from OpenStreetMap.
 
+**Fetch it in game:** in Map mode type a place (a town, a street, a postcode, or `lat, lon`), pick the **Area** (400 m, 800 m, 1.5 km or 3 km across) and press **Download** (or Enter). The planner finds the place with OpenStreetMap's search (UK first), downloads its roads, buildings and bus stops from the Overpass API, saves them in the `osm_maps` folder (so it's there next time) and imports it at the middle of the view, ready to drag into place. This is the one thing that goes online, and only when you press Download; both services are free and ask for fair use, so fetch an area at a time. A 3 km city centre can take a minute or two.
+
+**Or by hand:**
+
 1. On [openstreetmap.org](https://www.openstreetmap.org), find the area, press **Export**, and save the `.osm` file (the Export button handles a town centre or neighbourhood at a time).
 2. Put it in the `osm_maps` folder in your game folder (the planner's **Open folder** button opens it).
 3. Open the planner, move the map so its middle is where the middle of the real area should go, choose **Map** and click the file.
@@ -216,7 +220,7 @@ Build a real place without measuring: the Road Planner's **Map** mode (the Map b
   - Buildings over 250 blocks across are skipped. The insides are empty floors with no stairs between them.
 - **Measure:** in Map mode click two points to see the distance in blocks and in real metres, to check against Google Maps.
 
-Map data © OpenStreetMap contributors (ODbL). The import never goes online: it only reads the file you saved.
+Map data © OpenStreetMap contributors (ODbL). The import itself only reads the file in `osm_maps`; only **Download** goes online (to nominatim.openstreetmap.org and an Overpass API server).
 
 ### Site planners: car parks, retail parks, drive-thrus, shop parades and whole towns
 

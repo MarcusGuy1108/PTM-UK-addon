@@ -114,6 +114,27 @@ public final class UkMapImportGameTests {
         helper.succeed();
     }
 
+    /**
+     * A map fetched from Overpass: the query asks for roads, buildings and bus stops in a box the
+     * right size round the place; and Overpass's answer (no bounds of its own) reads, centred on its points.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void fetchedMapsRead(GameTestHelper helper) throws Exception {
+        double[] b = OsmMap.box(LAT, LON, 500);
+        helper.assertTrue(Math.abs((b[2] - b[0]) * 111250 - 1000) < 1 && Math.abs((b[3] - b[1]) * 111320 * Math.cos(Math.toRadians(LAT)) - 1000) < 1,
+                "the box isn't 1 km across: " + java.util.Arrays.toString(b));
+        String q = OsmMap.overpassQuery(b[0], b[1], b[2], b[3]);
+        for (String want : new String[]{"way[\"highway\"]", "way[\"building\"]", "bus_stop", "(._;>;);out body;", String.format(java.util.Locale.ROOT, "%.6f", b[0])}) {
+            helper.assertTrue(q.contains(want), "the query has no " + want + ": " + q);
+        }
+        String answer = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><osm version=\"0.6\" generator=\"Overpass API\">"
+                + "<note>The data included in this document is from www.openstreetmap.org.</note>"
+                + node(1, -100, 0, "") + node(2, 100, 0, "") + way(100, tag("highway", "residential"), 1, 2) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(answer.getBytes(StandardCharsets.UTF_8)));
+        helper.assertTrue(Math.abs(map.midLat() - LAT) < 1e-4 && Math.abs(map.midLon() - LON) < 1e-4, "not centred on its points: " + map.midLat() + ", " + map.midLon());
+        helper.succeed();
+    }
+
     /** A street with a terrace of three houses and a shop on one side of it. */
     private static final String STREET = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
             + node(1, -20, 0, "") + node(2, 45, 0, "")
