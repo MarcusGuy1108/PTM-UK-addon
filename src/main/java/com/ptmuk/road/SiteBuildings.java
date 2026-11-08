@@ -46,12 +46,19 @@ final class SiteBuildings {
         this.pal = pal;
     }
 
+    /** A retail park unit's or drive-thru's brand with a name and colours of its own (ShopNames), kept to its kind of shop. */
+    private static SiteLayout.Brand varied(SiteLayout.Brand brand, String prefix, Layout.SiteBuilding b) {
+        com.ptmuk.building.ShopNames.Sign s = com.ptmuk.building.ShopNames.pick(prefix + brand.kind(),
+                com.ptmuk.building.ShopNames.seed(b.frame().x0(), b.frame().z0()));
+        return s == null ? brand : new SiteLayout.Brand(s.text(), brand.sub(), s.board(), s.ink(), brand.kind());
+    }
+
     static void build(Out out, Layout.SiteBuilding b, RoadBuilder.Palette pal) {
         SiteBuildings s = new SiteBuildings(out, b.frame(), b.floor(), pal);
         switch (b.kind()) {
-            case "unit" -> s.unit(SiteLayout.RETAIL_BRANDS.get(b.brand()));
+            case "unit" -> s.unit(varied(SiteLayout.RETAIL_BRANDS.get(b.brand()), "retail_", b));
             case "canopy" -> s.canopy(b.brand());
-            case "drive_thru" -> s.driveThru(SiteLayout.DRIVE_THRU_BRANDS.get(b.brand()));
+            case "drive_thru" -> s.driveThru(varied(SiteLayout.DRIVE_THRU_BRANDS.get(b.brand()), "drive_", b));
             case "prefab" -> s.prefab(SiteLayout.UNITS.get(b.brand()));
             default -> {
             }
@@ -80,6 +87,7 @@ final class SiteBuildings {
         var box = t.get().getBoundingBox(settings, origin);
         BlockPos.betweenClosedStream(box).forEach(p -> out.remember(p.immutable()));
         t.get().placeInWorld(level, origin, origin, settings, net.minecraft.util.RandomSource.create(), 2);
+        com.ptmuk.building.PrefabPlacer.renameShop(level, box, id, com.ptmuk.building.ShopNames.seed(f.x0(), f.z0()));
         com.ptmuk.block.Walkways.area(level, box);
     }
 

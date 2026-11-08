@@ -128,6 +128,32 @@ public final class RoadPlan {
         }
     }
 
+    /**
+     * A bus stop at the kerb of a road: so far along it (0 to 1, a to b), on its left (+1, the side
+     * traffic going a to b keeps to) or right (-1): the yellow bus stop box and a PTM2 transport
+     * point in the kerb lane, the flag and a shelter on the pavement, a PTM2 stop named after it.
+     */
+    public static final class BusStop {
+        public int id;
+        public int segment;
+        public double at = 0.5;
+        public int side = 1;
+        public String name = "";
+        public boolean shelter = true;
+        public boolean built;
+    }
+
+    public BusStop addBusStop(int segment, double at, int side, String name) {
+        BusStop b = new BusStop();
+        b.id = nextId++;
+        b.segment = segment;
+        b.at = Math.max(0.05, Math.min(0.95, at));
+        b.side = side >= 0 ? 1 : -1;
+        b.name = name == null ? "" : name;
+        busStops.add(b);
+        return b;
+    }
+
     /** A rectangle of ground laid out as a car park, a retail park or a drive-thru. */
     public static final class Site {
         public int id;
@@ -288,6 +314,7 @@ public final class RoadPlan {
     public List<Node> nodes = new ArrayList<>();
     public List<Segment> segments = new ArrayList<>();
     public List<Site> sites = new ArrayList<>();
+    public List<BusStop> busStops = new ArrayList<>();
     public MapImport map;
     public int nextId = 1;
 
@@ -386,6 +413,11 @@ public final class RoadPlan {
                 p.sites.add(st);
             }
         }
+        for (BusStop b : busStops) {
+            if (own.contains(b.segment) || context.contains(b.segment)) {
+                p.busStops.add(b);
+            }
+        }
         RoadPlan c = p.copy();
         for (Node n : c.nodes) {
             n.built |= !inner.contains(n.id);
@@ -443,6 +475,13 @@ public final class RoadPlan {
                 m.y = Double.isNaN(m.y) ? st.y : m.y;
             }
         }
+        for (BusStop b : part.busStops) {
+            for (BusStop m : busStops) {
+                if (m.id == b.id && part.ownSegments.contains(b.segment)) {
+                    m.built = true;
+                }
+            }
+        }
         if (map != null && part.map != null) {
             map.builtAreas = part.map.builtAreas;
         }
@@ -465,6 +504,12 @@ public final class RoadPlan {
         }
         if (sites == null) {
             sites = new ArrayList<>();
+        }
+        if (busStops == null) {
+            busStops = new ArrayList<>();
+        }
+        for (BusStop b : busStops) {
+            nextId = Math.max(nextId, b.id + 1);
         }
         nodes.removeIf(n -> n == null);
         sites.removeIf(st -> st == null || st.type == null);
@@ -585,6 +630,7 @@ public final class RoadPlan {
             return;
         }
         segments.remove(s);
+        busStops.removeIf(b -> b.segment == id);
         for (int end : new int[]{s.a, s.b}) {
             if (segmentsAt(end).isEmpty()) {
                 nodes.removeIf(n -> n.id == end);

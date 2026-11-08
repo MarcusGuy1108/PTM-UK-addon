@@ -49,7 +49,7 @@ public final class Layout {
         TREE, EV_CHARGER, PAY_MACHINE, PARKING_SIGN, TROLLEYS, BIN, BOLLARD, BENCH, DISABLED_BAY, PARENT_BAY, EV_BAY,
         ORDER_POINT, MENU_BOARD, PICNIC_TABLE, HEDGE,
         // along pavements
-        PILLAR_BOX, PHONE_BOX, GRIT_BIN, PLANTER, BIKE_STAND,
+        PILLAR_BOX, PHONE_BOX, GRIT_BIN, PLANTER, BIKE_STAND, BUS_STOP, BUS_SHELTER,
         // in a town's green space
         PARK_TREE
     }
@@ -113,8 +113,18 @@ public final class Layout {
      * A PTM2 traffic point for its AI cars: the middle of a lane at (x, z) standing on the surface
      * at {@code top}, the way the traffic goes (PTM2 rotation) and the points it can go on to.
      */
-    public record TrafficPoint(int x, int z, float top, int rot8, List<Integer> next) {
+    /** A PTM2 traffic point; a transport one (a bus stop's) is where its buses stop. */
+    public record TrafficPoint(int x, int z, float top, int rot8, List<Integer> next, boolean transport) {
+        public TrafficPoint(int x, int z, float top, int rot8, List<Integer> next) {
+            this(x, z, top, rot8, next, false);
+        }
     }
+
+    /** A bus stop's PTM2 stop: its name and the area round it (kerb lane to the back of the pavement). */
+    public record BusStopZone(int stopId, String name, int x0, int z0, int x1, int z1) {
+    }
+
+    public final List<BusStopZone> busStopZones = new ArrayList<>();
 
     public final List<TrafficPoint> traffic = new ArrayList<>();
 
@@ -138,7 +148,7 @@ public final class Layout {
             for (TrafficPoint p : l.traffic) {
                 List<Integer> next = new ArrayList<>();
                 p.next().forEach(n -> next.add(n + first[from.indexOf(l)]));
-                pts.add(new TrafficPoint(p.x(), p.z(), p.top(), p.rot8(), next));
+                pts.add(new TrafficPoint(p.x(), p.z(), p.top(), p.rot8(), next, p.transport()));
                 int idx = l.index(p.x(), p.z());
                 fresh.add(idx >= 0 && l.dirty[idx]);
             }
@@ -1543,6 +1553,168 @@ public final class Layout {
         yellows();
         zebras();
         boxJunctions();
+        busStops();
+    }
+
+    /** How long a bus stop's box is each way from its middle. */
+    private static final double STOP_HALF = 9;
+
+    /** A bus stop's road: the segment it's on (null if that's gone), and the sample at its middle (clear of the ends). */
+    private Seg stopSeg(RoadPlan.BusStop b) {
+        for (Seg g : segs) {
+            if (g.seg.id == b.segment && g.c.length > 2 * STOP_HALF + 16) {
+                return g;
+            }
+        }
+        return null;
+    }
+
+    private int stopSample(Seg g, RoadPlan.BusStop b) {
+        double s = Math.max(STOP_HALF + 8, Math.min(g.c.length - STOP_HALF - 8, b.at * g.c.length));
+        return g.c.index(s);
+    }
+
+    /** Which side a stop's kerb is (+1 the curve's left), and the middle of its kerb lane from the centre line. */
+    private static int stopSide(Seg g, RoadPlan.BusStop b) {
+        return g.st.oneWay ? 1 : b.side >= 0 ? 1 : -1;
+    }
+
+    private static double stopLane(Seg g, int side) {
+        int lw = g.st.laneWidth;
+        double inner = g.st.oneWay ? -g.hc : g.st.dual ? g.st.reservationWidth() / 2.0 : 0.5;
+        return g.st.oneWay ? g.hc - lw / 2.0 : side * (inner + (g.st.lanes - 1) * (lw + 1) + lw / 2.0);
+    }
+
+    /**
+     * UK bus stops: a yellow box along the kerb (a broken line three blocks out, closed at its ends,
+     * BUS STOP written in it, nothing else painted in it), the stop's flag on the kerb side of the
+     * pavement at the front of the box and a shelter at the back of the pavement facing the road,
+     * and the area PTM2 takes for the stop.
+     */
+    private void busStops() {
+        for (RoadPlan.BusStop b : plan.busStops) {
+            Seg g = stopSeg(b);
+            if (g == null) {
+                continue;
+            }
+            Curve c = g.c;
+            int side = stopSide(g, b), k = stopSample(g, b), blk = (int) Math.round(1 / Curve.STEP);
+            int half = (int) Math.round(STOP_HALF / Curve.STEP), k0 = Math.max(0, k - half), k1 = Math.min(c.n - 1, k + half);
+            int travel = side > 0 ? rot8(c.tx[k], c.tz[k]) : rot8(-c.tx[k], -c.tz[k]);
+            double edge = g.hw(k), out = edge - 3;
+            for (int i = k0; i <= k1; i++) {
+                double lx = c.leftX(i) * side, lz = c.leftZ(i) * side;
+                for (double d = out + 0.5; d < edge; d += 0.5) {            // nothing else painted in the box
+                    int idx = index((int) Math.floor(c.x[i] + lx * d), (int) Math.floor(c.z[i] + lz * d));
+                    if (idx >= 0 && kind[idx] == ROAD) {
+                        mark[idx] = M_NONE;
+                        markPrio[idx] = 6;
+                    }
+                }
+                if (Math.floorMod((i - k0) / (2 * blk), 2) == 0) {
+                    setMark(index((int) Math.floor(c.x[i] + lx * out), (int) Math.floor(c.z[i] + lz * out)), M_HALF | YELLOW,
+                            rot8(c.tx[i], c.tz[i]), 7);
+                }
+            }
+            for (int i : new int[]{k0, k1}) {
+                double lx = c.leftX(i) * side, lz = c.leftZ(i) * side;
+                for (double d = out; d < edge; d += 0.5) {
+                    setMark(index((int) Math.floor(c.x[i] + lx * d), (int) Math.floor(c.z[i] + lz * d)), M_LINE | YELLOW, rot8(lx, lz), 7);
+                }
+            }
+            double mid = edge - 1.5;
+            int textIdx = index((int) Math.floor(c.x[k] + c.leftX(k) * side * mid), (int) Math.floor(c.z[k] + c.leftZ(k) * side * mid));
+            setMark(textIdx, M_TEXT | YELLOW, travel, 8);
+            if (textIdx >= 0 && (mark[textIdx] & 0x3f) == M_TEXT) {
+                words.put(textIdx, "BUS STOP");
+            }
+            // the flag at the front of the box (where the bus's door stops), the shelter by the middle
+            int front = side > 0 ? Math.min(c.n - 1, k + half - 2 * blk) : Math.max(0, k - half + 2 * blk);
+            int flag = pavement(g, front, side, 8, false);
+            if (flag >= 0 && !tooClose(cellX(flag), cellZ(flag), 1)) {
+                fixtures.add(new Fixture(FixtureType.BUS_STOP, cellX(flag), cellZ(flag), top[flag], travel, 0));
+            }
+            if (b.shelter && g.st.footway() >= 3) {
+                int sh = pavement(g, k, side, 12, true);
+                if (sh >= 0 && !tooClose(cellX(sh), cellZ(sh), 1)) {
+                    fixtures.add(new Fixture(FixtureType.BUS_SHELTER, cellX(sh), cellZ(sh), top[sh], rot8(-c.leftX(k) * side, -c.leftZ(k) * side), 0));
+                }
+            }
+            // PTM2's stop: from the kerb lane to the back of the pavement, the length of the box and a bit
+            double lane = stopLane(g, side), back = g.st.halfOuter() + 1;
+            int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+            for (int i : new int[]{Math.max(0, k0 - 2 * blk), Math.min(c.n - 1, k1 + 2 * blk)}) {
+                for (double d : new double[]{Math.abs(lane) - 2, back}) {
+                    int x = (int) Math.floor(c.x[i] + c.leftX(i) * side * d), z = (int) Math.floor(c.z[i] + c.leftZ(i) * side * d);
+                    x0 = Math.min(x0, x);
+                    z0 = Math.min(z0, z);
+                    x1 = Math.max(x1, x);
+                    z1 = Math.max(z1, z);
+                }
+            }
+            busStopZones.add(new BusStopZone(b.id, b.name.isBlank() ? "Bus Stop" : b.name, x0, z0, x1, z1));
+        }
+    }
+
+    /**
+     * Each bus stop's PTM2 transport point: in its kerb lane at the middle of its box, going the way
+     * the lane does, cut into the lane between the points either side of it (or the point already
+     * there made one), so PTM2's buses on a route through the stop stop at it.
+     */
+    private void transportPoints(Map<Long, Integer> at) {
+        for (RoadPlan.BusStop b : plan.busStops) {
+            Seg g = stopSeg(b);
+            if (g == null) {
+                continue;
+            }
+            Curve c = g.c;
+            int side = stopSide(g, b), k = stopSample(g, b);
+            int travel = side > 0 ? rot8(c.tx[k], c.tz[k]) : rot8(-c.tx[k], -c.tz[k]);
+            double lane = stopLane(g, side);
+            double px = c.x[k] + c.leftX(k) * lane, pz = c.z[k] + c.leftZ(k) * lane;
+            int bx = (int) Math.floor(px), bz = (int) Math.floor(pz), idx = index(bx, bz);
+            if (idx < 0 || kind[idx] != ROAD) {
+                continue;
+            }
+            mark[idx] = M_NONE;                              // (a marking there would keep PTM2's point off the road)
+            Integer there = at.get(((long) bx << 32) ^ (bz & 0xFFFFFFFFL));
+            if (there != null) {
+                TrafficPoint t = traffic.get(there);
+                traffic.set(there, new TrafficPoint(t.x(), t.z(), t.top(), t.rot8(), t.next(), true));
+                continue;
+            }
+            // the link along the lane passing nearest the stop
+            int from = -1, to = -1;
+            double best = 2.5;
+            for (int i = 0; i < traffic.size(); i++) {
+                TrafficPoint p = traffic.get(i);
+                if (p.rot8() != travel) {
+                    continue;
+                }
+                for (int n : p.next()) {
+                    TrafficPoint q = traffic.get(n);
+                    double ex = q.x() - p.x(), ez = q.z() - p.z(), l2 = ex * ex + ez * ez;
+                    if (l2 < 1) {
+                        continue;
+                    }
+                    double t = ((px - 0.5 - p.x()) * ex + (pz - 0.5 - p.z()) * ez) / l2;
+                    double d = Math.hypot(p.x() + ex * t - (px - 0.5), p.z() + ez * t - (pz - 0.5));
+                    if (t > 0.05 && t < 0.95 && d < best) {
+                        best = d;
+                        from = i;
+                        to = n;
+                    }
+                }
+            }
+            if (from < 0) {
+                continue;
+            }
+            traffic.add(new TrafficPoint(bx, bz, top[idx], travel, new ArrayList<>(List.of(to)), true));
+            int stop = traffic.size() - 1;
+            List<Integer> next = traffic.get(from).next();
+            next.set(next.indexOf(to), stop);
+            at.put(((long) bx << 32) ^ (bz & 0xFFFFFFFFL), stop);
+        }
     }
 
     /**
@@ -2716,6 +2888,7 @@ public final class Layout {
                 }
             }
         }
+        transportPoints(at);
     }
 
     /** Whether a car can go from one lane into another at a junction (or straight on through a plain bend). */

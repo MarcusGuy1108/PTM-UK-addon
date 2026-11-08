@@ -917,6 +917,7 @@ final class WindingTown {
                 nodes.get(end).turning = true;               // a close: a turning circle at its end
             }
         }
+        busStops();
         // traffic lights on the main road: a small town's crossroads nearest the middle; a big town's crossroads and
         // then its longest side streets, one set every SIGNALS_APART or so. Mini roundabouts where back streets cross
         boolean big = spine.length() >= TownLayout.BIG;
@@ -943,6 +944,66 @@ final class WindingTown {
         for (Pt p : roundabouts) {
             nodes.get(p).junction = RoadPlan.Junction.ROUNDABOUT;
         }
+    }
+
+    /**
+     * Bus stops along the main road, a pair about every 240 blocks (one each side, a little apart,
+     * clear of the zebra halfway along a stretch), each named after the side street nearest it.
+     */
+    private void busStops() {
+        List<RoadPlan.Segment> mine = new ArrayList<>();
+        streetOf.forEach((seg, st) -> {
+            if (st == spine) {
+                mine.add(seg);
+            }
+        });
+        mine.sort((a, b) -> Double.compare(startOf.get(a), startOf.get(b)));
+        double total = spine.length();
+        java.util.Set<Integer> used = new java.util.HashSet<>();
+        for (double d = 100; d < total - 40; d += 240) {
+            for (int side = 1; side >= -1; side -= 2) {
+                double want = d + (side < 0 ? 50 : 0);
+                // the first stretch from there on long enough for a stop box clear of its junctions (one without a zebra if there is one)
+                RoadPlan.Segment pick = null;
+                for (RoadPlan.Segment seg : mine) {
+                    RoadPlan.Node a = plan.node(seg.a), b = plan.node(seg.b);
+                    double len = Math.hypot(b.x - a.x, b.z - a.z), start = startOf.get(seg);
+                    if (start + len < want || start > want + 100 || len < 36 || used.contains(seg.id)) {
+                        continue;
+                    }
+                    if (pick == null || score(pick) < score(seg)) {
+                        pick = seg;
+                    }
+                    if (score(seg) == 2) {
+                        break;
+                    }
+                }
+                if (pick != null) {
+                    used.add(pick.id);
+                    double off = pick.style.zebra ? 0.3 : 0;            // (a zebra goes halfway along)
+                    plan.addBusStop(pick.id, 0.5 - side * off, side, stopName(startOf.get(pick)));
+                }
+            }
+        }
+    }
+
+    /** How good a stretch is for a bus stop: no zebra on it, and no junction at either end. */
+    private int score(RoadPlan.Segment seg) {
+        return (seg.style.zebra ? 0 : 1) + (plan.segmentsAt(seg.a).size() <= 2 && plan.segmentsAt(seg.b).size() <= 2 ? 1 : 0);
+    }
+
+    /** A stop's name: the side street off the main road nearest it (else the main road's). */
+    private String stopName(double along) {
+        String best = spine.name;
+        double bd = Double.MAX_VALUE;
+        for (Street st : all) {
+            int i = st.level == 1 ? spine.pts.indexOf(st.pts.get(0)) : -1;
+            if (i >= 0 && st.name != null && Math.abs(along(spine, i) - along) < bd) {
+                bd = Math.abs(along(spine, i) - along);
+                best = st.name;
+            }
+        }
+        return best;
     }
 
     /** In a big town, a long side street off the main road that runs on out of town: a main road itself. */

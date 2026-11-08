@@ -413,6 +413,59 @@ public final class UkStreetGameTests {
         helper.succeed();
     }
 
+    /**
+     * Shop names: plenty of different ones for each kind of shop, nothing left of the patterns, short
+     * enough for a fascia; the same seed gives the same name.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void shopNamesVary(GameTestHelper helper) {
+        for (String kind : java.util.List.of("fish_and_chips", "chinese_takeaway", "kebab_shop", "pizza_takeaway", "pharmacy", "coffee_shop",
+                "newsagent", "bakery", "bookmakers", "barbers", "games_shop", "estate_agent", "launderette", "phone_shop", "wine_bar",
+                "pound_shop", "cocktail_bar", "corner_pub", "town_pub", "bank", "church", "indian_restaurant", "retail_outdoor", "drive_burgers")) {
+            java.util.Set<String> names = new java.util.HashSet<>();
+            for (long seed = 0; seed < 300; seed++) {
+                com.ptmuk.building.ShopNames.Sign sg = com.ptmuk.building.ShopNames.pick(kind, com.ptmuk.building.ShopNames.seed((int) seed * 37, (int) seed * 11));
+                helper.assertTrue(sg != null && !sg.text().contains("{") && !sg.sub().contains("{") && sg.text().length() <= 30, kind + ": " + sg);
+                names.add(sg.text());
+            }
+            helper.assertTrue(names.size() >= 4, kind + " has only " + names.size() + " names: " + names);
+            helper.assertTrue(com.ptmuk.building.ShopNames.pick(kind, 42).equals(com.ptmuk.building.ShopNames.pick(kind, 42)), kind + " isn't the same twice");
+        }
+        helper.assertTrue(com.ptmuk.building.ShopNames.pick("petrol_station", 1) == null, "a petrol station got a shop name");
+        helper.succeed();
+    }
+
+    /**
+     * Bus stops: one each side of a main road, each with a yellow box and BUS STOP written in it, a
+     * PTM2 transport point in the kerb lane still joined into the lane, the flag and a shelter on
+     * the pavement, and a PTM2 stop area named after it; a town's main road gets stops too.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void busStops(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Segment road = plan.addSegment(plan.addNode(0, 100).id, plan.addNode(300, 100).id, RoadStyle.mainRoad());
+        plan.addBusStop(road.id, 0.4, 1, "Church Road");
+        plan.addBusStop(road.id, 0.6, -1, "Church Road");
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        helper.assertTrue(count(l, 0, 300, 80, 120, Layout.M_TEXT | Layout.YELLOW) == 2 && l.words.containsValue("BUS STOP"), "no BUS STOP painted");
+        helper.assertTrue(count(l, 0, 300, 80, 120, Layout.M_HALF | Layout.YELLOW) >= 8, "no yellow bus stop boxes");
+        java.util.List<Layout.TrafficPoint> stops = l.traffic.stream().filter(Layout.TrafficPoint::transport).toList();
+        helper.assertTrue(stops.size() == 2, stops.size() + " transport points");
+        for (Layout.TrafficPoint t : stops) {
+            int i = l.traffic.indexOf(t);
+            boolean into = l.traffic.stream().anyMatch(p -> p.next().contains(i));
+            helper.assertTrue(!t.next().isEmpty() && into && Math.abs(t.z() - 100) >= 3, "a transport point not in a kerb lane, joined up: " + t);
+        }
+        helper.assertTrue(l.fixtures.stream().filter(f -> f.type() == Layout.FixtureType.BUS_STOP).count() == 2
+                && l.fixtures.stream().anyMatch(f -> f.type() == Layout.FixtureType.BUS_SHELTER), "no flags or shelters");
+        helper.assertTrue(l.busStopZones.size() == 2 && l.busStopZones.get(0).name().equals("Church Road"), "PTM2 stops: " + l.busStopZones);
+        RoadPlan townPlan = new RoadPlan();
+        RoadPlan.Site town = townPlan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 699, 459);
+        com.ptmuk.road.layout.TownLayout.layOut(townPlan, town, net.minecraft.util.RandomSource.create(5));
+        helper.assertTrue(townPlan.busStops.size() >= 2, "the town has " + townPlan.busStops.size() + " bus stops");
+        helper.succeed();
+    }
+
     /** Four 200-block main roads meeting at 200,200. */
     private static RoadPlan crossroads(RoadPlan.Junction type) {
         RoadPlan plan = new RoadPlan();

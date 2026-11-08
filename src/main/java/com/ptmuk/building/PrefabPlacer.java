@@ -98,6 +98,9 @@ public final class PrefabPlacer {
         if (p.mirror() != net.minecraft.world.level.block.Mirror.NONE) {
             fixShopSigns(level, box);
         }
+        if (!custom) {
+            renameShop(level, box, p.entry().id(), ShopNames.seed(p.origin().getX(), p.origin().getZ()));
+        }
         Deque<Undo> history = HISTORY.computeIfAbsent(player.getUUID(), k -> new ArrayDeque<>());
         history.push(new Undo(level.dimension(), p.entry().name(), box, saved));
         while (history.size() > UNDO_STEPS) {
@@ -156,6 +159,45 @@ public final class PrefabPlacer {
                 }
             }
         });
+    }
+
+    /**
+     * A building's own name for its shop (the same in every copy of it) changed for one of
+     * ShopNames' for its kind: every board of the sign that carried it, and its colours.
+     */
+    public static void renameShop(ServerLevel level, BoundingBox box, String kind, long seed) {
+        ShopNames.Sign s = ShopNames.pick(kind, seed);
+        if (s == null) {
+            return;
+        }
+        java.util.List<ShopSignBlockEntity> signs = new java.util.ArrayList<>();
+        BlockPos.betweenClosedStream(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ()).forEach(pos -> {
+            if (level.getBlockEntity(pos) instanceof ShopSignBlockEntity sign) {
+                signs.add(sign);
+            }
+        });
+        // the shop's name: the biggest sign with words on it
+        ShopSignBlockEntity main = signs.stream().filter(sg -> !sg.text.isBlank()).max(java.util.Comparator.comparingInt(sg -> sg.span() * sg.rows()))
+                .orElse(null);
+        if (main == null) {
+            return;
+        }
+        String name = main.text;
+        int board = main.board;
+        for (ShopSignBlockEntity sg : signs) {
+            boolean named = sg.text.equals(name);
+            if (!named && !(sg.text.isBlank() && sg.board == board)) {
+                continue;                                    // another sign (a car wash's, say): left as it is
+            }
+            if (named) {
+                sg.text = s.text();
+                sg.sub = sg.sub.isBlank() ? "" : s.sub();
+            }
+            sg.board = s.board();
+            sg.ink = s.ink();
+            sg.setChanged();
+            level.sendBlockUpdated(sg.getBlockPos(), sg.getBlockState(), sg.getBlockState(), 3);
+        }
     }
 
     public static void undo(ServerPlayer player) {

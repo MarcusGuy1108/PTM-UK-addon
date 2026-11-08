@@ -304,6 +304,13 @@ public final class RoadBuilder {
                 fixture(job, f);
             }
         }
+        for (Layout.BusStopZone zone : layout.busStopZones) {
+            for (RoadPlan.BusStop b : job.plan.busStops) {
+                if (b.id == zone.stopId() && !b.built) {
+                    Ptm2Traffic.busStop(job.level, zone.name(), zone.x0(), zone.z0(), zone.x1(), zone.z1());
+                }
+            }
+        }
         for (Layout.Nameplate p : layout.nameplates) {
             int idx = layout.index(p.x(), p.z());
             if (idx >= 0 && layout.dirty[idx]) {
@@ -359,7 +366,7 @@ public final class RoadBuilder {
                 continue;
             }
             Layout.TrafficPoint p = points.get(i);
-            set(job, job.trafficAt[i], Ptm2Traffic.block(job.level, p.rot8(), isHalf(p.top())));
+            set(job, job.trafficAt[i], Ptm2Traffic.block(job.level, p.rot8(), isHalf(p.top()), p.transport()));
         }
         if (job.nextTraffic >= points.size()) {
             Ptm2Traffic.connect(job.level, points, job.trafficAt, job.trafficPlaced, job.connecting);
@@ -412,6 +419,9 @@ public final class RoadBuilder {
         }
         for (RoadPlan.Site s : job.plan.sites) {
             s.built = true;
+        }
+        for (RoadPlan.BusStop b : job.plan.busStops) {
+            b.built = true;
         }
         if (job.full != null) {
             job.full.builtFrom(job.plan);

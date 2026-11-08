@@ -84,6 +84,10 @@ public class RoadPlannerScreen extends Screen {
     private RoadStyle drawStyle;
     private Node chainLast;
     private Integer selNode, selSeg;
+    /** A selected bus stop (by id), and whether the next click on the map places a new one. */
+    private Integer selStop;
+    private boolean placingStop;
+    private EditBox stopName;
     /** What a motorway junction made at the selected point will be. */
     private static com.ptmuk.road.layout.Interchange.Kind interchange = com.ptmuk.road.layout.Interchange.Kind.AUTO;
     private boolean draggingNode, draggingBend, panning, moved;
@@ -263,6 +267,10 @@ public class RoadPlannerScreen extends Screen {
             removeWidget(moveName);
             moveName = null;
         }
+        if (stopName != null) {
+            removeWidget(stopName);
+            stopName = null;
+        }
         if (drawButton != null) {
             drawButton.active = mode != Mode.DRAW;
             editButton.active = mode != Mode.EDIT;
@@ -286,6 +294,37 @@ public class RoadPlannerScreen extends Screen {
         }
         if (mode == Mode.MOVE) {
             movePanel(y);
+            return;
+        }
+        RoadPlan.BusStop stop = selStop == null ? null : plan.busStops.stream().filter(b -> b.id == selStop).findFirst().orElse(null);
+        if (stop != null && mode == Mode.EDIT) {
+            stopName = new EditBox(font, 4, y, PANEL - 8, ROW - 1, Component.literal("Stop name"));
+            stopName.setMaxLength(32);
+            stopName.setValue(stop.name);
+            stopName.setHint(Component.literal("stop name"));
+            stopName.setResponder(t -> {
+                stop.name = t;
+                stop.built = false;                          // (its PTM2 stop is set up again with the new name)
+            });
+            addRenderableWidget(stopName);
+            y += ROW;
+            halfButtons(y, () -> "Shelter: " + (stop.shelter ? "yes" : "no"), b -> {
+                remember();
+                stop.shelter = !stop.shelter;
+                touchStop(stop);
+            }, () -> "Other side", b -> {
+                remember();
+                stop.side = -stop.side;
+                touchStop(stop);
+            });
+            y += ROW;
+            button(y, () -> "Delete bus stop", b -> {
+                remember();
+                touchStop(stop);
+                plan.busStops.remove(stop);
+                selStop = null;
+                rebuildPanel();
+            });
             return;
         }
         Node n = selNode == null ? null : plan.node(selNode);
@@ -448,6 +487,11 @@ public class RoadPlannerScreen extends Screen {
             }));
             y += ROW;
             button(y, () -> "Goes under: " + (seg.under ? "yes (roads over it bridge it)" : "no"), b -> edit.accept(() -> seg.under = !seg.under));
+            y += ROW;
+            button(y, () -> placingStop ? "Click where the bus stop goes" : "Add a bus stop", b -> {
+                placingStop = !placingStop;
+                flash(placingStop ? "Click beside the road, on the side the bus stop goes" : "");
+            });
             y += ROW;
             button(y, () -> "Delete road", b -> deleteSelection());
             y += ROW;
@@ -1418,7 +1462,20 @@ public class RoadPlannerScreen extends Screen {
             }
             return true;
         }
-        // edit: the selected road's bend handle, a point, or a road
+        // edit: placing a bus stop, a bus stop, the selected road's bend handle, a point, or a road
+        if (placingStop) {
+            placingStop = false;
+            placeStop(worldX(mx), worldZ(my));
+            return true;
+        }
+        RoadPlan.BusStop stopHit = stopAt(mx, my);
+        if (stopHit != null) {
+            selStop = stopHit.id;
+            selNode = selSeg = null;
+            rebuildPanel();
+            return true;
+        }
+        selStop = null;
         if (selSeg != null) {
             Segment s = plan.segment(selSeg);
             double[] hnd = s == null ? null : bendHandle(s);
@@ -1442,6 +1499,92 @@ public class RoadPlannerScreen extends Screen {
         selSeg = hit == null ? null : hit[0];
         rebuildPanel();
         return true;
+    }
+
+    /** The road a bus stop's on is built again (its stop box, transport point and kerb things). */
+    private void touchStop(RoadPlan.BusStop b) {
+        Segment s = plan.segment(b.segment);
+        if (s != null) {
+            s.built = false;
+        }
+        b.built = false;
+        changed();
+    }
+
+    /** Where a bus stop's flag sits on the map: beside its road's kerb, so far along it. */
+    private double[] stopSpot(RoadPlan.BusStop b) {
+        Curve c = lines.curves.get(b.segment);
+        Segment s = plan.segment(b.segment);
+        if (c == null || s == null) {
+            return null;
+        }
+        int i = c.index(b.at * c.length), side = s.style.oneWay ? 1 : b.side;
+        double d = side * (s.style.halfCarriageway() + 1.5);
+        return new double[]{c.x[i] + c.leftX(i) * d, c.z[i] + c.leftZ(i) * d};
+    }
+
+    private RoadPlan.BusStop stopAt(double mx, double my) {
+        for (RoadPlan.BusStop b : plan.busStops) {
+            double[] p = stopSpot(b);
+            if (p != null && Math.hypot(screenX(p[0]) - mx, screenY(p[1]) - my) < 7) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    /** A new bus stop on the road nearest (wx, wz), on the side that's on, named after the road. */
+    private void placeStop(double wx, double wz) {
+        Segment best = null;
+        double bestD = 40, at = 0.5;
+        int side = 1;
+        for (Segment s : plan.segments) {
+            Curve c = lines.curves.get(s.id);
+            if (c == null) {
+                continue;
+            }
+            for (int i = 0; i < c.n; i += 2) {
+                double dx = wx - c.x[i], dz = wz - c.z[i], d = Math.hypot(dx, dz);
+                if (d < bestD) {
+                    bestD = d;
+                    best = s;
+                    at = c.s(i) / c.length;
+                    side = dx * c.leftX(i) + dz * c.leftZ(i) >= 0 ? 1 : -1;
+                }
+            }
+        }
+        if (best == null) {
+            flash("Click beside a road to put a bus stop there");
+            return;
+        }
+        remember();
+        Segment on = best;
+        long same = plan.busStops.stream().filter(b -> b.segment == on.id).count();
+        String street = on.name == null || on.name.isBlank() ? "Bus Stop" : on.name;
+        RoadPlan.BusStop b = plan.addBusStop(on.id, at, side, same == 0 ? street : street + " " + (char) ('A' + same));
+        touchStop(b);
+        selStop = b.id;
+        selSeg = null;
+        rebuildPanel();
+        flash("Bus stop added: name it, then Build");
+    }
+
+    /** Bus stops on the map: a red and white marker by the kerb, yellow when selected. */
+    private void drawStops(GuiGraphics g) {
+        for (RoadPlan.BusStop b : plan.busStops) {
+            double[] p = stopSpot(b);
+            if (p == null) {
+                continue;
+            }
+            int x = (int) screenX(p[0]), y = (int) screenY(p[1]);
+            boolean sel = selStop != null && selStop == b.id;
+            g.fill(x - 4, y - 4, x + 5, y + 5, 0xFF000000);
+            g.fill(x - 3, y - 3, x + 4, y + 4, sel ? 0xFFFFD24A : 0xFFD8202A);
+            g.drawCenteredString(font, "B", x + 1, y - 3, 0xFFFFFFFF);
+            if (zoom >= 2 && !b.name.isBlank()) {
+                g.drawString(font, b.name, x + 7, y - 4, 0xFFFFE0A0);
+            }
+        }
     }
 
     private void siteClick(double mx, double my) {
@@ -1824,6 +1967,15 @@ public class RoadPlannerScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
+        if (stopName != null && stopName.isFocused()) {
+            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_ESCAPE) {
+                stopName.setFocused(false);
+                setFocused(null);
+                return true;
+            }
+            stopName.keyPressed(key, scan, mods);
+            return true;
+        }
         if (moveName != null && moveName.isFocused()) {
             if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_ESCAPE) {
                 moveName.setFocused(false);
@@ -2056,6 +2208,7 @@ public class RoadPlannerScreen extends Screen {
         drawMeasure(g);
         drawSwapBox(g);
         drawMoveBox(g);
+        drawStops(g);
         drawPlayer(g);
         g.disableScissor();
         // panel and bars

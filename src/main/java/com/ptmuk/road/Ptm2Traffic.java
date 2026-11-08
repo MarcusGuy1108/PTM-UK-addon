@@ -34,9 +34,15 @@ final class Ptm2Traffic {
 
     /** The point block for a lane the layout has going the PTM2 way rot8 (turned round if PTM2 drives on the right), on a slab or not; null without PTM2. */
     static BlockState block(ServerLevel level, int rot8, boolean slab) {
+        return block(level, rot8, slab, false);
+    }
+
+    /** As above; a transport point (where PTM2's buses stop) for a bus stop's. */
+    static BlockState block(ServerLevel level, int rot8, boolean slab, boolean transport) {
         try {
             int facing = leftHanded(level) ? rot8 : (rot8 + 4) % 8;
-            return ModBlocks.TRAFFIC_POINT.get().defaultBlockState().setValue(TrafficPoint.ROTATION, facing).setValue(TrafficPoint.SLAB, slab);
+            return (transport ? ModBlocks.TRANSPORT_POINT : ModBlocks.TRAFFIC_POINT).get().defaultBlockState()
+                    .setValue(TrafficPoint.ROTATION, facing).setValue(TrafficPoint.SLAB, slab);
         } catch (RuntimeException | LinkageError e) {
             PtmUk.LOGGER.warn("Couldn't make PTM2 traffic points", e);
             return null;
@@ -91,7 +97,7 @@ final class Ptm2Traffic {
                     continue;
                 }
                 int rot8 = left ? points.get(i).rot8() : (points.get(i).rot8() + 4) % 8;
-                VDTrafficPoint p = new VDTrafficPoint(rot8, TrafficPointPlacementInfo.ROAD.getID(), false);
+                VDTrafficPoint p = new VDTrafficPoint(rot8, TrafficPointPlacementInfo.ROAD.getID(), points.get(i).transport());
                 for (int n : left ? points.get(i).next() : into.get(i)) {
                     p.connections.add(new Vec3(at[n].getX(), at[n].getY(), at[n].getZ()));
                 }
@@ -107,6 +113,26 @@ final class Ptm2Traffic {
      * way signs, which only hold cars back for others already moving). With no lights it must
      * never count as "operating", so its hours never come.
      */
+    /**
+     * A bus stop's PTM2 stop: a station named after it over the area round it, and a platform of
+     * it over the same area, so it can go on PTM2's bus routes and its buses stop at the
+     * transport point in it (and stop signs and countdown boards inside show its name).
+     */
+    static void busStop(ServerLevel level, String name, int x0, int z0, int x1, int z1) {
+        try {
+            com.rinventor.ptm2.dimension.virtual.types.VDStation station = new com.rinventor.ptm2.dimension.virtual.types.VDStation(x0, z0, x1, z1, true);
+            station.name = name;
+            int id = VDStorageHandler.nextID(level, VDMemoryIDs.STATION);
+            DataAddServerboundPacket.handle(level, id, station.toString());
+            com.rinventor.ptm2.dimension.virtual.types.VDPlatform platform = new com.rinventor.ptm2.dimension.virtual.types.VDPlatform(x0, z0, x1, z1, true);
+            platform.name = name;
+            platform.stationID = id;
+            DataAddServerboundPacket.handle(level, VDStorageHandler.nextID(level, VDMemoryIDs.PLATFORM), platform.toString());
+        } catch (RuntimeException | LinkageError e) {
+            PtmUk.LOGGER.warn("Couldn't set up a PTM2 stop for the new bus stop", e);
+        }
+    }
+
     static void junction(ServerLevel level, int x0, int z0, int x1, int z1, boolean roundabout) {
         try {
             VDIntersection zone = new VDIntersection(x0, z0, x1, z1, "", true, false);

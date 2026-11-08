@@ -62,4 +62,34 @@ public final class UkBridgeGameTests {
             helper.assertTrue(deck.equals("ptmuk:concrete_kerb"), "the deck is " + deck);
         });
     }
+
+    /** A bus stop built in the world: PTM2's transport point in the kerb lane at it, the flag on the pavement. */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 1600)
+    public static void buildsABusStop(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = net.minecraftforge.common.util.FakePlayerFactory.get(level,
+                new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "bus-stop-test"));
+        int ox = 7000, oz = 7000;
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Segment road = plan.addSegment(plan.addNode(ox, oz).id, plan.addNode(ox + 160, oz).id, RoadStyle.mainRoad());
+        plan.addBusStop(road.id, 0.5, 1, "Test Stop");
+        RoadBuilder.start(player, InteractionHand.MAIN_HAND, plan);
+        helper.succeedWhen(() -> {
+            helper.assertFalse(RoadBuilder.busy(player.getUUID()), "still building");
+            int points = 0, flags = 0, others = 0, roadY = Integer.MIN_VALUE;
+            for (int x = ox + 60; x <= ox + 100; x++) {
+                for (int z = oz - 12; z <= oz + 12; z++) {
+                    for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); y++) {
+                        String id = ForgeRegistries.BLOCKS.getKey(level.getBlockState(new BlockPos(x, y, z)).getBlock()).toString();
+                        points += id.equals("ptm2:transport_point") ? 1 : 0;
+                        flags += id.equals("ptmuk:london_bus_stop") ? 1 : 0;
+                        others += id.equals("ptm2:traffic_point") ? 1 : 0;
+                        roadY = id.contains("asphalt") ? Math.max(roadY, y) : roadY;
+                    }
+                }
+            }
+            helper.assertTrue(points == 1 && flags == 1, points + " transport points, " + flags + " bus stop flags, " + others
+                    + " other traffic points, road at " + roadY);
+        });
+    }
 }
