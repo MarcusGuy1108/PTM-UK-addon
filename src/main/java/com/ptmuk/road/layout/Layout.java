@@ -289,6 +289,10 @@ public final class Layout {
                 c.y = n.y;
                 c.built = n.built;
                 c.open = true;
+                c.junction = n.junction;
+                c.radius = n.radius;
+                c.stretch = n.stretch;
+                c.axis = n.axis;
                 over.nodes.add(c);
                 below.nodes.add(c);
             } else {
@@ -338,7 +342,7 @@ public final class Layout {
             }
         }
         for (Jn j : jns) {
-            double r = j.ro + j.widest.halfOuter() + BLEND_WIDTH + 3;
+            double r = j.ro + stretch(j) + j.widest.halfOuter() + BLEND_WIDTH + 3;
             minX = Math.min(minX, j.node.x - r);
             maxX = Math.max(maxX, j.node.x + r);
             minZ = Math.min(minZ, j.node.z - r);
@@ -533,7 +537,7 @@ public final class Layout {
             double ring = Math.max(7, Math.round(maxLane * 1.5));
             j.ro = j.node.radius > 0 ? j.node.radius : Math.max(12, Math.round(Math.max(6, maxHc) + ring));
             j.ri = Math.max(2, j.ro - ring);
-            j.zone = j.ro + j.radius + maxHc;
+            j.zone = j.ro + stretch(j) + j.radius + maxHc;
         } else if (j.type == Junction.MERGE) {
             double slip = j.arms.isEmpty() ? 4 : j.arms.get(0).hc;
             j.zone = slip * 2 + j.radius + 1;
@@ -647,6 +651,12 @@ public final class Layout {
         return j == null || j.type != Junction.ROUNDABOUT ? 0 : j.ro;
     }
 
+    /** How far a roundabout is stretched into an oval each way (0 if it's round or not one). */
+    public double roundaboutStretch(int nodeId) {
+        Jn j = jnByNode.get(nodeId);
+        return j == null ? 0 : stretch(j);
+    }
+
     public int heightOf(int nodeId) {
         Integer h = nodeHeight.get(nodeId);
         return h != null ? h : under != null ? under.heightOf(nodeId) : 64;
@@ -672,7 +682,7 @@ public final class Layout {
 
     /** Whether a junction's carriageway is over a road underneath. */
     private boolean overUnder(Jn j) {
-        return under != null && !Float.isNaN(underTopNear(j.node.x + 0.5, j.node.z + 0.5, j.type == Junction.ROUNDABOUT ? j.ro + 2 : j.zone / 2));
+        return under != null && !Float.isNaN(underTopNear(j.node.x + 0.5, j.node.z + 0.5, j.type == Junction.ROUNDABOUT ? j.ro + stretch(j) + 2 : j.zone / 2));
     }
 
     /** Whether (x, z) is near where a road goes on from over to under (there they're one road, at one level). */
@@ -1052,8 +1062,23 @@ public final class Layout {
         if (j == null || j.type != Junction.ROUNDABOUT) {
             return false;
         }
-        double dx = cellX(idx) + 0.5 - (j.node.x + 0.5), dz = cellZ(idx) + 0.5 - (j.node.z + 0.5);
-        return Math.hypot(dx, dz) < j.ri + 1;
+        return ringD(j, cellX(idx) + 0.5, cellZ(idx) + 0.5) < j.ri + 1;
+    }
+
+    /** How far an oval roundabout is stretched each way (0 for a round one or any other junction). */
+    private static double stretch(Jn j) {
+        return j.type == Junction.ROUNDABOUT ? Math.max(0, j.node.stretch) : 0;
+    }
+
+    /** Distance from (x, z) to a roundabout's middle: its centre, or for an oval the line it's stretched along. */
+    private static double ringD(Jn j, double x, double z) {
+        double cx = j.node.x + 0.5, cz = j.node.z + 0.5, e = stretch(j);
+        if (e <= 0) {
+            return Math.hypot(x - cx, z - cz);
+        }
+        double ax = Math.cos(j.node.axis), az = Math.sin(j.node.axis);
+        double t = Math.max(-e, Math.min(e, (x - cx) * ax + (z - cz) * az));
+        return Math.hypot(x - cx - ax * t, z - cz - az * t);
     }
 
     private void rings() {
@@ -1062,14 +1087,14 @@ public final class Layout {
                 continue;
             }
             double cx = j.node.x + 0.5, cz = j.node.z + 0.5;
-            int r = (int) Math.ceil(Math.max(j.ro, 2) + 1);
+            int r = (int) Math.ceil(Math.max(j.ro, 2) + stretch(j) + 1);
             for (int x = (int) Math.floor(cx) - r; x <= (int) Math.floor(cx) + r; x++) {
                 for (int z = (int) Math.floor(cz) - r; z <= (int) Math.floor(cz) + r; z++) {
                     int idx = index(x, z);
                     if (idx < 0) {
                         continue;
                     }
-                    double d = Math.hypot(x + 0.5 - cx, z + 0.5 - cz);
+                    double d = ringD(j, x + 0.5, z + 0.5);
                     if (j.type == Junction.ROUNDABOUT) {
                         if (d <= j.ri) {
                             island[idx] = true;
@@ -1228,7 +1253,7 @@ public final class Layout {
             float base = top[near];
             if (island[idx]) {
                 Jn j = jns.get(coreOwner[idx]);
-                double d = Math.hypot(cellX(idx) + 0.5 - (j.node.x + 0.5), cellZ(idx) + 0.5 - (j.node.z + 0.5));
+                double d = ringD(j, cellX(idx) + 0.5, cellZ(idx) + 0.5);
                 boolean edge = j.ri - d < 1.2;
                 kind[idx] = edge ? ISLAND_KERB : ISLAND;
                 float hgt = heightOf(j.node.id);
@@ -1781,8 +1806,11 @@ public final class Layout {
         }
         // a chevron board on the island, facing the way in
         double[] out = outward(g, j.node);
-        double d = j.ri - 1.5;
-        int idx = d < 1.5 ? -1 : index((int) Math.floor(j.node.x + 0.5 + out[0] * d), (int) Math.floor(j.node.z + 0.5 + out[1] * d));
+        double d = 0;
+        while (d < j.ri + stretch(j) && ringD(j, j.node.x + 0.5 + out[0] * d, j.node.z + 0.5 + out[1] * d) < j.ri - 1.5) {
+            d += 0.5;                                    // out from the middle to just inside the island's edge
+        }
+        int idx = j.ri < 3 ? -1 : index((int) Math.floor(j.node.x + 0.5 + out[0] * d), (int) Math.floor(j.node.z + 0.5 + out[1] * d));
         if (idx >= 0 && island[idx]) {
             fixtures.add(new Fixture(FixtureType.CHEVRON_SIGN, cellX(idx), cellZ(idx), top[idx], rot8(-out[0], -out[1]), 0));
         }
@@ -2581,6 +2609,10 @@ public final class Layout {
 
     /** Round a roundabout clockwise: a ring of points, joined from every way in and to every way out. */
     private void ring(Map<Long, Integer> at, Jn j, List<LaneEnd> in, List<LaneEnd> out) {
+        if (stretch(j) > 0) {
+            oval(at, j, in, out);
+            return;
+        }
         double rc = (j.ri + j.ro) / 2, cx = j.node.x + 0.5, cz = j.node.z + 0.5;
         int m = Math.max(8, (int) Math.round(2 * Math.PI * rc / 8));
         int[] ring = new int[m];
@@ -2605,6 +2637,72 @@ public final class Layout {
                 link(r, o.point());
             }
         }
+    }
+
+    /**
+     * An oval roundabout's points: down the middle of its carriageway all the way round, clockwise
+     * on the map (round its ends and along its straight sides), each way in joining the next point
+     * on from it and each way out leaving the last point before it.
+     */
+    private void oval(Map<Long, Integer> at, Jn j, List<LaneEnd> in, List<LaneEnd> out) {
+        double rc = (j.ri + j.ro) / 2, e = stretch(j), cx = j.node.x + 0.5, cz = j.node.z + 0.5;
+        double ax = Math.cos(j.node.axis), az = Math.sin(j.node.axis), bx = -az, bz = ax;
+        // the middle line, every half block: along the b side going -a, round the -a end, back along the other side, round the +a end
+        List<double[]> path = new ArrayList<>();
+        for (double u = e; u > -e; u -= 0.5) {
+            path.add(new double[]{cx + ax * u + bx * rc, cz + az * u + bz * rc, -ax, -az});
+        }
+        for (double t = 0; t < Math.PI; t += 0.5 / rc) {
+            double vb = Math.cos(t), va = -Math.sin(t);            // from the b side round the -a end
+            path.add(new double[]{cx - ax * e + ax * va * rc + bx * vb * rc, cz - az * e + az * va * rc + bz * vb * rc,
+                    -ax * Math.cos(t) - bx * Math.sin(t), -az * Math.cos(t) - bz * Math.sin(t)});
+        }
+        for (double u = -e; u < e; u += 0.5) {
+            path.add(new double[]{cx + ax * u - bx * rc, cz + az * u - bz * rc, ax, az});
+        }
+        for (double t = 0; t < Math.PI; t += 0.5 / rc) {
+            double vb = -Math.cos(t), va = Math.sin(t);            // from the -b side round the +a end
+            path.add(new double[]{cx + ax * e + ax * va * rc + bx * vb * rc, cz + az * e + az * va * rc + bz * vb * rc,
+                    ax * Math.cos(t) + bx * Math.sin(t), az * Math.cos(t) + bz * Math.sin(t)});
+        }
+        int n = path.size(), m = Math.max(8, (int) Math.round(n * 0.5 / 8));
+        int[] ring = new int[m];
+        for (int i = 0; i < m; i++) {
+            double[] p = path.get(i * n / m);
+            ring[i] = trafficPoint(at, p[0], p[1], p[2], p[3]);
+        }
+        for (int i = 0; i < m; i++) {
+            if (ring[i] >= 0 && ring[(i + 1) % m] >= 0) {
+                link(ring[i], ring[(i + 1) % m]);
+            }
+        }
+        for (LaneEnd le : in) {
+            int r = ring[Math.floorMod((int) Math.ceil(nearestOn(path, le.point()) * (double) m / n), m)];
+            if (r >= 0) {
+                link(le.point(), r);
+            }
+        }
+        for (LaneEnd le : out) {
+            int r = ring[Math.floorMod((int) Math.floor(nearestOn(path, le.point()) * (double) m / n), m)];
+            if (r >= 0) {
+                link(r, le.point());
+            }
+        }
+    }
+
+    /** Which point of a path a traffic point is nearest. */
+    private int nearestOn(List<double[]> path, int point) {
+        TrafficPoint p = traffic.get(point);
+        int best = 0;
+        double bd = Double.MAX_VALUE;
+        for (int i = 0; i < path.size(); i++) {
+            double d = Math.hypot(path.get(i)[0] - p.x() - 0.5, path.get(i)[1] - p.z() - 0.5);
+            if (d < bd) {
+                bd = d;
+                best = i;
+            }
+        }
+        return best;
     }
 
     private double angle(int point, double cx, double cz) {

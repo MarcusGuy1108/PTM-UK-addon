@@ -285,7 +285,7 @@ public final class UkStreetGameTests {
     @GameTest(template = "empty5x4x5")
     public static void motorwayJunctions(GameTestHelper helper) {
         for (com.ptmuk.road.layout.Interchange.Kind kind : java.util.List.of(com.ptmuk.road.layout.Interchange.Kind.ROUNDABOUT,
-                com.ptmuk.road.layout.Interchange.Kind.DUMBBELL, com.ptmuk.road.layout.Interchange.Kind.DIAMOND)) {
+                com.ptmuk.road.layout.Interchange.Kind.OVAL, com.ptmuk.road.layout.Interchange.Kind.DUMBBELL, com.ptmuk.road.layout.Interchange.Kind.DIAMOND)) {
             RoadPlan plan = new RoadPlan();
             RoadPlan.Node c = plan.addNode(400, 300);
             plan.addSegment(plan.addNode(0, 300).id, c.id, RoadStyle.dualCarriageway());
@@ -308,7 +308,7 @@ public final class UkStreetGameTests {
             }
             long merges = plan.nodes.stream().filter(n -> n.junction == RoadPlan.Junction.MERGE).count();
             helper.assertTrue(merges == 4, kind + ": " + merges + " slip road merges");
-            if (kind == com.ptmuk.road.layout.Interchange.Kind.ROUNDABOUT) {
+            if (kind == com.ptmuk.road.layout.Interchange.Kind.ROUNDABOUT || kind == com.ptmuk.road.layout.Interchange.Kind.OVAL) {
                 int mid = l.index(400, 300);
                 helper.assertTrue(mid < 0 || l.kind[mid] == Layout.NONE, "the middle of the island over the motorway isn't open");
             } else {

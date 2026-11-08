@@ -110,6 +110,11 @@ public final class PtmUkNetwork {
                 .decoder(SectionMessage::decode)
                 .consumerMainThread(SectionMessage::handle)
                 .add();
+        CHANNEL.messageBuilder(SectionMapMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SectionMapMessage::encode)
+                .decoder(SectionMapMessage::decode)
+                .consumerMainThread(SectionMapMessage::handle)
+                .add();
         CHANNEL.messageBuilder(SectionListMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(SectionListMessage::encode)
                 .decoder(SectionListMessage::decode)

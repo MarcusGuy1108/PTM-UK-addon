@@ -31,6 +31,7 @@ public class SectionScreen extends Screen {
     /** The server's list arrived. */
     public static void list(List<Sections.Info> list) {
         sections = list;
+        com.ptmuk.client.road.RoadPlannerScreen.sectionList(list);
         if (Minecraft.getInstance().screen instanceof SectionScreen s) {
             s.rebuildWidgets();
         }

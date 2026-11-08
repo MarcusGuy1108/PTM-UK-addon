@@ -62,7 +62,7 @@ public class RoadPlannerScreen extends Screen {
     private static RoadStyle lastStyle = RoadStyle.mainRoad();
     private static double lastZoom = 2;
 
-    private enum Mode { DRAW, EDIT, SITES, MAP, SWAP }
+    private enum Mode { DRAW, EDIT, SITES, MAP, SWAP, MOVE }
 
     private static final ResourceLocation OUTLINES = PtmUk.id("road_planner/outlines");
 
@@ -137,6 +137,16 @@ public class RoadPlannerScreen extends Screen {
     private int swapSel = -1, swapFirst, swapListTop, swapShown;
     private String swapNote = "";
     private EditBox swapEdit;
+    // copying and pasting sections of the world (Sections) on the map
+    private static int[] moveBox;                     // x0 z0 x1 z1, inclusive; x0 z0 is the corner it's pasted from
+    private boolean moveDragging;
+    private static List<com.ptmuk.building.Sections.Info> moveList = List.of();
+    private static String movePicked, moveTyped = "";
+    private static int moveTurns;
+    private static boolean moveMirror, moveKeepAir, moveKeepHeight;
+    /** Where the picked section will go (x z of its first corner), once clicked. */
+    private static int[] movePaste;
+    private EditBox moveName;
     /** Draw mode: a click follows the old road there instead of starting a new one. */
     private boolean tracing;
     /** Following only a piece of old road round the click (to join a new road to it), not all of it. */
@@ -195,6 +205,8 @@ public class RoadPlannerScreen extends Screen {
         mapButton = addRenderableWidget(Button.builder(Component.literal("Map"), b -> setMode(Mode.MAP)).bounds(x + 87, 3, 24, 16).build());
         swapButton = addRenderableWidget(Button.builder(Component.literal("Swap"), b -> setMode(Mode.SWAP)).bounds(x + 112, 3, 30, 16)
                 .tooltip(Tooltip.create(Component.literal("Swap an old build's blocks for new ones: coal roads for tarmac, and so on"))).build());
+        moveButton = addRenderableWidget(Button.builder(Component.literal("Move"), b -> setMode(Mode.MOVE)).bounds(x + 143, 3, 30, 16)
+                .tooltip(Tooltip.create(Component.literal("Copy big parts of the world and paste them anywhere, in this world or another"))).build());
         if (plan.map != null && outlines == null) {
             readMap(plan.map.file, m -> showOutlines());
         }
@@ -227,11 +239,14 @@ public class RoadPlannerScreen extends Screen {
         if (m == Mode.SWAP && swapBox != null && swapRows.isEmpty()) {
             swapSend(BlockSwapMessage.Action.SCAN);
         }
+        if (m == Mode.MOVE) {
+            moveSend(com.ptmuk.network.SectionMapMessage.Action.LIST, "");
+        }
         chainLast = null;
         rebuildPanel();
     }
 
-    private Button drawButton, editButton, sitesButton, mapButton, swapButton;
+    private Button drawButton, editButton, sitesButton, mapButton, swapButton, moveButton;
 
     /** The left panel: the selected point's junction, or the selected (or next) road's style. */
     private void rebuildPanel() {
@@ -243,12 +258,18 @@ public class RoadPlannerScreen extends Screen {
             removeWidget(swapEdit);
             swapEdit = null;
         }
+        if (moveName != null) {
+            moveTyped = moveName.getValue();
+            removeWidget(moveName);
+            moveName = null;
+        }
         if (drawButton != null) {
             drawButton.active = mode != Mode.DRAW;
             editButton.active = mode != Mode.EDIT;
             sitesButton.active = mode != Mode.SITES;
             mapButton.active = mode != Mode.MAP;
             swapButton.active = mode != Mode.SWAP;
+            moveButton.active = mode != Mode.MOVE;
         }
         int y = TOP + 14;
         if (mode == Mode.SITES) {
@@ -261,6 +282,10 @@ public class RoadPlannerScreen extends Screen {
         }
         if (mode == Mode.SWAP) {
             swapPanel(y);
+            return;
+        }
+        if (mode == Mode.MOVE) {
+            movePanel(y);
             return;
         }
         Node n = selNode == null ? null : plan.node(selNode);
@@ -447,6 +472,123 @@ public class RoadPlannerScreen extends Screen {
     }
 
     /** The left panel in Swap mode: what's in the box, what each block becomes, and swap. */
+    // ------------------------------------------------------------------ copying and pasting sections
+
+    private void moveSend(com.ptmuk.network.SectionMapMessage.Action action, String name) {
+        int[] b = moveBox == null ? new int[4] : moveBox, p = movePaste == null ? new int[2] : movePaste;
+        boolean paste = action == com.ptmuk.network.SectionMapMessage.Action.PASTE;
+        com.ptmuk.network.PtmUkNetwork.CHANNEL.sendToServer(new com.ptmuk.network.SectionMapMessage(action, name,
+                paste ? p[0] : b[0], paste ? p[1] : b[1], b[2], b[3], moveTurns, moveMirror, moveKeepAir, moveKeepHeight,
+                hand == InteractionHand.OFF_HAND));
+    }
+
+    /** The saved sections came from the server. */
+    public static void sectionList(List<com.ptmuk.building.Sections.Info> list) {
+        moveList = list;
+        if (movePicked != null && list.stream().noneMatch(s -> s.name().equals(movePicked))) {
+            movePicked = null;
+            movePaste = null;
+        }
+        if (Minecraft.getInstance().screen instanceof RoadPlannerScreen s && s.mode == Mode.MOVE) {
+            s.rebuildPanel();
+        }
+    }
+
+    private com.ptmuk.building.Sections.Info picked() {
+        return moveList.stream().filter(s -> s.name().equals(movePicked)).findFirst().orElse(null);
+    }
+
+    /** Copy: a name and the box dragged on the map. Paste: the saved sections, turn, mirror, where it goes. */
+    private void movePanel(int y) {
+        moveName = new EditBox(font, 4, y, PANEL - 8, ROW - 1, Component.literal("Name"));
+        moveName.setMaxLength(40);
+        moveName.setValue(moveTyped);
+        moveName.setHint(Component.literal("name for the copy"));
+        addRenderableWidget(moveName);
+        y += ROW;
+        button(y, () -> moveBox == null ? "Drag a box to copy" : "Copy the box", b -> {
+            if (moveBox == null) {
+                flash("Drag a box over the area on the map first");
+            } else if (moveName.getValue().isBlank()) {
+                flash("Type a name for it first");
+            } else {
+                moveSend(com.ptmuk.network.SectionMapMessage.Action.COPY, moveName.getValue());
+            }
+        });
+        y += ROW + 6;
+        int bottom = height - 14 - ROW * (movePicked != null ? 5 : 1);
+        for (com.ptmuk.building.Sections.Info s : moveList) {
+            if (y + ROW > bottom) {
+                break;
+            }
+            button(y, () -> (s.name().equals(movePicked) ? "> " : "") + s.name() + "  " + s.sx() + "x" + s.sz(), b -> {
+                movePicked = s.name().equals(movePicked) ? null : s.name();
+                movePaste = null;
+                rebuildPanel();
+            });
+            y += ROW;
+        }
+        y = Math.max(y + 4, bottom);
+        if (movePicked != null) {
+            halfButtons(y, () -> "Turn: " + moveTurns * 90, b -> moveTurns = (moveTurns + 1) % 4,
+                    () -> "Mirror: " + (moveMirror ? "yes" : "no"), b -> moveMirror = !moveMirror);
+            y += ROW;
+            halfButtons(y, () -> "Air: " + (moveKeepAir ? "keeps" : "clears"), b -> moveKeepAir = !moveKeepAir,
+                    () -> "Height: " + (moveKeepHeight ? "as copied" : "ground"), b -> moveKeepHeight = !moveKeepHeight);
+            y += ROW;
+            button(y, () -> movePaste == null ? "Click the map where it goes" : "Paste it here", b -> {
+                if (movePaste == null) {
+                    flash("Click the map where the section's first corner goes");
+                } else {
+                    moveSend(com.ptmuk.network.SectionMapMessage.Action.PASTE, movePicked);
+                    movePaste = null;
+                }
+            });
+            y += ROW;
+            button(y, () -> "Delete " + movePicked, b -> {
+                moveSend(com.ptmuk.network.SectionMapMessage.Action.DELETE, movePicked);
+                movePicked = null;
+                movePaste = null;
+            });
+            y += ROW;
+        }
+        button(y, () -> "Undo the last paste", b -> moveSend(com.ptmuk.network.SectionMapMessage.Action.UNDO, ""));
+    }
+
+    /** The box to copy, and where the picked section goes (following the mouse until clicked). */
+    private void drawMoveBox(GuiGraphics g) {
+        if (mode != Mode.MOVE) {
+            return;
+        }
+        com.ptmuk.building.Sections.Info s = picked();
+        if (s != null) {
+            int[] at = movePaste != null ? movePaste : overMap(mouseX, mouseY)
+                    ? new int[]{(int) Math.floor(worldX(mouseX)), (int) Math.floor(worldZ(mouseY))} : null;
+            if (at == null) {
+                return;
+            }
+            var bb = com.ptmuk.building.Sections.box(s.sx(), s.sy(), s.sz(), new net.minecraft.core.BlockPos(s.ax(), s.ay(), s.az()),
+                    new net.minecraft.core.BlockPos(at[0], s.ay(), at[1]), net.minecraft.world.level.block.Rotation.values()[moveTurns],
+                    moveMirror ? net.minecraft.world.level.block.Mirror.FRONT_BACK : net.minecraft.world.level.block.Mirror.NONE);
+            int colour = movePaste != null ? 0xFFFFC040 : 0xA0FFC040;
+            g.fill((int) screenX(bb.minX()), (int) screenY(bb.minZ()), (int) screenX(bb.maxX() + 1), (int) screenY(bb.maxZ() + 1),
+                    movePaste != null ? 0x40FFC040 : 0x20FFC040);
+            rect(g, bb.minX(), bb.minZ(), bb.maxX() + 1, bb.maxZ() + 1, 1, colour);
+            dot(g, screenX(at[0] + 0.5), screenY(at[1] + 0.5), 3, 0xFFFF4040);    // the first corner
+            return;
+        }
+        if (moveBox != null) {
+            int x0 = Math.min(moveBox[0], moveBox[2]), x1 = Math.max(moveBox[0], moveBox[2]) + 1;
+            int z0 = Math.min(moveBox[1], moveBox[3]), z1 = Math.max(moveBox[1], moveBox[3]) + 1;
+            g.fill((int) screenX(x0), (int) screenY(z0), (int) screenX(x1), (int) screenY(z1), 0x3040FF80);
+            rect(g, x0, z0, x1, z1, 1, 0xFF40FF80);
+            dot(g, screenX(moveBox[0] + 0.5), screenY(moveBox[1] + 0.5), 3, 0xFFFF4040);
+            if (moveDragging) {
+                g.drawString(font, (x1 - x0) + " x " + (z1 - z0), (int) mouseX + 8, (int) mouseY - 4, 0xFF40FF80);
+            }
+        }
+    }
+
     private void swapPanel(int y) {
         button(y, () -> "Look at: " + (swapGroundOnly ? "open ground" : "everything"), b -> {
             swapGroundOnly = !swapGroundOnly;
@@ -1190,6 +1332,21 @@ public class RoadPlannerScreen extends Screen {
             siteClick(mx, my);
             return true;
         }
+        if (mode == Mode.MOVE) {
+            if (moveName != null) {
+                moveName.setFocused(false);
+                setFocused(null);
+            }
+            int wx = (int) Math.floor(worldX(mx)), wz = (int) Math.floor(worldZ(my));
+            if (movePicked != null) {
+                movePaste = new int[]{wx, wz};
+                rebuildPanel();
+            } else {
+                moveDragging = true;
+                moveBox = new int[]{wx, wz, wx, wz};
+            }
+            return true;
+        }
         if (mode == Mode.SWAP) {
             if (swapEdit != null) {
                 swapEdit.setFocused(false);
@@ -1437,6 +1594,11 @@ public class RoadPlannerScreen extends Screen {
         if (panning) {
             camX -= (mx - lastMouseX) / zoom;
             camZ -= (my - lastMouseY) / zoom;
+        } else if (moveDragging && moveBox != null) {
+            int lim = com.ptmuk.building.Sections.MAX_SIDE - 1;
+            int wx = (int) Math.floor(worldX(mx)), wz = (int) Math.floor(worldZ(my));
+            moveBox[2] = Math.max(moveBox[0] - lim, Math.min(moveBox[0] + lim, wx));
+            moveBox[3] = Math.max(moveBox[1] - lim, Math.min(moveBox[1] + lim, wz));
         } else if (swapDragging && swapBox != null) {
             int lim = BlockSwap.MAX_SIZE - 1;
             int wx = (int) Math.floor(worldX(mx)), wz = (int) Math.floor(worldZ(my));
@@ -1506,6 +1668,11 @@ public class RoadPlannerScreen extends Screen {
                 chainLast = null;                      // right-click finishes the road
                 flash("Road finished");
             }
+            return true;
+        }
+        if (moveDragging) {
+            moveDragging = false;
+            rebuildPanel();
             return true;
         }
         if (swapDragging) {
@@ -1606,6 +1773,15 @@ public class RoadPlannerScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
+        if (moveName != null && moveName.isFocused()) {
+            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_ESCAPE) {
+                moveName.setFocused(false);
+                setFocused(null);
+                return true;
+            }
+            moveName.keyPressed(key, scan, mods);
+            return true;                               // typing a name, not moving the map
+        }
         if (swapEdit != null && swapEdit.isFocused()) {
             if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_ESCAPE) {
                 swapEdit.setFocused(false);
@@ -1642,6 +1818,12 @@ public class RoadPlannerScreen extends Screen {
             case GLFW.GLFW_KEY_E -> setMode(mode == Mode.DRAW ? Mode.EDIT : Mode.DRAW);
             case GLFW.GLFW_KEY_Q -> setMode(mode == Mode.SITES ? Mode.DRAW : Mode.SITES);
             case GLFW.GLFW_KEY_M -> setMode(mode == Mode.MAP ? Mode.DRAW : Mode.MAP);
+            case GLFW.GLFW_KEY_R -> {
+                if (mode != Mode.MOVE || movePicked == null) {
+                    return super.keyPressed(key, scan, mods);
+                }
+                moveTurns = (moveTurns + 1) % 4;
+            }
             default -> {
                 return super.keyPressed(key, scan, mods);
             }
@@ -1822,6 +2004,7 @@ public class RoadPlannerScreen extends Screen {
         drawPlan(g);
         drawMeasure(g);
         drawSwapBox(g);
+        drawMoveBox(g);
         drawPlayer(g);
         g.disableScissor();
         // panel and bars
@@ -1830,7 +2013,10 @@ public class RoadPlannerScreen extends Screen {
         Node n = selNode == null ? null : plan.node(selNode);
         Segment s = selSeg == null ? null : plan.segment(selSeg);
         Site site = selSite == null ? null : plan.site(selSite);
-        String heading = mode == Mode.SWAP ? (swapBox == null ? "Block swap"
+        String heading = mode == Mode.MOVE ? (movePicked != null ? "Paste " + movePicked
+                : moveBox == null ? "Copy and paste sections"
+                : "Copy " + (Math.abs(moveBox[2] - moveBox[0]) + 1) + " x " + (Math.abs(moveBox[3] - moveBox[1]) + 1))
+                : mode == Mode.SWAP ? (swapBox == null ? "Block swap"
                 : "Block swap (" + (Math.abs(swapBox[2] - swapBox[0]) + 1) + " x " + (Math.abs(swapBox[3] - swapBox[1]) + 1) + ")")
                 : mode == Mode.MAP ? (plan.map == null ? "Real maps (.osm)" : "Map: " + plan.map.file)
                 : mode == Mode.SITES ? (site == null ? "Sites" : site.type.title + " (" + site.width() + " x " + site.depth() + ")")
@@ -1839,7 +2025,10 @@ public class RoadPlannerScreen extends Screen {
                 : "New roads (" + drawStyle.totalWidth() + " wide)";
         g.drawString(font, "Road Planner", 6, 6, 0xFFFFD24A);
         g.drawString(font, heading, 6, TOP + 3, 0xFFE0E0E0);
-        String help = mode == Mode.SWAP
+        String help = mode == Mode.MOVE
+                ? (movePicked != null ? "Click where its first corner (the red dot) goes, R to turn, then Paste it here. Click it again in the list to stop."
+                : "Drag a box to copy (the red dot's corner is where it's pasted from), name it, Copy. Then click a section to paste it.")
+                : mode == Mode.SWAP
                 ? "Drag a box over an old build. Click an arrow to pick what a block becomes, or type a block's name."
                 : mode == Mode.MAP
                 ? (plan.map == null ? "Move the map to where its middle goes, then pick a file." : "Click two points to measure.")
@@ -2187,12 +2376,15 @@ public class RoadPlannerScreen extends Screen {
             }
             dot(g, x, y, sel ? 4 : 3, 0xFF000000);
             dot(g, x, y, sel ? 3 : 2, sel ? 0xFFFFD24A : colour);
-            double r = lines.roundaboutRadius(n.id);
+            double r = lines.roundaboutRadius(n.id), e = lines.roundaboutStretch(n.id);
             if (r > 0 && (preview == null || showLines)) {
+                // round, or an oval: each half of the circle pushed out to its end of the stretch
+                double ax = Math.cos(n.axis) * e, az = Math.sin(n.axis) * e;
                 for (int k = 0; k < 48; k++) {
                     double a0 = k * Math.PI * 2 / 48, a1 = (k + 1) * Math.PI * 2 / 48;
-                    line(g, x + Math.cos(a0) * r * zoom, y + Math.sin(a0) * r * zoom, x + Math.cos(a1) * r * zoom,
-                            y + Math.sin(a1) * r * zoom, 1, 0xC05AA0FF);
+                    double s0 = Math.signum(Math.cos(a0 - n.axis)), s1 = Math.signum(Math.cos(a1 - n.axis));
+                    line(g, x + (Math.cos(a0) * r + ax * s0) * zoom, y + (Math.sin(a0) * r + az * s0) * zoom,
+                            x + (Math.cos(a1) * r + ax * s1) * zoom, y + (Math.sin(a1) * r + az * s1) * zoom, 1, 0xC05AA0FF);
                 }
             }
         }

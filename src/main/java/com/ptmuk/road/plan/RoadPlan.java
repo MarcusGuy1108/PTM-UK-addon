@@ -43,6 +43,8 @@ public final class RoadPlan {
         public Junction junction = Junction.AUTO;
         /** Roundabout: outer radius of the circulating carriageway (0 = sized to the roads). */
         public int radius;
+        /** Roundabout: stretched into an oval, this far each way from the middle along `axis` (radians in x, z); 0 = round. */
+        public double stretch, axis;
         /** Give way / stop junctions: the two roads that carry straight on (segment ids), or -1 to choose. */
         public int majorA = -1, majorB = -1;
         /** A road's end where an old road carries on as it is (followed only this far): nothing is built across or past it. */

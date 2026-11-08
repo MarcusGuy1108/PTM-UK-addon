@@ -11,16 +11,19 @@ import java.util.List;
  * and on for each way, joining it with tapers. Three layouts:
  * <ul>
  * <li>a two-bridge roundabout over the motorway, the slips and the road joining it;</li>
+ * <li>an oval roundabout: stretched along the road across the motorway, its straight sides the
+ * two bridges, the road and the slips joining its ends either side;</li>
  * <li>a dumbbell: a roundabout each side, joined by one bridge, the slips joining the one on their side;</li>
  * <li>a diamond: traffic lights each side where the slips meet the road, joined by one bridge.</li>
  * </ul>
- * Auto picks one to suit: a big road square on gets the big roundabout, one crossing at a slant
- * or a minor road the dumbbell, and where there's little room (other roads or ground kept clear
- * close by) the compact diamond; between those it varies from junction to junction.
+ * Auto picks one to suit: a big road square on gets the big roundabout or the oval, a big road
+ * at a slant the oval (it lies along the road), a minor road the dumbbell, and where there's
+ * little room (other roads or ground kept clear close by) the compact diamond; between those it
+ * varies from junction to junction.
  */
 public final class Interchange {
     public enum Kind {
-        AUTO("auto"), ROUNDABOUT("roundabout over it"), DUMBBELL("dumbbell"), DIAMOND("diamond (lights)");
+        AUTO("auto"), ROUNDABOUT("roundabout over it"), OVAL("oval roundabout"), DUMBBELL("dumbbell"), DIAMOND("diamond (lights)");
 
         public final String title;
 
@@ -71,11 +74,22 @@ public final class Interchange {
         boolean big = local.stream().anyMatch(s -> s.style.dual || s.style.lanes >= 2 || s.style.laneWidth >= 6);
         boolean tight = crowded(plan, n, ma, mb, local);
         if (kind == Kind.AUTO) {
-            kind = tight ? Kind.DIAMOND : skew > 0.5 || !big && Math.floorMod(nodeId, 3) != 0 ? Kind.DUMBBELL
-                    : Math.floorMod(nodeId, 4) == 0 ? Kind.DIAMOND : Kind.ROUNDABOUT;
+            kind = tight ? Kind.DIAMOND : !big && Math.floorMod(nodeId, 3) != 0 ? Kind.DUMBBELL
+                    : skew > 0.5 ? (big ? Kind.OVAL : Kind.DUMBBELL)
+                    : switch (Math.floorMod(nodeId, 4)) {
+                        case 0 -> Kind.DIAMOND;
+                        case 1 -> Kind.OVAL;
+                        default -> Kind.ROUNDABOUT;
+                    };
+        }
+        if (kind == Kind.OVAL && skew > 0.87) {
+            return "The road runs too nearly along the motorway for an oval roundabout across it";
         }
         double cHalf = motorway.halfOuter();
-        double reach = (kind == Kind.ROUNDABOUT ? radius(cHalf) : 20) + 46, run = reach + SLIP_RUN;
+        double ovalR = 24, sinA = Math.sqrt(Math.max(0, 1 - skew * skew));
+        // the oval's straight sides reach over the motorway (further where the road crosses it at a slant)
+        double ovalE = (cHalf + 12) / Math.max(0.5, sinA);
+        double reach = (kind == Kind.ROUNDABOUT ? radius(cHalf) : kind == Kind.OVAL ? ovalR + ovalE * skew : 20) + 46, run = reach + SLIP_RUN;
         if (length(plan, n, ma) < run + 30 || length(plan, n, mb) < run + 30) {
             return "The motorway needs to run on at least " + (int) (run + 30) + " blocks each way from the junction for its slip roads";
         }
@@ -98,6 +112,25 @@ public final class Interchange {
             double along = r + 20, side = r * 1.3;
             slips(plan, n.id, n.id, n.id, n.id, n, ux, uz, lx, lz, run, edge, along, side, slip);
             made = "a roundabout over the motorway (two bridges)";
+        } else if (kind == Kind.OVAL) {
+            // stretched along the road: its ends either side of the motorway, its straight sides the bridges
+            double ax = dl[0] * lx + dl[1] * lz >= 0 ? dl[0] : -dl[0], az = dl[0] * lx + dl[1] * lz >= 0 ? dl[1] : -dl[1];
+            n.junction = RoadPlan.Junction.ROUNDABOUT;
+            n.radius = (int) ovalR;
+            n.stretch = ovalE;
+            n.axis = Math.atan2(az, ax);
+            n.y = Double.NaN;
+            // each slip comes in to the end on its side, a little to the side of the road there
+            double out = ovalE + ovalR + 20, aside = ovalR;
+            double[][] bends = {{ax * out - ux * aside, az * out - uz * aside}, {ax * out + ux * aside, az * out + uz * aside},
+                    {-ax * out + ux * aside, -az * out + uz * aside}, {-ax * out - ux * aside, -az * out - uz * aside}};
+            boolean[] offs = {true, false, true, false};
+            double[][] merges = {{-run, edge}, {run, edge}, {run, -edge}, {-run, -edge}};
+            for (int k = 0; k < 4; k++) {
+                slip(plan, n, merges[k][0], merges[k][1], bends[k][0] * ux + bends[k][1] * uz, bends[k][0] * lx + bends[k][1] * lz, n.id,
+                        ux, uz, lx, lz, slip, offs[k]);
+            }
+            made = "an oval roundabout over the motorway (two bridges)";
         } else {
             // a junction each side of the motorway joined by a bridge; each road off goes to the one on its side
             double off = cHalf + 30;
