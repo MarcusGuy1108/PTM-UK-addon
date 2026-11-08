@@ -88,6 +88,12 @@ public class RoadPlannerScreen extends Screen {
     private Integer selStop;
     private boolean placingStop;
     private EditBox stopName;
+    /** Map mode: dragging the imported map about (left button), how far so far, and whether dragging is on. */
+    private boolean mapDrag;
+    private double mapGrabX, mapGrabZ, mapDX, mapDZ;
+    private static boolean dragMapMode = true;
+    /** Where the preview of a big plan was last laid out round (it follows the view). */
+    private double previewCX = Double.NaN, previewCZ = Double.NaN;
     /** What a motorway junction made at the selected point will be. */
     private static com.ptmuk.road.layout.Interchange.Kind interchange = com.ptmuk.road.layout.Interchange.Kind.AUTO;
     private boolean draggingNode, draggingBend, panning, moved;
@@ -535,9 +541,19 @@ public class RoadPlannerScreen extends Screen {
         y += ROW;
         halfButtons(y, "Nudge north", b -> nudge(0, -1), "Nudge south", b -> nudge(0, 1));
         y += ROW;
+        halfButtons(y, () -> "Drag map: " + (dragMapMode ? "on" : "off"), b -> dragMapMode = !dragMapMode,
+                () -> "Bring here", b -> {
+                    double[] box = mapBounds();
+                    if (box != null) {
+                        moveMap((int) Math.round(camX - (box[0] + box[2]) / 2), (int) Math.round(camZ - (box[1] + box[3]) / 2));
+                    }
+                });
+        y += ROW;
         button(y, () -> "Guides in world: " + (mi.guides ? "on" : "off"), b -> mi.guides = !mi.guides);
         y += ROW;
         button(y, () -> "Buildings: " + (mi.buildings ? "build them" : "outlines only"), b -> mi.buildings = !mi.buildings);
+        y += ROW;
+        button(y, () -> "Build the whole map", b -> build(true));
         y += ROW;
         button(y, () -> "Remove map", b -> {
             remember();
@@ -800,16 +816,18 @@ public class RoadPlannerScreen extends Screen {
         List<OsmMap.Outline> b = m.buildings(mi);
         // all of it: a big map is previewed and built a part at a time, round where you are
         int roads = m.roads(plan, mi, b, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
+        int stops = m.busStops(plan, mi);
         showOutlines();
         changed();
         int kb = RoadPlans.pack(plan).length / 1024;
         flash(kb > RoadPlans.MAX_PLAN / 1024 ? "That map's too big for one planner (" + kb + " KB of " + RoadPlans.MAX_PLAN / 1024 + ") - export a smaller area"
-                : roads + " roads and " + b.size() + " buildings from " + mi.file);
+                : roads + " roads, " + b.size() + " buildings and " + stops + " bus stops from " + mi.file + ". Drag it to where it goes.");
     }
 
     /** Take out the map's roads that haven't been built (and points left with no roads). */
     private void removeMapRoads() {
         RoadPlan.MapImport mi = plan.map;
+        plan.busStops.removeIf(b -> mi.owns(b.segment) && !b.built);
         plan.segments.removeIf(sg -> mi.owns(sg.id) && !sg.built);
         plan.nodes.removeIf(n -> mi.owns(n.id) && !n.built && plan.segmentsAt(n.id).isEmpty());
     }
@@ -823,6 +841,55 @@ public class RoadPlannerScreen extends Screen {
             mi.scale = to;
             layMapRoads(m);
         });
+    }
+
+    /** The imported map's whole area in blocks (x0, z0, x1, z1), or null before it's read. */
+    private double[] mapBounds() {
+        RoadPlan.MapImport mi = plan.map;
+        if (mi == null || osm == null) {
+            return null;
+        }
+        return new double[]{mi.x(osm.minLon), mi.z(osm.maxLat), mi.x(osm.maxLon), mi.z(osm.minLat)};
+    }
+
+    /** Move the imported map (its roads and buildings) dx, dz blocks: only while none of it's built. */
+    private void moveMap(int dx, int dz) {
+        RoadPlan.MapImport mi = plan.map;
+        if (mi == null) {
+            return;
+        }
+        if (plan.segments.stream().anyMatch(sg -> mi.owns(sg.id) && sg.built)) {
+            flash("Some of the map's built already: Undo the build first (or Nudge just its buildings)");
+            return;
+        }
+        readMap(mi.file, m -> {
+            remember();
+            removeMapRoads();
+            mi.x += dx;
+            mi.z += dz;
+            layMapRoads(m);
+            flash("Moved the map " + Math.abs(dx) + (dx < 0 ? " west, " : " east, ") + Math.abs(dz) + (dz < 0 ? " north" : " south"));
+        });
+    }
+
+    /** The map's area on the planner's map, and while it's dragged its roads where they'll go. */
+    private void drawMapArea(GuiGraphics g) {
+        double[] box = mapBounds();
+        if (box == null || (mode != Mode.MAP && !mapDrag)) {
+            return;
+        }
+        rect(g, (int) Math.floor(box[0] + mapDX), (int) Math.floor(box[1] + mapDZ), (int) Math.ceil(box[2] + mapDX),
+                (int) Math.ceil(box[3] + mapDZ), 1, mapDrag ? 0xFFFFD24A : 0xA0FFD24A);
+        if (!mapDrag) {
+            return;
+        }
+        for (Segment s : plan.segments) {
+            Curve c = plan.map.owns(s.id) ? lines.curves.get(s.id) : null;
+            for (int i = 0; c != null && i + 4 < c.n; i += 4) {
+                line(g, screenX(c.x[i] + mapDX), screenY(c.z[i] + mapDZ), screenX(c.x[i + 4] + mapDX), screenY(c.z[i + 4] + mapDZ),
+                        1, 0xFFFFD24A);
+            }
+        }
     }
 
     private void nudge(int dx, int dz) {
@@ -1268,6 +1335,14 @@ public class RoadPlannerScreen extends Screen {
     }
 
     private void build() {
+        build(false);
+    }
+
+    /**
+     * Build: round the middle of the view (a big plan a part at a time, the part you're looking at),
+     * or with whole, every part of a big plan one after another, wherever you are.
+     */
+    private void build(boolean whole) {
         if (preview == null && plan.segments.isEmpty() && plan.sites.isEmpty()) {
             flash("Draw a road or a site first");
             return;
@@ -1284,7 +1359,12 @@ public class RoadPlannerScreen extends Screen {
                 return;
             }
         }
+        // where to build: the part of a big plan round the middle of the view, not round you (it needn't be loaded)
+        plan.buildX = camX;
+        plan.buildZ = camZ;
+        plan.buildAll = whole && plan.tooBig();
         byte[] data = RoadPlans.pack(plan);
+        plan.buildAll = false;
         if (data.length > RoadPlans.MAX_PLAN) {
             flash("The plan is too big (" + data.length / 1024 + " KB of " + RoadPlans.MAX_PLAN / 1024 + ") - remove the map or some roads");
             return;
@@ -1295,10 +1375,17 @@ public class RoadPlannerScreen extends Screen {
                 flash("The map's still loading - try again in a moment");
                 return;
             }
-            // the buildings round you go first: the server builds them with the roads
-            var player = Minecraft.getInstance().player;
-            MapBuildings.Batch batch = MapBuildings.around(outlines, mi, player.getX(), player.getZ(), RoadPlan.PART);
+            // the buildings go first: the server builds them with the roads (all of them for the whole map, if they'll go)
+            MapBuildings.Batch batch = whole ? MapBuildings.around(outlines, mi, camX, camZ, Integer.MAX_VALUE / 4) : null;
             byte[] packed = batch == null ? null : MapBuildings.pack(batch);
+            if (packed == null || packed.length > RoadPlans.MAX_PLAN) {
+                if (whole && packed != null) {
+                    Minecraft.getInstance().gui.getChat().addMessage(Component.literal("The map has too many buildings to send in one go: "
+                            + "the roads are built everywhere, the buildings round where you're looking (look at each part and press Build for the rest)"));
+                }
+                batch = MapBuildings.around(outlines, mi, camX, camZ, RoadPlan.PART);
+                packed = batch == null ? null : MapBuildings.pack(batch);
+            }
             if (packed != null && packed.length <= RoadPlans.MAX_PLAN) {
                 RoadPlannerMessage.send(RoadPlannerMessage.Action.BUILDINGS, packed, hand == InteractionHand.OFF_HAND);
             }
@@ -1450,6 +1537,13 @@ public class RoadPlannerScreen extends Screen {
             swapDragging = true;
             int wx = (int) Math.floor(worldX(mx)), wz = (int) Math.floor(worldZ(my));
             swapBox = new int[]{wx, wz, wx, wz};
+            return true;
+        }
+        if (mode == Mode.MAP && plan.map != null && dragMapMode) {
+            mapDrag = true;
+            mapGrabX = worldX(mx);
+            mapGrabZ = worldZ(my);
+            mapDX = mapDZ = 0;
             return true;
         }
         if (mode == Mode.MAP) {
@@ -1788,6 +1882,9 @@ public class RoadPlannerScreen extends Screen {
         if (panning) {
             camX -= (mx - lastMouseX) / zoom;
             camZ -= (my - lastMouseY) / zoom;
+        } else if (mapDrag) {
+            mapDX = worldX(mx) - mapGrabX;
+            mapDZ = worldZ(my) - mapGrabZ;
         } else if (moveDragging && moveBox != null) {
             int lim = com.ptmuk.building.Sections.MAX_SIDE - 1;
             int wx = (int) Math.floor(worldX(mx)), wz = (int) Math.floor(worldZ(my));
@@ -1867,6 +1964,15 @@ public class RoadPlannerScreen extends Screen {
         if (moveDragging) {
             moveDragging = false;
             rebuildPanel();
+            return true;
+        }
+        if (mapDrag) {
+            mapDrag = false;
+            int dx = (int) Math.round(mapDX), dz = (int) Math.round(mapDZ);
+            mapDX = mapDZ = 0;
+            if (dx != 0 || dz != 0) {
+                moveMap(dx, dz);
+            }
             return true;
         }
         if (swapDragging) {
@@ -2086,11 +2192,16 @@ public class RoadPlannerScreen extends Screen {
             }
             pending = null;
         }
+        if (plan.tooBig() && !Double.isNaN(previewCX) && Math.hypot(camX - previewCX, camZ - previewCZ) > RoadPlan.PART / 2.0) {
+            previewStale = true;                             // a big plan's preview follows the view round it
+        }
         if (previewStale && pending == null && !draggingNode && !draggingBend && siteDrag == 0 && map != null) {
             previewStale = false;
             tilesSinceLevel = 0;
             // a big plan: just the part round the map, as the server builds it
-            RoadPlan copy = plan.tooBig() ? plan.part(map.originX + map.size / 2.0, map.originZ + map.size / 2.0, RoadPlan.PART) : plan.copy();
+            previewCX = camX;
+            previewCZ = camZ;
+            RoadPlan copy = plan.tooBig() ? plan.part(camX, camZ, RoadPlan.PART) : plan.copy();
             var terrain = map.terrain();
             pending = CompletableFuture.supplyAsync(() -> Layout.of(copy, terrain));
         }
@@ -2198,13 +2309,14 @@ public class RoadPlannerScreen extends Screen {
         if (outlines != null && outlineTex != null && map != null) {
             RenderSystem.enableBlend();
             ps.pushPose();
-            ps.translate(screenX(map.originX), screenY(map.originZ), 0);
+            ps.translate(screenX(map.originX + mapDX), screenY(map.originZ + mapDZ), 0);
             ps.scale((float) zoom, (float) zoom, 1);
             g.blit(OUTLINES, 0, 0, 0, 0, map.size, map.size, map.size, map.size);
             ps.popPose();
             RenderSystem.disableBlend();
         }
         drawPlan(g);
+        drawMapArea(g);
         drawMeasure(g);
         drawSwapBox(g);
         drawMoveBox(g);
@@ -2235,7 +2347,9 @@ public class RoadPlannerScreen extends Screen {
                 : mode == Mode.SWAP
                 ? "Drag a box over an old build. Click an arrow to pick what a block becomes, or type a block's name."
                 : mode == Mode.MAP
-                ? (plan.map == null ? "Move the map to where its middle goes, then pick a file." : "Click two points to measure.")
+                ? (plan.map == null ? "Move the map to where its middle goes, then pick a file."
+                : dragMapMode ? "Drag the map to where it goes (the yellow box is all of it). Build builds the part you're looking at."
+                : "Click two points to measure.")
                 : mode == Mode.SITES
                 ? (selSite == null && newSiteType == SiteType.TOWN && drawTown ? "Hold the left button and draw round where the town goes."
                 : selSite == null && newSiteType == SiteType.DISTRICT ? "Mark out part of a town and pick what goes there. Districts drawn side by side make one town; Build lays them out."

@@ -89,6 +89,31 @@ public final class UkMapImportGameTests {
         helper.succeed();
     }
 
+    /** A map's bus stops come in as the plan's, named as on the map, on the side of the road they're on. */
+    @GameTest(template = "empty5x4x5")
+    public static void readsBusStops(GameTestHelper helper) throws Exception {
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
+                + node(1, -100, 0, "") + node(2, 100, 0, "")
+                + node(3, 20, 6, tag("highway", "bus_stop") + tag("name", "Market Street"))
+                + node(4, -30, -6, tag("highway", "bus_stop"))
+                + way(100, tag("highway", "secondary") + tag("name", "Station Road"), 1, 2) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        map.roads(plan, mi, map.buildings(mi), -2000, -2000, 2000, 2000);
+        helper.assertTrue(map.busStops(plan, mi) == 2 && plan.busStops.size() == 2, "bus stops: " + plan.busStops.size());
+        com.ptmuk.road.layout.Layout l = com.ptmuk.road.layout.Layout.of(plan, com.ptmuk.road.layout.Terrain.flat(64));
+        helper.assertTrue(l.busStopZones.size() == 2, "laid out " + l.busStopZones.size() + " stops");
+        for (com.ptmuk.road.layout.Layout.BusStopZone z : l.busStopZones) {
+            double mz = (z.z0() + z.z1()) / 2.0;
+            boolean north = z.name().equals("Market Street");
+            helper.assertTrue(north ? mz < 0 : mz > 0 && !z.name().isBlank(), z.name() + "'s stop is on the wrong side: " + z);
+        }
+        helper.succeed();
+    }
+
     /** A street with a terrace of three houses and a shop on one side of it. */
     private static final String STREET = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
             + node(1, -20, 0, "") + node(2, 45, 0, "")

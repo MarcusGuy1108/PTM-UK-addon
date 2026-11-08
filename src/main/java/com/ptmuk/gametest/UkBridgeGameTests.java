@@ -92,4 +92,40 @@ public final class UkBridgeGameTests {
                     + " other traffic points, road at " + roadY);
         });
     }
+
+    /**
+     * A plan too big to build in one go, two roads 2,000 blocks apart and nowhere near the player:
+     * Build the whole map builds both, a part after the other, in chunks nobody has loaded.
+     */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 2400)
+    public static void buildsTheWholeMapFarAway(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = net.minecraftforge.common.util.FakePlayerFactory.get(level,
+                new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "whole-map-test"));
+        int ox = 20000, oz = 20000;
+        RoadPlan plan = new RoadPlan();
+        plan.addSegment(plan.addNode(ox, oz).id, plan.addNode(ox + 60, oz).id, RoadStyle.residential());
+        plan.addSegment(plan.addNode(ox + 2000, oz).id, plan.addNode(ox + 2060, oz).id, RoadStyle.residential());
+        helper.assertTrue(plan.tooBig(), "the plan should be built a part at a time");
+        plan.buildX = ox;
+        plan.buildZ = oz;
+        plan.buildAll = true;
+        RoadBuilder.start(player, InteractionHand.MAIN_HAND, plan);
+        helper.succeedWhen(() -> {
+            helper.assertTrue(plan.segments.stream().allMatch(sg -> sg.built), "still building the parts");
+            helper.assertFalse(RoadBuilder.busy(player.getUUID()), "still building");
+            for (int x : new int[]{ox + 30, ox + 2030}) {
+                boolean road = false;
+                java.util.Set<String> seen = new java.util.TreeSet<>();
+                for (int z = oz - 3; z <= oz + 3; z++) {
+                    for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight() && !road; y++) {
+                        String id = ForgeRegistries.BLOCKS.getKey(level.getBlockState(new BlockPos(x, y, z)).getBlock()).toString();
+                        road |= id.contains("asphalt") || id.contains("tarmac");
+                        seen.add(id);
+                    }
+                }
+                helper.assertTrue(road, "no road built at x " + x + ": " + seen);
+            }
+        });
+    }
 }

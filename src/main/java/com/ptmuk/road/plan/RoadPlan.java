@@ -316,6 +316,10 @@ public final class RoadPlan {
     public List<Site> sites = new ArrayList<>();
     public List<BusStop> busStops = new ArrayList<>();
     public MapImport map;
+    /** Where Build was pressed from: a big plan is built a part at a time round here (NaN: round the player). */
+    public double buildX = Double.NaN, buildZ = Double.NaN;
+    /** Build every part of a big plan, one after another. */
+    public boolean buildAll;
     public int nextId = 1;
 
     private static final Gson GSON = new GsonBuilder().serializeSpecialFloatingPointValues().create();

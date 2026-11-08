@@ -78,6 +78,10 @@ public final class RoadBuilder {
         /** Built after `layout` (the roads underneath it, built first): the rest, and its columns. */
         Layout then;
         int[] thenCells;
+        /** A whole big plan: its roads still to build when this part started (to check each part gets somewhere). */
+        long unbuiltBefore = -1;
+        /** Who pressed Build (the next part of a whole map is theirs, even if they've gone). */
+        ServerPlayer starter;
         /** Traffic points of both, joined up. */
         Layout.Traffic traffic;
         RoadPlan plan;
@@ -106,6 +110,10 @@ public final class RoadBuilder {
 
     private static final Map<UUID, Deque<Undo>> HISTORY = new HashMap<>();
     private static final List<Job> JOBS = new ArrayList<>();
+    /** Building a whole big plan: the buildings for all of it, shared out part by part. */
+    private static final Map<UUID, MapBuildings.Batch> WHOLE = new HashMap<>();
+    /** Parts to start once the job before has finished. */
+    private static final List<Runnable> NEXT = new ArrayList<>();
 
     private RoadBuilder() {
     }
@@ -131,8 +139,24 @@ public final class RoadBuilder {
         nameStreets(plan, level.getRandom());
         RoadPlan full = null;
         if (plan.tooBig()) {
+            // the part round where Build was pressed from (the planner's view, which needn't be anywhere near the player)
             full = plan;
-            plan = plan.part(player.getX(), player.getZ(), RoadPlan.PART);
+            double cx = Double.isNaN(plan.buildX) ? player.getX() : plan.buildX, cz = Double.isNaN(plan.buildZ) ? player.getZ() : plan.buildZ;
+            if (plan.buildAll) {
+                if (buildings != null) {
+                    WHOLE.put(player.getUUID(), buildings);
+                }
+                double[] at = nextPart(plan, cx, cz);
+                if (at == null) {
+                    WHOLE.remove(player.getUUID());
+                    player.displayClientMessage(Component.literal("The whole map's built"), true);
+                    return;
+                }
+                cx = at[0];
+                cz = at[1];
+                buildings = MapBuildings.within(WHOLE.get(player.getUUID()), cx, cz, RoadPlan.PART);
+            }
+            plan = plan.part(cx, cz, RoadPlan.PART);
         }
         // node heights come from the ground once, then stay put so later edits don't shift built roads
         Terrain terrain = new LoadingTerrain(level, (int) Math.floor(player.getY()));
@@ -174,11 +198,31 @@ public final class RoadBuilder {
         }
         job.plan = plan;
         job.full = full;
+        job.unbuiltBefore = full == null ? -1 : full.segments.stream().filter(sg -> !sg.built).count();
+        job.starter = player;
         job.mapBuildings = mapBuildings;
         job.palette = new Palette();
         JOBS.add(job);
         player.displayClientMessage(Component.literal(cells.length + below.length > 0 ? "Building roads: " + (cells.length + below.length) + " columns..."
                 : "Building " + mapBuildings.count() + " buildings..."), true);
+    }
+
+    /** Where the next part of a big plan goes: round the middle of the unbuilt road nearest (cx, cz), or null when it's all built. */
+    private static double[] nextPart(RoadPlan plan, double cx, double cz) {
+        double[] best = null;
+        double bd = Double.MAX_VALUE;
+        for (RoadPlan.Segment sg : plan.segments) {
+            RoadPlan.Node a = plan.node(sg.a), b = plan.node(sg.b);
+            if (sg.built || a == null || b == null) {
+                continue;
+            }
+            double mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, d = Math.hypot(mx - cx, mz - cz);
+            if (d < bd) {
+                bd = d;
+                best = new double[]{mx, mz};
+            }
+        }
+        return best;
     }
 
     /** The columns of a layout to build: the footprint, then the blending margin, so slopes meet finished edges. */
@@ -238,7 +282,15 @@ public final class RoadBuilder {
     }
 
     public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || JOBS.isEmpty()) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+        if (!NEXT.isEmpty()) {
+            List<Runnable> next = new ArrayList<>(NEXT);
+            NEXT.clear();
+            next.forEach(Runnable::run);
+        }
+        if (JOBS.isEmpty()) {
             return;
         }
         MinecraftServer server = event.getServer();
@@ -277,6 +329,19 @@ public final class RoadBuilder {
             } else if (job.fixturesDone) {
                 finish(job, player);
                 it.remove();
+                long unbuilt = job.full == null ? 0 : job.full.segments.stream().filter(sg -> !sg.built).count();
+                ServerPlayer by = player != null ? player : job.starter;
+                if (job.full != null && job.full.buildAll && unbuilt > 0 && unbuilt == job.unbuiltBefore) {
+                    by.displayClientMessage(Component.literal("Stopped: " + unbuilt + " roads of the map can't be built a part at a time"), false);
+                    WHOLE.remove(job.player);
+                } else if (job.full != null && job.full.buildAll) {
+                    // the whole map: on to the next part (once this job's out of the list)
+                    RoadPlan full = job.full;
+                    InteractionHand hand = job.hand;
+                    NEXT.add(() -> start(by, hand, full));
+                } else if (job.full != null) {
+                    WHOLE.remove(job.player);
+                }
             } else if (player != null && job.next % (COLUMNS_PER_TICK * 10) < COLUMNS_PER_TICK) {
                 player.displayClientMessage(Component.literal("Building roads: " + (100 * job.next / job.cells.length) + "%"), true);
             }
@@ -438,7 +503,8 @@ public final class RoadBuilder {
             boolean more = job.full != null && job.full.segments.stream().anyMatch(sg -> !sg.built);
             player.displayClientMessage(Component.literal((job.mapBuildings != null ? "Roads and " + job.mapBuildings.count() + " buildings built (" : "Roads built (")
                     + job.changed + " blocks changed)"
-                    + (more ? " - the map's too big for one go: go to the next part and Build again" : "")), true);
+                    + (more && job.full.buildAll ? " - on to the next part of the map"
+                    : more ? " - the map's too big for one go: look at the next part in the planner and Build again" : "")), true);
             if (job.trafficAt != null && !Ptm2Traffic.leftHanded(job.level)) {
                 player.sendSystemMessage(Component.literal("PTM2 has its traffic on the right in this world, so cars on these roads keep right. "
                         + "To drive on the left, open a PTM2 Computer, go to Traffic and set Left traffic to Yes: PTM2 turns every lane round, these too."));

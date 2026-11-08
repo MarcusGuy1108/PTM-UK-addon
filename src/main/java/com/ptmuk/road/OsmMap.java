@@ -57,6 +57,8 @@ public final class OsmMap {
 
     private final Map<Long, double[]> nodes = new HashMap<>();          // lat, lon
     private final Map<Long, String> pointHighway = new HashMap<>();     // traffic_signals, mini_roundabout
+    /** Bus stops (highway=bus_stop, or a bus platform): their names. */
+    private final Map<Long, String> busStops = new HashMap<>();
     private final List<Way> ways = new ArrayList<>();
     private final List<Relation> relations = new ArrayList<>();
     public double minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
@@ -128,6 +130,10 @@ public final class OsmMap {
                         if (tags != null && tags.containsKey("highway")) {
                             m.pointHighway.put(id, tags.get("highway"));
                         }
+                        if (tags != null && ("bus_stop".equals(tags.get("highway"))
+                                || "platform".equals(tags.get("public_transport")) && "yes".equals(tags.get("bus")))) {
+                            m.busStops.put(id, tags.getOrDefault("name", ""));
+                        }
                         tags = null;
                     }
                     case "way" -> {
@@ -160,6 +166,49 @@ public final class OsmMap {
 
     public double midLon() {
         return (minLon + maxLon) / 2;
+    }
+
+    /**
+     * The map's bus stops as the plan's (Road Planner bus stops, with their real names): each by the
+     * map road nearest it, on the side it's on, if one's within 25 blocks; what was added.
+     */
+    public int busStops(RoadPlan plan, MapImport mi) {
+        int added = 0;
+        java.util.Set<String> placed = new java.util.HashSet<>();
+        for (Map.Entry<Long, String> e : busStops.entrySet()) {
+            double[] ll = nodes.get(e.getKey());
+            if (ll == null) {
+                continue;
+            }
+            double px = mi.x(ll[1]), pz = mi.z(ll[0]), best = 25, at = 0;
+            RoadPlan.Segment on = null;
+            int side = 1;
+            for (RoadPlan.Segment sg : plan.segments) {
+                RoadPlan.Node a = plan.node(sg.a), b = plan.node(sg.b);
+                if (!mi.owns(sg.id) || a == null || b == null || sg.style.dual) {
+                    continue;
+                }
+                double ex = b.x - a.x, ez = b.z - a.z, l2 = ex * ex + ez * ez;
+                if (l2 < 1) {
+                    continue;
+                }
+                double t = Math.max(0, Math.min(1, ((px - a.x) * ex + (pz - a.z) * ez) / l2));
+                double d = Math.hypot(a.x + ex * t - px, a.z + ez * t - pz);
+                if (d < best) {
+                    best = d;
+                    on = sg;
+                    at = t;
+                    side = (px - a.x) * ez - (pz - a.z) * ex >= 0 ? 1 : -1;     // left of a to b, as the plan has it
+                }
+            }
+            String name = e.getValue().isBlank() ? (on == null ? "" : on.name) : e.getValue();
+            // (a road's stops either side share a name; one stop a side a name)
+            if (on != null && placed.add(on.id + "/" + side + "/" + Math.round(at * 10)) ) {
+                plan.addBusStop(on.id, at, side, name);
+                added++;
+            }
+        }
+        return added;
     }
 
     // ------------------------------------------------------------------ buildings

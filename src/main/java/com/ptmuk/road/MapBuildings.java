@@ -167,6 +167,30 @@ public final class MapBuildings {
         return b.buildings.isEmpty() ? null : b;
     }
 
+    /** The part of a batch with its buildings' middles within half each way of (cx, cz); null if none. */
+    static Batch within(Batch all, double cx, double cz, int half) {
+        if (all == null) {
+            return null;
+        }
+        Batch b = new Batch();
+        int x = (int) Math.floor(cx), z = (int) Math.floor(cz);
+        b.box = new int[]{x - half, z - half, x + half, z + half};
+        b.scale = all.scale;
+        for (Footprint f : all.buildings) {
+            double mx = 0, mz = 0;
+            for (int i = 0; i < f.x.length; i++) {
+                mx += f.x[i] / 4.0;
+                mz += f.z[i] / 4.0;
+            }
+            mx /= f.x.length;
+            mz /= f.x.length;
+            if (mx >= b.box[0] && mx < b.box[2] && mz >= b.box[1] && mz < b.box[3]) {
+                b.buildings.add(f);
+            }
+        }
+        return b.buildings.isEmpty() ? null : b;
+    }
+
     /** The buildings a player's planner sent, kept for the build that follows. */
     public static void receive(UUID player, byte[] data) {
         Batch b = unpack(data);
