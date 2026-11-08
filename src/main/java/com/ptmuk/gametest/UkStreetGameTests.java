@@ -350,6 +350,118 @@ public final class UkStreetGameTests {
         helper.succeed();
     }
 
+    /**
+     * More UK junction options: two lanes narrowing into one over a taper with bent arrows in the
+     * lane that ends (and traffic carrying on); approaches flared to two lanes at traffic lights
+     * (with lane arrows); left turn filters cutting the corners; a two-lane roundabout (a lane line
+     * round it, traffic in both lanes); an oval roundabout; a turning circle at a close's end.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void moreJunctionOptions(GameTestHelper helper) {
+        // two lanes each way into one
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Node mid = plan.addNode(200, 100);
+        plan.addSegment(plan.addNode(0, 100).id, mid.id, RoadStyle.wideMainRoad());
+        plan.addSegment(mid.id, plan.addNode(400, 100).id, RoadStyle.mainRoad());
+        Layout l = Layout.of(plan, Terrain.flat(64));
+        int wide = roadAcross(l, 80, 100), narrow = roadAcross(l, 300, 100), taper = roadAcross(l, 185, 100);
+        helper.assertTrue(wide > narrow + 6 && taper < wide && taper > narrow, "across: " + wide + " wide, " + taper + " in the taper, " + narrow + " narrow");
+        helper.assertTrue(count(l, 100, 170, 85, 99, Layout.M_RIGHT) >= 2, "no arrows in the lane that ends");
+        helper.assertTrue(reach(l, 6, 40) > 380, "traffic doesn't get past the taper");
+        // flared approaches at traffic lights
+        RoadPlan lights = crossroads(RoadPlan.Junction.SIGNALS);
+        String said = com.ptmuk.road.layout.JunctionTools.flare(lights, lights.nodes.get(0).id);
+        helper.assertTrue(said.startsWith("Flared 4"), said);
+        Layout fl = Layout.of(lights, Terrain.flat(64));
+        int arrows = count(fl, 0, 400, 0, 400, Layout.M_LEFT_AHEAD) + count(fl, 0, 400, 0, 400, Layout.M_RIGHT_AHEAD)
+                + count(fl, 0, 400, 0, 400, Layout.M_LEFT);
+        helper.assertTrue(arrows >= 8, "only " + arrows + " lane arrows at the flared lights");
+        // left turn filters
+        RoadPlan give = crossroads(RoadPlan.Junction.GIVE_WAY);
+        said = com.ptmuk.road.layout.JunctionTools.filters(give, give.nodes.get(0).id);
+        helper.assertTrue(said.startsWith("Added 4"), said);
+        Layout fi = Layout.of(give, Terrain.flat(64));
+        long merges = give.nodes.stream().filter(n -> n.junction == RoadPlan.Junction.MERGE).count();
+        long cornerPoints = fi.traffic.stream().filter(p -> Math.abs(p.x() - 200) > 18 && Math.abs(p.z() - 200) > 18
+                && Math.abs(p.x() - 200) < 80 && Math.abs(p.z() - 200) < 80).count();
+        helper.assertTrue(merges == 8 && cornerPoints >= 8, merges + " filter ends, " + cornerPoints + " traffic points round the corners");
+        // a two-lane roundabout, then an oval one
+        RoadPlan ring = crossroads(RoadPlan.Junction.ROUNDABOUT);
+        ring.nodes.get(0).ringLanes = 2;
+        Layout rl = Layout.of(ring, Terrain.flat(64));
+        helper.assertTrue(count(rl, 160, 240, 160, 240, Layout.M_LINE) >= 12, "no lane line round the two-lane roundabout");
+        double ro = rl.roundaboutRadius(ring.nodes.get(0).id), inner = 0, outer = 0;
+        for (Layout.TrafficPoint p : rl.traffic) {
+            double d = Math.hypot(p.x() + 0.5 - 200.5, p.z() + 0.5 - 200.5);
+            inner += d < ro - 6.5 ? 1 : 0;
+            outer += d >= ro - 6.5 && d < ro ? 1 : 0;
+        }
+        helper.assertTrue(inner >= 6 && outer >= 6, "traffic round the two lanes: " + inner + " inner, " + outer + " outer");
+        ring.nodes.get(0).ringLanes = 0;
+        ring.nodes.get(0).stretch = 24;
+        Layout ov = Layout.of(ring, Terrain.flat(64));
+        int along = roadAcross(ov, 200, 200, true), across = roadAcross(ov, 200, 200);
+        helper.assertTrue(along + 30 < across, "the oval roundabout (its island long along x): " + along + " road along, " + across + " across");
+        // a turning circle at the end of a close
+        RoadPlan close = new RoadPlan();
+        RoadPlan.Node end = close.addNode(100, 0);
+        end.turning = true;
+        close.addSegment(close.addNode(0, 0).id, end.id, RoadStyle.residential());
+        Layout tc = Layout.of(close, Terrain.flat(64));
+        helper.assertTrue(roadAcross(tc, 100, 0) >= 12 && roadAcross(tc, 50, 0) < 11, "no turning circle: "
+                + roadAcross(tc, 100, 0) + " across at the end, " + roadAcross(tc, 50, 0) + " along the close");
+        helper.succeed();
+    }
+
+    /** Four 200-block main roads meeting at 200,200. */
+    private static RoadPlan crossroads(RoadPlan.Junction type) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Node c = plan.addNode(200, 200);
+        c.junction = type;
+        for (int[] d : new int[][]{{-200, 0}, {200, 0}, {0, -200}, {0, 200}}) {
+            plan.addSegment(c.id, plan.addNode(200 + d[0], 200 + d[1]).id, RoadStyle.mainRoad());
+        }
+        return plan;
+    }
+
+    /** Road cells in a line across x (or, along, across z) through x, z. */
+    private static int roadAcross(Layout l, int x, int z) {
+        return roadAcross(l, x, z, false);
+    }
+
+    private static int roadAcross(Layout l, int x, int z, boolean alongX) {
+        int n = 0;
+        for (int d = -60; d <= 60; d++) {
+            int idx = alongX ? l.index(x + d, z) : l.index(x, z + d);
+            n += idx >= 0 && l.kind[idx] == Layout.ROAD ? 1 : 0;
+        }
+        return n;
+    }
+
+    /** How far east traffic going that way (rot8) from the west end (x below `from`) gets. */
+    private static int reach(Layout l, int rot8, int from) {
+        java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+        boolean[] seen = new boolean[l.traffic.size()];
+        for (int i = 0; i < seen.length; i++) {
+            if (l.traffic.get(i).x() < from && l.traffic.get(i).rot8() == rot8) {
+                q.add(i);
+                seen[i] = true;
+            }
+        }
+        int far = 0;
+        while (!q.isEmpty()) {
+            Layout.TrafficPoint p = l.traffic.get(q.poll());
+            far = Math.max(far, p.x());
+            for (int n : p.next()) {
+                if (!seen[n]) {
+                    seen[n] = true;
+                    q.add(n);
+                }
+            }
+        }
+        return far;
+    }
+
     private static int count(Layout l, int x0, int x1, int z0, int z1, int mark) {
         int n = 0;
         for (int z = z0; z <= z1; z++) {

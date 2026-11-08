@@ -912,6 +912,10 @@ final class WindingTown {
                 run += l;
             }
             streets++;
+            Pt end = st.pts.get(st.pts.size() - 1);
+            if (st.level > 0 && !end.junction && !end.out) {
+                nodes.get(end).turning = true;               // a close: a turning circle at its end
+            }
         }
         // traffic lights on the main road: a small town's crossroads nearest the middle; a big town's crossroads and
         // then its longest side streets, one set every SIGNALS_APART or so. Mini roundabouts where back streets cross

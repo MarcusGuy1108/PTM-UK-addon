@@ -304,6 +304,21 @@ public class RoadPlannerScreen extends Screen {
                 changed();
             });
             y += ROW;
+            if (n.junction == Junction.ROUNDABOUT) {
+                halfButtons(y, () -> "Shape: " + (n.stretch <= 0 ? "round" : n.stretch < 20 ? "oval" : n.stretch < 32 ? "long oval" : "very long"), b -> {
+                    remember();
+                    n.stretch = n.stretch <= 0 ? 12 : n.stretch < 20 ? 24 : n.stretch < 32 ? 40 : 0;
+                    n.axis = mainAxis(n);
+                    plan.touch(n.id);
+                    changed();
+                }, () -> "Lanes round: " + Math.max(1, n.ringLanes), b -> {
+                    remember();
+                    n.ringLanes = n.ringLanes >= 2 ? 1 : 2;
+                    plan.touch(n.id);
+                    changed();
+                });
+                y += ROW;
+            }
             button(y, () -> "Height: " + (Double.isNaN(n.y) ? "from ground" : (int) n.y), b -> {
                 n.y = Double.NaN;
                 plan.touch(n.id);
@@ -326,11 +341,29 @@ public class RoadPlannerScreen extends Screen {
                     rebuildPanel();
                 });
                 y += ROW;
+                halfButtons(y, () -> "Flare roads", b -> {
+                    remember();
+                    flash(com.ptmuk.road.layout.JunctionTools.flare(plan, n.id));
+                    changed();
+                }, () -> "Left filters", b -> {
+                    remember();
+                    flash(com.ptmuk.road.layout.JunctionTools.filters(plan, n.id));
+                    changed();
+                });
+                y += ROW;
             }
             if (arms == 1) {
-                button(y, () -> "Road end: " + (n.open ? "old road carries on" : "ends here"), b -> {
+                button(y, () -> "Road end: " + (n.open ? "old road carries on" : n.turning ? "turning circle" : "ends here"), b -> {
                     remember();
-                    n.open = !n.open;
+                    // ends here -> turning circle -> an old road carries on -> ends here
+                    if (n.open) {
+                        n.open = false;
+                    } else if (n.turning) {
+                        n.turning = false;
+                        n.open = true;
+                    } else {
+                        n.turning = true;
+                    }
                     plan.touch(n.id);
                     changed();
                 });
@@ -1021,6 +1054,24 @@ public class RoadPlannerScreen extends Screen {
         to.surface = c.surface;
         to.zebra = c.zebra;
         to.cycleLane = c.cycleLane;
+    }
+
+    /** The way an oval roundabout lies: along the two roads into it that run most nearly straight through. */
+    private double mainAxis(Node n) {
+        List<Segment> arms = plan.segmentsAt(n.id);
+        double best = 2, axis = n.axis;
+        for (int i = 0; i < arms.size(); i++) {
+            for (int k = i + 1; k < arms.size(); k++) {
+                Node a = plan.node(arms.get(i).a == n.id ? arms.get(i).b : arms.get(i).a), b = plan.node(arms.get(k).a == n.id ? arms.get(k).b : arms.get(k).a);
+                double ax = a.x - n.x, az = a.z - n.z, bx = b.x - n.x, bz = b.z - n.z;
+                double dot = (ax * bx + az * bz) / Math.max(1e-9, Math.hypot(ax, az) * Math.hypot(bx, bz));
+                if (dot < best) {
+                    best = dot;
+                    axis = Math.atan2(az, ax);
+                }
+            }
+        }
+        return axis;
     }
 
     private static String yellowName(RoadStyle.Yellow y) {

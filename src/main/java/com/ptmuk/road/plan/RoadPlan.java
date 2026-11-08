@@ -45,6 +45,10 @@ public final class RoadPlan {
         public int radius;
         /** Roundabout: stretched into an oval, this far each way from the middle along `axis` (radians in x, z); 0 = round. */
         public double stretch, axis;
+        /** Roundabout: lanes round it (2: a lane line round the middle, two lanes of traffic). */
+        public int ringLanes;
+        /** A road's end with a turning circle (a close's). */
+        public boolean turning;
         /** Give way / stop junctions: the two roads that carry straight on (segment ids), or -1 to choose. */
         public int majorA = -1, majorB = -1;
         /** A road's end where an old road carries on as it is (followed only this far): nothing is built across or past it. */

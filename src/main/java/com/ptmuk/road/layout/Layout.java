@@ -240,6 +240,23 @@ public final class Layout {
         boolean minorA, minorB;
         /** At traffic lights: the kerb lane coming in at that end turns left only. */
         boolean leftOnlyA, leftOnlyB;
+        /** Where it meets a narrower road at a plain point: the half width it narrows to at that end (NaN if it doesn't), over `taper`. */
+        double toA = Double.NaN, toB = Double.NaN, taper;
+
+        /** Half the carriageway's width at sample i: hc, narrowing towards a narrower road it runs on into. */
+        double hw(int i) {
+            if (Double.isNaN(toA) && Double.isNaN(toB)) {
+                return hc;
+            }
+            double s = c.s(i), w = hc;
+            if (!Double.isNaN(toA) && s < taper) {
+                w = Math.min(w, toA + (hc - toA) * s / taper);
+            }
+            if (!Double.isNaN(toB) && c.length - s < taper) {
+                w = Math.min(w, toB + (hc - toB) * (c.length - s) / taper);
+            }
+            return w;
+        }
     }
 
     private static final class Jn {
@@ -293,6 +310,7 @@ public final class Layout {
                 c.radius = n.radius;
                 c.stretch = n.stretch;
                 c.axis = n.axis;
+                c.ringLanes = n.ringLanes;
                 over.nodes.add(c);
                 below.nodes.add(c);
             } else {
@@ -405,6 +423,7 @@ public final class Layout {
         relaxHeights();
         profiles();
         splat();
+        turningCircles();
         rings();
         closeCorners();
         classify();
@@ -509,6 +528,36 @@ public final class Layout {
             curves.put(g.seg.id, g.c);
         }
         merges();
+        tapers();
+    }
+
+    /**
+     * Where a road runs on into a narrower one at a plain point (two lanes into one, say), the wider
+     * one narrows to it over a taper (40 blocks, less on a short road) rather than stepping in.
+     */
+    private void tapers() {
+        Map<Integer, List<Seg>> at = new HashMap<>();
+        for (Seg g : segs) {
+            at.computeIfAbsent(g.na.id, k -> new ArrayList<>()).add(g);
+            at.computeIfAbsent(g.nb.id, k -> new ArrayList<>()).add(g);
+        }
+        for (Map.Entry<Integer, List<Seg>> e : at.entrySet()) {
+            List<Seg> two = e.getValue();
+            if (two.size() != 2 || jnByNode.containsKey(e.getKey())) {
+                continue;
+            }
+            Seg a = two.get(0), b = two.get(1);
+            if (a == b || a.st.dual || b.st.dual || a.st.oneWay != b.st.oneWay || Math.abs(a.hc - b.hc) < 0.9) {
+                continue;
+            }
+            Seg wide = a.hc > b.hc ? a : b, narrow = wide == a ? b : a;
+            wide.taper = Math.min(40, wide.c.length * 0.45);
+            if (wide.na.id == e.getKey()) {
+                wide.toA = narrow.hc;
+            } else {
+                wide.toB = narrow.hc;
+            }
+        }
     }
 
     private void size(Jn j) {
@@ -534,8 +583,8 @@ public final class Layout {
             j.radius = 6;
         }
         if (j.type == Junction.ROUNDABOUT) {
-            double ring = Math.max(7, Math.round(maxLane * 1.5));
-            j.ro = j.node.radius > 0 ? j.node.radius : Math.max(12, Math.round(Math.max(6, maxHc) + ring));
+            double ring = j.node.ringLanes >= 2 ? Math.max(11, Math.round(maxLane * 2 + 1)) : Math.max(7, Math.round(maxLane * 1.5));
+            j.ro = j.node.radius > 0 ? j.node.radius : Math.max(j.node.ringLanes >= 2 ? 26 : 12, Math.round(Math.max(6, maxHc) + ring));
             j.ri = Math.max(2, j.ro - ring);
             j.zone = j.ro + stretch(j) + j.radius + maxHc;
         } else if (j.type == Junction.MERGE) {
@@ -975,8 +1024,8 @@ public final class Layout {
         for (Seg g : segs) {
             Curve c = g.c;
             Jn ja = jnByNode.get(g.na.id), jb = jnByNode.get(g.nb.id);
-            double reach = g.hc;
             for (int i = 0; i < c.n; i++) {
+                double reach = g.hw(i);
                 double lx = c.leftX(i), lz = c.leftZ(i);
                 for (double d = -reach + 0.125; d < reach; d += 0.25) {
                     double px = c.x[i] + lx * d, pz = c.z[i] + lz * d;
@@ -995,7 +1044,7 @@ public final class Layout {
                         }
                         continue;
                     }
-                    float m = (float) (ad - g.hc);
+                    float m = (float) (ad - reach);
                     if (m < bestM[idx]) {
                         bestM[idx] = m;
                         owner[idx] = g.index;
@@ -1006,6 +1055,41 @@ public final class Layout {
                         coverA[idx] = g.index;
                     } else if (coverA[idx] != g.index && coverB[idx] < 0) {
                         coverB[idx] = g.index;
+                    }
+                }
+            }
+        }
+    }
+
+    /** A turning circle at the end of a road whose end asks for one: the carriageway round, its kerbs and pavements follow. */
+    private void turningCircles() {
+        Map<Integer, Integer> degree = new HashMap<>();
+        for (Seg g : segs) {
+            degree.merge(g.na.id, 1, Integer::sum);
+            degree.merge(g.nb.id, 1, Integer::sum);
+        }
+        for (Seg g : segs) {
+            for (int e = 0; e < 2; e++) {
+                Node n = e == 0 ? g.na : g.nb;
+                if (!n.turning || n.open || degree.get(n.id) != 1 || jnByNode.containsKey(n.id) || g.st.dual) {
+                    continue;
+                }
+                int i = e == 0 ? 0 : g.c.n - 1;
+                double r = Math.max(6.5, g.hc + 2.5), cx = g.c.x[i], cz = g.c.z[i];
+                for (int z = (int) Math.floor(cz - r); z <= (int) Math.ceil(cz + r); z++) {
+                    for (int x = (int) Math.floor(cx - r); x <= (int) Math.ceil(cx + r); x++) {
+                        int idx = index(x, z);
+                        if (idx < 0 || Math.hypot(x + 0.5 - cx, z + 0.5 - cz) > r) {
+                            continue;
+                        }
+                        carriage[idx] = true;
+                        if (owner[idx] == Integer.MIN_VALUE || owner[idx] == g.index) {
+                            owner[idx] = g.index;
+                            ownerI[idx] = i;
+                        }
+                        if (coverA[idx] < 0) {
+                            coverA[idx] = g.index;
+                        }
                     }
                 }
             }
@@ -1427,8 +1511,8 @@ public final class Layout {
                         continue;
                     }
                     int i = cell[2];
-                    if (suppressed(g, idx, line)) {
-                        continue;
+                    if (suppressed(g, idx, line) || Math.abs(line.d) > g.hw(i) - 0.4) {
+                        continue;                            // (a lane that's tapered away has no line)
                     }
                     if (line.centre) {
                         if (!centreOn(g, i, line)) {
@@ -1444,7 +1528,9 @@ public final class Layout {
         for (Seg g : segs) {
             cycleLanes(g);
             oneWayArrows(g);
+            laneDropArrows(g);
         }
+        ringLaneLines();
         for (Jn j : jns) {
             for (Seg g : j.arms) {
                 boolean atA = g.na.id == j.node.id;
@@ -1941,6 +2027,59 @@ public final class Layout {
                     int travel = sideSign > 0 ? rot8(c.tx[k], c.tz[k]) : rot8(-c.tx[k], -c.tz[k]);
                     setMark(idx, M_BIKE, (travel + 2) % 8, 4);
                     nextBike = s + 40;
+                }
+            }
+        }
+    }
+
+    /**
+     * Where lanes run out (a taper into a narrower road), bent arrows in the lane that ends, three
+     * of them before the taper, telling its traffic to move over.
+     */
+    private void laneDropArrows(Seg g) {
+        Curve c = g.c;
+        int lw = g.st.laneWidth;
+        for (int end = 0; end < 2; end++) {
+            boolean atB = end == 1;
+            if (Double.isNaN(atB ? g.toB : g.toA) || g.st.oneWay && !atB || g.st.lanes < 2) {
+                continue;                                    // (a one-way road narrowing at its start is a lane gained)
+            }
+            // the kerb lane of the traffic heading for this end: on the curve's left going to b, its right going to a
+            double off = g.st.oneWay ? g.hc - lw / 2.0 : (atB ? 1 : -1) * (0.5 + (g.st.lanes - 1) * (lw + 1) + lw / 2.0);
+            for (double back : new double[]{g.taper + 8, g.taper + 26, g.taper + 44}) {
+                double s = atB ? c.length - back : back;
+                if (s < 6 || s > c.length - 6) {
+                    continue;
+                }
+                int k = c.index(s);
+                int travel = atB ? rot8(c.tx[k], c.tz[k]) : rot8(-c.tx[k], -c.tz[k]);
+                setMark(index((int) Math.floor(c.x[k] + c.leftX(k) * off), (int) Math.floor(c.z[k] + c.leftZ(k) * off)), M_RIGHT, travel, 4);
+            }
+        }
+    }
+
+    /** A two-lane roundabout: a broken lane line round the middle of its carriageway. */
+    private void ringLaneLines() {
+        for (Jn j : jns) {
+            if (j.type != Junction.ROUNDABOUT || j.node.ringLanes < 2) {
+                continue;
+            }
+            double rc = (j.ri + j.ro) / 2, e = stretch(j), cx = j.node.x + 0.5, cz = j.node.z + 0.5;
+            double ax = Math.cos(j.node.axis), az = Math.sin(j.node.axis);
+            int r = (int) Math.ceil(j.ro + e + 1);
+            for (int z = (int) Math.floor(cz) - r; z <= (int) Math.floor(cz) + r; z++) {
+                for (int x = (int) Math.floor(cx) - r; x <= (int) Math.floor(cx) + r; x++) {
+                    int idx = index(x, z);
+                    double px = x + 0.5, pz = z + 0.5;
+                    if (idx < 0 || owner[idx] != -(j.index + 1) || Math.abs(ringD(j, px, pz) - rc) >= 0.5) {
+                        continue;
+                    }
+                    double t = e <= 0 ? 0 : Math.max(-e, Math.min(e, (px - cx) * ax + (pz - cz) * az));
+                    double rx = px - cx - ax * t, rz = pz - cz - az * t;      // out from the middle line
+                    double s = Math.abs(t) < e ? t : e + Math.atan2(rz, rx) * rc;
+                    if (Math.floorMod((int) Math.floor(s / 3), 2) == 0) {
+                        setMark(idx, M_LINE, rot8(-rz, rx), 2);
+                    }
                 }
             }
         }
@@ -2613,6 +2752,10 @@ public final class Layout {
             oval(at, j, in, out);
             return;
         }
+        if (j.node.ringLanes >= 2) {
+            twoLaneRing(at, j, in, out);
+            return;
+        }
         double rc = (j.ri + j.ro) / 2, cx = j.node.x + 0.5, cz = j.node.z + 0.5;
         int m = Math.max(8, (int) Math.round(2 * Math.PI * rc / 8));
         int[] ring = new int[m];
@@ -2686,6 +2829,48 @@ public final class Layout {
             int r = ring[Math.floorMod((int) Math.floor(nearestOn(path, le.point()) * (double) m / n), m)];
             if (r >= 0) {
                 link(r, le.point());
+            }
+        }
+    }
+
+    /**
+     * A two-lane roundabout's points: an outer lane and an inner one, clockwise; the inner lane
+     * can move out to the outer one all the way round, and the ways out leave the outer one. The
+     * kerb lane of a way in joins the outer lane, the others the inner one.
+     */
+    private void twoLaneRing(Map<Long, Integer> at, Jn j, List<LaneEnd> in, List<LaneEnd> out) {
+        double cx = j.node.x + 0.5, cz = j.node.z + 0.5, lane = (j.ro - j.ri) / 2;
+        double[] radii = {j.ro - lane / 2, j.ri + lane / 2};
+        int m = Math.max(8, (int) Math.round(2 * Math.PI * radii[0] / 8));
+        int[][] ring = new int[2][m];
+        for (int k = 0; k < 2; k++) {
+            for (int i = 0; i < m; i++) {
+                double a = 2 * Math.PI * i / m;
+                ring[k][i] = trafficPoint(at, cx + Math.cos(a) * radii[k], cz + Math.sin(a) * radii[k], -Math.sin(a), Math.cos(a));
+            }
+        }
+        for (int i = 0; i < m; i++) {
+            int n = (i + 1) % m;
+            for (int k = 0; k < 2; k++) {
+                if (ring[k][i] >= 0 && ring[k][n] >= 0) {
+                    link(ring[k][i], ring[k][n]);
+                }
+            }
+            if (ring[1][i] >= 0 && ring[0][n] >= 0) {
+                link(ring[1][i], ring[0][n]);
+            }
+        }
+        for (LaneEnd e : in) {
+            int i = Math.floorMod((int) Math.ceil(angle(e.point(), cx, cz) * m / (2 * Math.PI)), m);
+            int r = ring[e.lane() == 0 ? 0 : 1][i];
+            if (r >= 0) {
+                link(e.point(), r);
+            }
+        }
+        for (LaneEnd o : out) {
+            int r = ring[0][Math.floorMod((int) Math.floor(angle(o.point(), cx, cz) * m / (2 * Math.PI)), m)];
+            if (r >= 0) {
+                link(r, o.point());
             }
         }
     }
