@@ -105,5 +105,15 @@ public final class PtmUkNetwork {
                 .decoder(RouteMessage::decode)
                 .consumerMainThread(RouteMessage::handle)
                 .add();
+        CHANNEL.messageBuilder(SectionMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SectionMessage::encode)
+                .decoder(SectionMessage::decode)
+                .consumerMainThread(SectionMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(SectionListMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SectionListMessage::encode)
+                .decoder(SectionListMessage::decode)
+                .consumerMainThread(SectionListMessage::handle)
+                .add();
     }
 }

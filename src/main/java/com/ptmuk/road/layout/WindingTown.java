@@ -210,6 +210,8 @@ final class WindingTown {
                 shopping(d);
             } else if (d.district == RoadPlan.District.JUNCTION) {
                 junction(d);
+            } else if (d.district == RoadPlan.District.BYPASS) {
+                bypass(d);
             }
         }
         roads();
@@ -1218,6 +1220,58 @@ final class WindingTown {
      * to carry on out of town), with a roundabout in the middle and a road from it straight to the
      * nearest street of the town.
      */
+    /**
+     * A bypass: a dual carriageway the length of the district, out of town at both ends, with a
+     * roundabout every 260 blocks or so and a main road from each into town, square to the bypass,
+     * to the first street it meets.
+     */
+    private void bypass(RoadPlan.Site d) {
+        boolean alongX = d.width() >= d.depth();
+        double mid = alongX ? (d.z0 + d.z1 + 1) / 2.0 : (d.x0 + d.x1 + 1) / 2.0;
+        double s0 = (alongX ? d.x0 : d.z0) + 2, s1 = (alongX ? d.x1 : d.z1) - 1;
+        Street dual = new Street(RoadStyle.dualCarriageway(), -1);
+        dual.name = "A" + (10 + rand.nextInt(80));
+        Pt a = new Pt(alongX ? s0 : mid, alongX ? mid : s0), b = new Pt(alongX ? s1 : mid, alongX ? mid : s1);
+        a.out = b.out = true;
+        dual.pts.add(a);
+        int count = Math.max(1, (int) Math.round((s1 - s0) / 260));
+        double cx = wx(len / 2, wide / 2), cz = wz(len / 2, wide / 2);
+        double dx = alongX ? 0 : Math.signum(cx - mid), dz = alongX ? Math.signum(cz - mid) : 0;
+        if (dx == 0 && dz == 0) {
+            dz = 1;
+        }
+        List<Pt> rings = new ArrayList<>();
+        List<double[]> hits = new ArrayList<>();
+        for (int k = 0; k < count; k++) {
+            double s = s0 + (k + 0.5) * (s1 - s0) / count;
+            Pt m = new Pt(alongX ? s : mid, alongX ? mid : s);
+            // (a roundabout only where a road into town can reach a street from it)
+            double[] hit = meets(m.x, m.z, dx, dz, 400);
+            for (double shift = 16; hit == null && shift <= 96; shift = shift > 0 ? -shift : -shift + 16) {
+                m = new Pt(alongX ? s + shift : mid, alongX ? mid : s + shift);
+                hit = meets(m.x, m.z, dx, dz, 400);
+            }
+            if (hit != null) {
+                m.junction = true;
+                dual.pts.add(m);
+                rings.add(m);
+                hits.add(hit);
+                roundabouts.add(m);
+            }
+        }
+        dual.pts.add(b);
+        all.add(dual);
+        for (int k = 0; k < rings.size(); k++) {
+            double[] hit = hits.get(k);
+            Street from = all.get((int) hit[0]);
+            Street st = new Street(TownLayout.kerbed(RoadStyle.mainRoad(), town), 1);
+            st.name = StreetNames.pick(rand, names);
+            st.pts.add(rings.get(k));
+            st.pts.add(join(from, hit[1]));
+            all.add(st);
+        }
+    }
+
     private void junction(RoadPlan.Site d) {
         boolean alongX = d.width() >= d.depth();
         double mx = (d.x0 + d.x1 + 1) / 2.0, mz = (d.z0 + d.z1 + 1) / 2.0;

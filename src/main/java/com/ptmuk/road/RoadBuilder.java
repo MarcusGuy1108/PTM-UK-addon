@@ -75,6 +75,11 @@ public final class RoadBuilder {
         InteractionHand hand;
         ServerLevel level;
         Layout layout;
+        /** Built after `layout` (the roads underneath it, built first): the rest, and its columns. */
+        Layout then;
+        int[] thenCells;
+        /** Traffic points of both, joined up. */
+        Layout.Traffic traffic;
         RoadPlan plan;
         /** When the plan was too big to build in one go: all of it (plan is then the part round the player). */
         RoadPlan full;
@@ -147,33 +152,45 @@ public final class RoadBuilder {
             player.displayClientMessage(Component.literal("That plan covers too big an area - build it in parts"), true);
             return;
         }
+        int[] cells = cells(layout), below = layout.under == null ? new int[0] : cells(layout.under);
+        MapBuildings mapBuildings = buildings == null ? null : new MapBuildings(buildings, layout, full != null ? full : plan);
+        if (cells.length + below.length == 0 && (mapBuildings == null || mapBuildings.done())) {
+            player.displayClientMessage(Component.literal(full != null ? "Nothing new to build round here - go to another part of the map and Build there"
+                    : "Nothing new to build - draw some roads or sites first"), true);
+            return;
+        }
+        Job job = new Job();
+        job.player = player.getUUID();
+        job.hand = hand;
+        job.level = level;
+        if (layout.under != null) {
+            job.layout = layout.under;                      // the roads underneath first, so bridges go over them
+            job.cells = below;
+            job.then = layout;
+            job.thenCells = cells;
+        } else {
+            job.layout = layout;
+            job.cells = cells;
+        }
+        job.plan = plan;
+        job.full = full;
+        job.mapBuildings = mapBuildings;
+        job.palette = new Palette();
+        JOBS.add(job);
+        player.displayClientMessage(Component.literal(cells.length + below.length > 0 ? "Building roads: " + (cells.length + below.length) + " columns..."
+                : "Building " + mapBuildings.count() + " buildings..."), true);
+    }
+
+    /** The columns of a layout to build: the footprint, then the blending margin, so slopes meet finished edges. */
+    private static int[] cells(Layout layout) {
         List<Integer> cells = new ArrayList<>();
         for (int i = 0; i < layout.kind.length; i++) {
             if (layout.dirty[i] && layout.kind[i] != Layout.NONE) {
                 cells.add(i);
             }
         }
-        MapBuildings mapBuildings = buildings == null ? null : new MapBuildings(buildings, layout, full != null ? full : plan);
-        if (cells.isEmpty() && (mapBuildings == null || mapBuildings.done())) {
-            player.displayClientMessage(Component.literal(full != null ? "Nothing new to build round here - go to another part of the map and Build there"
-                    : "Nothing new to build - draw some roads or sites first"), true);
-            return;
-        }
-        // footprint first, then the blending margin, so slopes meet finished edges
         cells.sort((a, b) -> Boolean.compare(layout.kind[a] == Layout.BLEND, layout.kind[b] == Layout.BLEND));
-        Job job = new Job();
-        job.player = player.getUUID();
-        job.hand = hand;
-        job.level = level;
-        job.layout = layout;
-        job.plan = plan;
-        job.full = full;
-        job.mapBuildings = mapBuildings;
-        job.cells = cells.stream().mapToInt(Integer::intValue).toArray();
-        job.palette = new Palette();
-        JOBS.add(job);
-        player.displayClientMessage(Component.literal(job.cells.length > 0 ? "Building roads: " + job.cells.length + " columns..."
-                : "Building " + mapBuildings.count() + " buildings..."), true);
+        return cells.stream().mapToInt(Integer::intValue).toArray();
     }
 
     /**
@@ -233,10 +250,17 @@ public final class RoadBuilder {
                 column(job, job.cells[job.next]);
             }
             ServerPlayer player = server.getPlayerList().getPlayer(job.player);
-            if (job.next >= job.cells.length && !job.fixturesDone) {
+            if (job.next >= job.cells.length && !job.fixturesDone && job.then != null) {
+                fixtures(job);                              // the roads underneath are done: now the rest
+                job.layout = job.then;
+                job.cells = job.thenCells;
+                job.next = 0;
+                job.then = null;
+            } else if (job.next >= job.cells.length && !job.fixturesDone) {
                 fixtures(job);
                 job.fixturesDone = true;
-            } else if (job.fixturesDone && job.nextTraffic < job.layout.traffic.size()) {
+                job.traffic = job.layout.allTraffic();
+            } else if (job.fixturesDone && job.nextTraffic < job.traffic.points().size()) {
                 traffic(job);
             } else if (job.fixturesDone && job.nextBuilding < job.layout.buildings.size()) {
                 Layout.SiteBuilding b = job.layout.buildings.get(job.nextBuilding++);
@@ -299,8 +323,7 @@ public final class RoadBuilder {
      * they join up), a batch a tick: PTM2 looks over every point in the world for each one placed.
      */
     private static void traffic(Job job) {
-        Layout layout = job.layout;
-        List<Layout.TrafficPoint> points = layout.traffic;
+        List<Layout.TrafficPoint> points = job.traffic.points();
         if (job.trafficAt == null) {
             if (Ptm2Traffic.block(job.level, 0, false) == null) {
                 job.nextTraffic = points.size();
@@ -308,12 +331,10 @@ public final class RoadBuilder {
             }
             job.trafficAt = new BlockPos[points.size()];
             job.trafficPlaced = new boolean[points.size()];
-            boolean[] fresh = new boolean[points.size()];
+            boolean[] fresh = job.traffic.fresh();
             for (int i = 0; i < points.size(); i++) {
                 Layout.TrafficPoint p = points.get(i);
                 job.trafficAt[i] = new BlockPos(p.x(), (int) Math.ceil(p.top()), p.z());
-                int idx = layout.index(p.x(), p.z());
-                fresh[i] = idx >= 0 && layout.dirty[idx];
             }
             for (int i = 0; i < points.size(); i++) {
                 for (int n : points.get(i).next()) {
@@ -558,14 +579,27 @@ public final class RoadBuilder {
             surfaceY = base - 1;
         }
         int bottom = base - 1;
-        // fill under it down to solid ground
         BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
-        for (int y = bottom - 1, depth = 1; y > bottom - MAX_FILL && y > level.getMinBuildHeight(); y--, depth++) {
-            BlockState s = level.getBlockState(p.set(x, y, z));
-            if (!WorldTerrain.natural(s) && s.getFluidState().isEmpty()) {
-                break;
+        if (layout.deck.get(idx)) {
+            // a bridge: a concrete deck under the surface and the road underneath clear below it
+            set(job, new BlockPos(x, bottom - 1, z), pal.get("ptmuk:concrete_kerb", "smooth_stone"));
+            float under = layout.underTop(x, z);
+            for (int y = bottom - 2; !Float.isNaN(under) && y > (int) Math.ceil(under); y--) {
+                if (!level.getBlockState(p.set(x, y, z)).isAir()) {
+                    set(job, p.immutable(), Blocks.AIR.defaultBlockState());
+                }
             }
-            set(job, p.immutable(), depth <= 3 ? Blocks.DIRT.defaultBlockState() : Blocks.STONE.defaultBlockState());
+        } else {
+            // fill under it down to solid ground (concrete beside a road underneath: the bridge's abutment)
+            boolean abut = layout.abutment.get(idx);
+            for (int y = bottom - 1, depth = 1; y > bottom - MAX_FILL && y > level.getMinBuildHeight(); y--, depth++) {
+                BlockState s = level.getBlockState(p.set(x, y, z));
+                if (!WorldTerrain.natural(s) && s.getFluidState().isEmpty()) {
+                    break;
+                }
+                set(job, p.immutable(), abut ? Blocks.LIGHT_GRAY_CONCRETE.defaultBlockState()
+                        : depth <= 3 ? Blocks.DIRT.defaultBlockState() : Blocks.STONE.defaultBlockState());
+            }
         }
         if (kind == Layout.VERGE || kind == Layout.ISLAND || kind == Layout.RESERVATION || kind == Layout.BARRIER) {
             BlockState below = level.getBlockState(p.set(x, bottom - 1, z));
@@ -592,6 +626,11 @@ public final class RoadBuilder {
         if (kind == Layout.BARRIER) {
             BlockPos at = new BlockPos(x, surfaceY + 1, z);
             set(job, at, pal.get("ptmuk:armco_barrier", "iron_bars"));
+            job.joins.add(at);
+        }
+        if (layout.parapet.get(idx) && kind != Layout.ROAD) {
+            BlockPos at = new BlockPos(x, surfaceY + 1, z);
+            set(job, at, pal.get("ptmuk:pedestrian_guardrail", "stone_brick_wall"));
             job.joins.add(at);
         }
         int m = layout.mark[idx];

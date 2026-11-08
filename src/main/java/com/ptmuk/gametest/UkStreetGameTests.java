@@ -275,6 +275,81 @@ public final class UkStreetGameTests {
         helper.succeed();
     }
 
+    /**
+     * Motorway junctions where a main road crosses a dual carriageway: the motorway goes under, at
+     * ground level all the way and joined up for traffic; the two-bridge roundabout is raised over
+     * it on decks with headroom, the middle of the island left open, slip roads up to it; the
+     * dumbbell has a roundabout each side and the diamond traffic lights each side; a crossing with
+     * no dual carriageway is turned down.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void motorwayJunctions(GameTestHelper helper) {
+        for (com.ptmuk.road.layout.Interchange.Kind kind : java.util.List.of(com.ptmuk.road.layout.Interchange.Kind.ROUNDABOUT,
+                com.ptmuk.road.layout.Interchange.Kind.DUMBBELL, com.ptmuk.road.layout.Interchange.Kind.DIAMOND)) {
+            RoadPlan plan = new RoadPlan();
+            RoadPlan.Node c = plan.addNode(400, 300);
+            plan.addSegment(plan.addNode(0, 300).id, c.id, RoadStyle.dualCarriageway());
+            plan.addSegment(c.id, plan.addNode(799, 300).id, RoadStyle.dualCarriageway());
+            plan.addSegment(plan.addNode(400, 0).id, c.id, RoadStyle.mainRoad());
+            plan.addSegment(c.id, plan.addNode(400, 599).id, RoadStyle.mainRoad());
+            String said = com.ptmuk.road.layout.Interchange.make(plan, c.id, kind);
+            helper.assertTrue(said.startsWith("Made"), kind + ": " + said);
+            Layout l = Layout.of(plan, Terrain.flat(64));
+            helper.assertTrue(l.under != null && l.deck.cardinality() > 300 && l.parapet.cardinality() > 40, kind + ": decks "
+                    + l.deck.cardinality() + ", parapets " + l.parapet.cardinality());
+            for (int i = l.deck.nextSetBit(0); i >= 0; i = l.deck.nextSetBit(i + 1)) {
+                float under = l.underTop(l.cellX(i), l.cellZ(i));
+                helper.assertTrue(l.top[i] >= under + Layout.CLEARANCE - 1, kind + ": a deck " + l.top[i] + " over the road at " + under);
+            }
+            for (int x = 25; x < 800; x += 50) {
+                int u = l.under.index(x, 306), m = l.index(x, 306);           // (a lane: the middle is the central reservation)
+                float t = u >= 0 && l.under.kind[u] == Layout.ROAD ? l.under.top[u] : m >= 0 && l.kind[m] == Layout.ROAD ? l.top[m] : Float.NaN;
+                helper.assertTrue(t == 64, kind + ": the motorway at x " + x + " is at " + t);
+            }
+            long merges = plan.nodes.stream().filter(n -> n.junction == RoadPlan.Junction.MERGE).count();
+            helper.assertTrue(merges == 4, kind + ": " + merges + " slip road merges");
+            if (kind == com.ptmuk.road.layout.Interchange.Kind.ROUNDABOUT) {
+                int mid = l.index(400, 300);
+                helper.assertTrue(mid < 0 || l.kind[mid] == Layout.NONE, "the middle of the island over the motorway isn't open");
+            } else {
+                RoadPlan.Junction want = kind == com.ptmuk.road.layout.Interchange.Kind.DUMBBELL ? RoadPlan.Junction.ROUNDABOUT : RoadPlan.Junction.SIGNALS;
+                helper.assertTrue(plan.nodes.stream().filter(n -> n.junction == want).count() == 2, kind + ": not a " + want + " each side");
+            }
+            // traffic from the west end runs all the way east (under the junction) and up the slips
+            Layout.Traffic t = l.allTraffic();
+            java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+            boolean[] seen = new boolean[t.points().size()];
+            for (int i = 0; i < seen.length; i++) {
+                if (t.points().get(i).x() < 60 && t.points().get(i).rot8() == 6) {
+                    q.add(i);
+                    seen[i] = true;
+                }
+            }
+            int far = 0;
+            boolean up = false;
+            while (!q.isEmpty()) {
+                Layout.TrafficPoint p = t.points().get(q.poll());
+                far = Math.max(far, p.x());
+                up |= p.top() >= 70;
+                for (int n : p.next()) {
+                    if (!seen[n]) {
+                        seen[n] = true;
+                        q.add(n);
+                    }
+                }
+            }
+            helper.assertTrue(far > 780 && up, kind + ": traffic from the west gets to x " + far + (up ? "" : ", never up a slip"));
+        }
+        RoadPlan plain = new RoadPlan();
+        RoadPlan.Node c = plain.addNode(100, 100);
+        plain.addSegment(plain.addNode(0, 100).id, c.id, RoadStyle.mainRoad());
+        plain.addSegment(c.id, plain.addNode(200, 100).id, RoadStyle.mainRoad());
+        plain.addSegment(c.id, plain.addNode(100, 200).id, RoadStyle.mainRoad());
+        helper.assertTrue(com.ptmuk.road.layout.Interchange.make(plain, c.id, com.ptmuk.road.layout.Interchange.Kind.AUTO).contains("dual carriageway"),
+                "made a motorway junction without a dual carriageway");
+        helper.succeed();
+    }
+
     private static int count(Layout l, int x0, int x1, int z0, int z1, int mark) {
         int n = 0;
         for (int z = z0; z <= z1; z++) {

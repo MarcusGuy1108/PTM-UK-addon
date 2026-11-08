@@ -110,8 +110,11 @@ public final class PrefabToolClient {
         Minecraft mc = Minecraft.getInstance();
         while (ROTATE.consumeClick()) {
             InteractionHand hand = mc.player == null || mc.screen != null ? null : toolHand(mc.player);
+            InteractionHand section = mc.player == null || mc.screen != null ? null : SectionToolClient.toolHand(mc.player);
             if (hand != null) {
                 send(PrefabToolMessage.Action.ROTATE, "", hand);
+            } else if (section != null) {
+                SectionToolClient.rotate(section);
             }
         }
     }

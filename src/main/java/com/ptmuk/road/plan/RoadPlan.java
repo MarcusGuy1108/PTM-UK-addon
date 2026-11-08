@@ -59,6 +59,8 @@ public final class RoadPlan {
         public boolean built;
         /** The road's real name, from a map import (it goes on the world map when built). */
         public String name = "";
+        /** It goes under the roads crossing it: they're raised over it on bridges. */
+        public boolean under;
     }
 
     public enum SiteType {
@@ -104,7 +106,9 @@ public final class RoadPlan {
         /** Grass and trees: no streets or buildings. */
         PARK("Park"),
         /** A dual carriageway across it (ready to carry on out of town) with a roundabout the town's roads join. */
-        JUNCTION("Motorway junction");
+        JUNCTION("Motorway junction"),
+        /** A dual carriageway along it, carrying on out of town at both ends, with a roundabout every so often for roads into town. */
+        BYPASS("Bypass");
 
         public final String title;
 
@@ -114,7 +118,7 @@ public final class RoadPlan {
 
         /** Streets keep out of it (it's one thing laid out on its own, or nothing). */
         public boolean whole() {
-            return this == SHOPPING || this == PARK || this == JUNCTION;
+            return this == SHOPPING || this == PARK || this == JUNCTION || this == BYPASS;
         }
     }
 

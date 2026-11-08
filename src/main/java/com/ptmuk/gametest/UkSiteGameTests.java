@@ -275,6 +275,25 @@ public final class UkSiteGameTests {
         helper.succeed();
     }
 
+    /** A bypass district along the bottom of a town: a dual carriageway its length, roundabouts on it, a road from each into town. */
+    @GameTest(template = "empty5x4x5")
+    public static void bypassRunsAlongItsDistrict(GameTestHelper helper) {
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Site town = plan.addSite(RoadPlan.SiteType.TOWN, 0, 0, 799, 499);
+        RoadPlan.Site bypass = district(plan, RoadPlan.District.BYPASS, 0, 430, 799, 499);
+        String said = com.ptmuk.road.layout.TownLayout.layOut(plan, town, net.minecraft.util.RandomSource.create(4));
+        helper.assertTrue(said.startsWith("Laid out"), said);
+        java.util.List<RoadPlan.Node> rings = plan.nodes.stream().filter(n -> n.junction == RoadPlan.Junction.ROUNDABOUT && bypass.contains(n.x, n.z)).toList();
+        helper.assertTrue(rings.size() >= 2, rings.size() + " roundabouts on the bypass");
+        for (RoadPlan.Node r : rings) {
+            helper.assertTrue(plan.segmentsAt(r.id).stream().filter(sg -> sg.style.dual).count() == 2
+                    && plan.segmentsAt(r.id).stream().anyMatch(sg -> !sg.style.dual), "a roundabout on the bypass without the bypass through it and a road into town");
+        }
+        helper.assertTrue(plan.sites.stream().noneMatch(st -> st.type.ground() && bypass.contains(st.x0, st.z0) && bypass.contains(st.x1, st.z1)),
+                "buildings in the bypass");
+        helper.succeed();
+    }
+
     private static RoadPlan.Site district(RoadPlan plan, RoadPlan.District kind, int x0, int z0, int x1, int z1) {
         RoadPlan.Site d = plan.addSite(RoadPlan.SiteType.DISTRICT, x0, z0, x1, z1);
         d.district = kind;

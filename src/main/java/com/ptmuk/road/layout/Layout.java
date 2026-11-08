@@ -10,6 +10,8 @@ import com.ptmuk.road.plan.RoadStyle;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 
@@ -116,6 +118,67 @@ public final class Layout {
 
     public final List<TrafficPoint> traffic = new ArrayList<>();
 
+    /** Traffic points to place, and which of them are on new road. */
+    public record Traffic(List<TrafficPoint> points, boolean[] fresh) {
+    }
+
+    /**
+     * This layout's traffic points and those of the roads underneath, joined where a road goes
+     * from one to the other (a lane that stops at the open end of one runs on into the lane that
+     * starts there in the other, the same way).
+     */
+    public Traffic allTraffic() {
+        List<TrafficPoint> pts = new ArrayList<>();
+        List<Layout> from = under == null ? List.of(this) : List.of(under, this);
+        List<Boolean> fresh = new ArrayList<>();
+        int[] first = new int[from.size()];
+        for (int k = 0; k < from.size(); k++) {
+            Layout l = from.get(k);
+            first[k] = pts.size();
+            for (TrafficPoint p : l.traffic) {
+                List<Integer> next = new ArrayList<>();
+                p.next().forEach(n -> next.add(n + first[from.indexOf(l)]));
+                pts.add(new TrafficPoint(p.x(), p.z(), p.top(), p.rot8(), next));
+                int idx = l.index(p.x(), p.z());
+                fresh.add(idx >= 0 && l.dirty[idx]);
+            }
+        }
+        if (from.size() == 2) {
+            int[] into = new int[pts.size()];
+            pts.forEach(p -> p.next().forEach(n -> into[n]++));
+            for (int a = 0; a < pts.size(); a++) {
+                if (!pts.get(a).next().isEmpty()) {
+                    continue;
+                }
+                TrafficPoint pa = pts.get(a);
+                int best = -1;
+                double bd = 4.5;
+                for (int b = a < first[1] ? first[1] : 0; b < (a < first[1] ? pts.size() : first[1]); b++) {
+                    TrafficPoint pb = pts.get(b);
+                    int turn = Math.floorMod(pb.rot8() - pa.rot8(), 8);
+                    double d = Math.hypot(pb.x() - pa.x(), pb.z() - pa.z());
+                    if (into[b] == 0 && (turn <= 1 || turn == 7) && d < bd) {
+                        bd = d;
+                        best = b;
+                    }
+                }
+                if (best >= 0) {
+                    TrafficPoint pb = pts.get(best);
+                    if (pb.x() == pa.x() && pb.z() == pa.z()) {
+                        pa.next().addAll(pb.next());             // the same block: on to where that one goes
+                    } else {
+                        pa.next().add(best);
+                    }
+                }
+            }
+        }
+        boolean[] f = new boolean[fresh.size()];
+        for (int i = 0; i < f.length; i++) {
+            f[i] = fresh.get(i);
+        }
+        return new Traffic(pts, f);
+    }
+
     /** A give way junction or roundabout: the area PTM2 treats as the junction (no cars start off in it). */
     public record JunctionZone(int nodeId, int x0, int z0, int x1, int z1, boolean roundabout) {
     }
@@ -126,6 +189,18 @@ public final class Layout {
 
     private final RoadPlan plan;
     private final Terrain terrain;
+    /** The roads that go under the rest (laid out on their own and built first), or null. */
+    public final Layout under;
+    /** Headroom over a road underneath: a road crossing it is at least this much higher (deck and clearance). */
+    public static final int CLEARANCE = 7;
+    /** Cells over a road underneath: built as a bridge deck, nothing under them. */
+    public final java.util.BitSet deck = new java.util.BitSet();
+    /** Deck cells along an open edge: a parapet along them. */
+    public final java.util.BitSet parapet = new java.util.BitSet();
+    /** Cells beside a road underneath: their fill is concrete, the bridge's abutment. */
+    public final java.util.BitSet abutment = new java.util.BitSet();
+    /** Nodes raised to clear a road underneath (they don't move when heights are relaxed). */
+    private final Set<Integer> raised = new HashSet<>();
     private final List<Seg> segs = new ArrayList<>();
     private final List<Jn> jns = new ArrayList<>();
     private final Map<Integer, Jn> jnByNode = new HashMap<>();
@@ -180,17 +255,72 @@ public final class Layout {
     }
 
     public static Layout of(RoadPlan plan, Terrain terrain) {
-        return new Layout(plan, terrain, true);
+        if (plan.segments.stream().noneMatch(s -> s.under)) {
+            return new Layout(plan, terrain, true, null);
+        }
+        RoadPlan[] split = split(plan);
+        return new Layout(split[0], terrain, true, new Layout(split[1], terrain, true, null));
     }
 
     /** Just the centre lines and junction types, quick enough to redo while a point is dragged. */
     public static Layout lines(RoadPlan plan) {
-        return new Layout(plan, Terrain.flat(64), false);
+        return new Layout(plan, Terrain.flat(64), false, null);
     }
 
-    private Layout(RoadPlan plan, Terrain terrain, boolean full) {
+    /**
+     * The plan as the roads over (with its sites) and the roads under; a point where the two meet
+     * is an open end in each (a copy, so the plan itself isn't changed).
+     */
+    static RoadPlan[] split(RoadPlan plan) {
+        RoadPlan over = new RoadPlan(), below = new RoadPlan();
+        Set<Integer> inOver = new HashSet<>(), inBelow = new HashSet<>();
+        for (Segment s : plan.segments) {
+            (s.under ? below : over).segments.add(s);
+            (s.under ? inBelow : inOver).add(s.a);
+            (s.under ? inBelow : inOver).add(s.b);
+        }
+        for (Node n : plan.nodes) {
+            boolean b = inBelow.contains(n.id), o = inOver.contains(n.id);
+            if (b && o && !n.open) {
+                Node c = new Node();
+                c.id = n.id;
+                c.x = n.x;
+                c.z = n.z;
+                c.y = n.y;
+                c.built = n.built;
+                c.open = true;
+                over.nodes.add(c);
+                below.nodes.add(c);
+            } else {
+                if (b) {
+                    below.nodes.add(n);
+                }
+                if (o || !b) {
+                    over.nodes.add(n);
+                }
+            }
+        }
+        over.sites = plan.sites;
+        over.map = plan.map;
+        over.nextId = below.nextId = plan.nextId;
+        over.ownSegments = below.ownSegments = plan.ownSegments;
+        over.ownNodes = below.ownNodes = plan.ownNodes;
+        return new RoadPlan[]{over, below};
+    }
+
+    /** The top of the road underneath at a block (anything of it but the slopes at its edges), or NaN. */
+    public float underTop(int x, int z) {
+        if (under == null) {
+            return Float.NaN;
+        }
+        int i = under.index(x, z);
+        return i < 0 || under.kind[i] == NONE || under.kind[i] == BLEND || under.kind[i] == PLOT ? Float.NaN : under.top[i];
+    }
+
+    private Layout(RoadPlan plan, Terrain terrain, boolean full, Layout under) {
         this.plan = plan;
         this.terrain = terrain;
+        this.under = under;
         prepare();
         if (!full) {
             segs.clear();
@@ -267,12 +397,14 @@ public final class Layout {
         if (segs.isEmpty() && jns.isEmpty() && !anySites) {
             return;
         }
+        raiseOverUnder();
         relaxHeights();
         profiles();
         splat();
         rings();
         closeCorners();
         classify();
+        bridges();
         markings();
         lights();
         furniture();
@@ -285,7 +417,7 @@ public final class Layout {
             if (j.type == Junction.SIGNALS) {
                 int r = (int) Math.ceil(j.zone + j.widest.halfOuter() - j.widest.halfCarriageway() + 2);
                 signalZones.add(new SignalZone(j.node.id, cx - r, cz - r, cx + r, cz + r));
-            } else if (j.type != Junction.MERGE) {
+            } else if (j.type != Junction.MERGE && !overUnder(j)) {      // (PTM2's zones are flat: the traffic underneath would give way too)
                 int r = (int) Math.ceil(j.zone);
                 junctionZones.add(new JunctionZone(j.node.id, cx - r, cz - r, cx + r, cz + r, j.type == Junction.ROUNDABOUT));
             }
@@ -516,7 +648,143 @@ public final class Layout {
     }
 
     public int heightOf(int nodeId) {
-        return nodeHeight.getOrDefault(nodeId, 64);
+        Integer h = nodeHeight.get(nodeId);
+        return h != null ? h : under != null ? under.heightOf(nodeId) : 64;
+    }
+
+    // ------------------------------------------------------------------ bridges over roads underneath
+
+    /** The highest top of the road underneath within r of (x, z), or NaN. */
+    private float underTopNear(double x, double z, double r) {
+        float best = Float.NaN;
+        for (int dz = (int) -Math.ceil(r); dz <= Math.ceil(r); dz++) {
+            for (int dx = (int) -Math.ceil(r); dx <= Math.ceil(r); dx++) {
+                if (dx * dx + dz * dz <= r * r) {
+                    float t = underTop((int) Math.floor(x) + dx, (int) Math.floor(z) + dz);
+                    if (!Float.isNaN(t) && (Float.isNaN(best) || t > best)) {
+                        best = t;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    /** Whether a junction's carriageway is over a road underneath. */
+    private boolean overUnder(Jn j) {
+        return under != null && !Float.isNaN(underTopNear(j.node.x + 0.5, j.node.z + 0.5, j.type == Junction.ROUNDABOUT ? j.ro + 2 : j.zone / 2));
+    }
+
+    /** Whether (x, z) is near where a road goes on from over to under (there they're one road, at one level). */
+    private boolean nearShared(double x, double z) {
+        for (Node n : plan.nodes) {
+            if (under.nodeHeight.containsKey(n.id) && Math.hypot(n.x + 0.5 - x, n.z + 0.5 - z) < 24) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The height a road at sample i has to be to clear the road underneath, or NaN if it isn't over it. */
+    private double clearing(Seg g, int i) {
+        Curve c = g.c;
+        if (nearShared(c.x[i], c.z[i])) {
+            return Double.NaN;
+        }
+        double lx = c.leftX(i), lz = c.leftZ(i), reach = g.st.halfOuter() + 1;
+        float t = Float.NaN;
+        for (double d = -reach; d <= reach; d += 1) {
+            float u = underTop((int) Math.floor(c.x[i] + lx * d), (int) Math.floor(c.z[i] + lz * d));
+            t = Float.isNaN(t) || u > t ? u : t;
+        }
+        return Float.isNaN(t) ? Double.NaN : Math.ceil(t) + CLEARANCE;
+    }
+
+    private void raise(Node n, double h) {
+        if (Double.isNaN(n.y) && h > nodeHeight.getOrDefault(n.id, 64)) {
+            nodeHeight.put(n.id, (int) Math.ceil(h));
+        }
+        raised.add(n.id);
+    }
+
+    /**
+     * A junction or point over a road underneath goes up to clear it, and the ends of a road
+     * crossing over it go up far enough for it to climb there at a sensible gradient; they stay
+     * there when heights are relaxed.
+     */
+    private void raiseOverUnder() {
+        if (under == null) {
+            return;
+        }
+        for (Node n : plan.nodes) {
+            Jn j = jnByNode.get(n.id);
+            float t = under.nodeHeight.containsKey(n.id) ? Float.NaN : underTopNear(n.x + 0.5, n.z + 0.5, j != null ? j.zone + 2 : 6);
+            if (!Float.isNaN(t)) {
+                raise(n, Math.ceil(t) + CLEARANCE);
+            }
+        }
+        for (Seg g : segs) {
+            double[] z = zones(g);
+            for (int i = 0; i < g.c.n; i++) {
+                double need = clearing(g, i), s = g.c.s(i);
+                if (!Double.isNaN(need)) {
+                    raise(g.na, need - MAX_GRADE * Math.max(0, s - z[0]));
+                    raise(g.nb, need - MAX_GRADE * Math.max(0, g.c.length - s - z[1]));
+                }
+            }
+        }
+    }
+
+    /**
+     * Over a road underneath: the road surfaces, kerbs and pavements are a bridge deck (a parapet
+     * along any open edge); whatever else would be there (a roundabout's middle, grass, slopes)
+     * is left open. Beside it the fill is concrete. Lights and signs underneath that would hit a
+     * deck go, and so do this layout's own things over the gaps.
+     */
+    private void bridges() {
+        if (under == null) {
+            return;
+        }
+        boolean[] over = new boolean[w * h];
+        for (int idx = 0; idx < w * h; idx++) {
+            float ut = underTop(cellX(idx), cellZ(idx));
+            // (where a road goes on from over to under they're the same road, at the same level: nothing to bridge)
+            over[idx] = !Float.isNaN(ut) && !nearShared(cellX(idx) + 0.5, cellZ(idx) + 0.5);
+            if (!over[idx] || kind[idx] == NONE) {
+                continue;
+            }
+            switch (kind[idx]) {
+                case ROAD, KERB, FOOTWAY, VERGE, TACTILE, PAINT, DOME, ISLAND_KERB, RESERVATION, BARRIER -> deck.set(idx);
+                default -> {
+                    kind[idx] = NONE;
+                    top[idx] = Float.NaN;
+                }
+            }
+        }
+        int[][] nb = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (int idx = 0; idx < w * h; idx++) {
+            if (kind[idx] == NONE || kind[idx] == BLEND) {
+                continue;
+            }
+            int x = idx % w, z = idx / w;
+            for (int[] d : nb) {
+                int nx = x + d[0], nz = z + d[1], j = nx < 0 || nz < 0 || nx >= w || nz >= h ? -1 : nz * w + nx;
+                boolean open = j < 0 ? !Float.isNaN(underTop(cellX(idx) + d[0], cellZ(idx) + d[1])) : over[j] && !deck.get(j);
+                if (deck.get(idx) && open) {
+                    parapet.set(idx);
+                } else if (!deck.get(idx) && j >= 0 && over[j]) {
+                    abutment.set(idx);
+                }
+            }
+        }
+        fixtures.removeIf(f -> {
+            int i = index(f.x(), f.z());
+            return i >= 0 && over[i] && !deck.get(i);
+        });
+        under.fixtures.removeIf(f -> {
+            int i = index(f.x(), f.z());
+            return i >= 0 && kind[i] != NONE && kind[i] != BLEND;
+        });
     }
 
     /** The level of a site's tarmac: as set, or the middle height of the ground under it. */
@@ -580,7 +848,7 @@ public final class Layout {
                 if (excess <= 0.01) {
                     continue;
                 }
-                boolean fa = !Double.isNaN(g.na.y), fb = !Double.isNaN(g.nb.y);
+                boolean fa = !Double.isNaN(g.na.y) || raised.contains(g.na.id), fb = !Double.isNaN(g.nb.y) || raised.contains(g.nb.id);
                 double dir = Math.signum(hb - ha);
                 if (fa && fb) {
                     continue;
@@ -661,6 +929,13 @@ public final class Layout {
                     pinned[i] = true;
                 } else if (s >= c.length - zb || i == n - 1) {
                     hgt[i] = hb;
+                    pinned[i] = true;
+                }
+            }
+            for (int i = 0; under != null && i < n; i++) {
+                double need = clearing(g, i);                   // over a road underneath: high enough to clear it
+                if (!Double.isNaN(need) && hgt[i] < need) {
+                    hgt[i] = need;
                     pinned[i] = true;
                 }
             }

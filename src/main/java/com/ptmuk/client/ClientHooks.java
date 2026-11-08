@@ -50,6 +50,10 @@ public final class ClientHooks {
         com.ptmuk.client.building.PrefabToolClient.use(hand, sneaking);
     }
 
+    public static void useSectionTool(net.minecraft.world.InteractionHand hand, boolean sneaking) {
+        com.ptmuk.client.building.SectionToolClient.use(hand, sneaking);
+    }
+
     public static void openFuelPriceSignEditor(BlockPos pos) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null && mc.level.getBlockEntity(pos) instanceof com.ptmuk.building.FuelPriceSignBlockEntity sign) {

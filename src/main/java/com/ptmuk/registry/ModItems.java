@@ -98,6 +98,7 @@ public final class ModItems {
         register(ModBlocks.FENCES, STREET_ITEMS);
         PREFAB_TOOL = ITEMS.register("prefab_tool", com.ptmuk.building.PrefabToolItem::new);
         BUILDING_ITEMS.add(PREFAB_TOOL);
+        BUILDING_ITEMS.add(ITEMS.register("section_mover", com.ptmuk.building.SectionToolItem::new));
         ROAD_PLANNER = ITEMS.register("road_planner", com.ptmuk.road.RoadPlannerItem::new);
         BUILDING_ITEMS.add(ROAD_PLANNER);
         INTERIOR_DESIGNER = ITEMS.register("interior_designer", com.ptmuk.home.InteriorDesignerItem::new);

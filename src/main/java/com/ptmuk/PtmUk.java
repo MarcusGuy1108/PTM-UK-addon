@@ -29,6 +29,7 @@ public class PtmUk {
         modBus.addListener(PtmUk::attributes);
         PtmUkNetwork.register();
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(com.ptmuk.road.RoadBuilder::onServerTick);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(com.ptmuk.building.Sections::onServerTick);
     }
 
     private static void attributes(net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {

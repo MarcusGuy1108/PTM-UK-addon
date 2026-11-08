@@ -84,6 +84,8 @@ public class RoadPlannerScreen extends Screen {
     private RoadStyle drawStyle;
     private Node chainLast;
     private Integer selNode, selSeg;
+    /** What a motorway junction made at the selected point will be. */
+    private static com.ptmuk.road.layout.Interchange.Kind interchange = com.ptmuk.road.layout.Interchange.Kind.AUTO;
     private boolean draggingNode, draggingBend, panning, moved;
     private double camX, camZ, zoom;
     private double pressX, pressY, lastMouseX, lastMouseY;
@@ -288,6 +290,17 @@ public class RoadPlannerScreen extends Screen {
             if (arms >= 3) {
                 button(y, () -> "Main road: " + (n.majorA < 0 ? "auto" : "set"), b -> cycleMajor(n));
                 y += ROW;
+                halfButtons(y, () -> "Motorway jn: " + interchange.title, b -> {
+                    com.ptmuk.road.layout.Interchange.Kind[] all = com.ptmuk.road.layout.Interchange.Kind.values();
+                    interchange = all[(interchange.ordinal() + 1) % all.length];
+                }, () -> "Make it", b -> {
+                    remember();
+                    flash(com.ptmuk.road.layout.Interchange.make(plan, n.id, interchange));
+                    selNode = null;
+                    changed();
+                    rebuildPanel();
+                });
+                y += ROW;
             }
             if (arms == 1) {
                 button(y, () -> "Road end: " + (n.open ? "old road carries on" : "ends here"), b -> {
@@ -375,6 +388,8 @@ public class RoadPlannerScreen extends Screen {
                 seg.b = t;
                 seg.bend = -seg.bend;
             }));
+            y += ROW;
+            button(y, () -> "Goes under: " + (seg.under ? "yes (roads over it bridge it)" : "no"), b -> edit.accept(() -> seg.under = !seg.under));
             y += ROW;
             button(y, () -> "Delete road", b -> deleteSelection());
             y += ROW;
@@ -1701,6 +1716,21 @@ public class RoadPlannerScreen extends Screen {
         return (alpha << 24) | (b << 16) | (g << 8) | r;
     }
 
+    private static int kindColour(Layout l, int i) {
+        return switch (l.kind[i]) {
+            case Layout.ROAD -> abgr(l.top[i] % 1 != 0 ? 0x44464B : 0x3A3C40, 255);
+            case Layout.PAINT, Layout.DOME -> abgr(0xF0F0F0, 255);
+            case Layout.KERB, Layout.ISLAND_KERB -> abgr(0xB8B8B2, 255);
+            case Layout.FOOTWAY -> abgr(0xA8A8A6, 255);
+            case Layout.TACTILE -> abgr(0xB0453A, 255);
+            case Layout.VERGE, Layout.ISLAND, Layout.RESERVATION -> abgr(0x5E9C48, 255);
+            case Layout.BARRIER -> abgr(0xD0D0D8, 255);
+            case Layout.BLEND -> abgr(0x8A7650, 70);
+            case Layout.PLOT -> abgr(0x8E9196, 255);
+            default -> 0;
+        };
+    }
+
     private void uploadPreview(Layout l) {
         if (previewTex == null || previewW != l.w || previewH != l.h) {
             if (previewTex != null) {
@@ -1719,21 +1749,21 @@ public class RoadPlannerScreen extends Screen {
         }
         for (int i = 0; i < l.w * l.h; i++) {
             int x = i % l.w, z = i / l.w;
-            int c = switch (l.kind[i]) {
-                case Layout.ROAD -> abgr(l.top[i] % 1 != 0 ? 0x44464B : 0x3A3C40, 255);
-                case Layout.PAINT, Layout.DOME -> abgr(0xF0F0F0, 255);
-                case Layout.KERB, Layout.ISLAND_KERB -> abgr(0xB8B8B2, 255);
-                case Layout.FOOTWAY -> abgr(0xA8A8A6, 255);
-                case Layout.TACTILE -> abgr(0xB0453A, 255);
-                case Layout.VERGE, Layout.ISLAND, Layout.RESERVATION -> abgr(0x5E9C48, 255);
-                case Layout.BARRIER -> abgr(0xD0D0D8, 255);
-                case Layout.BLEND -> abgr(0x8A7650, 70);
-                case Layout.PLOT -> abgr(0x8E9196, 255);
-                default -> 0;
-            };
+            int c = kindColour(l, i);
             int m = l.mark[i];
             if (m != Layout.M_NONE && l.kind[i] == Layout.ROAD) {
                 c = (m & Layout.YELLOW) != 0 ? abgr(0xF2C230, 255) : abgr(0xFFFFFF, 255);
+            }
+            if (l.parapet.get(i)) {
+                c = abgr(0xE8E8F0, 255);                     // a bridge's parapet
+            } else if (l.under != null && (l.kind[i] == Layout.NONE || l.kind[i] == Layout.BLEND)) {
+                int u = l.under.index(l.cellX(i), l.cellZ(i));
+                if (u >= 0 && l.under.kind[u] != Layout.NONE) {
+                    c = kindColour(l.under, u);              // the road underneath, seen where nothing's over it
+                    if (l.under.mark[u] != Layout.M_NONE && l.under.kind[u] == Layout.ROAD) {
+                        c = (l.under.mark[u] & Layout.YELLOW) != 0 ? abgr(0xF2C230, 255) : abgr(0xFFFFFF, 255);
+                    }
+                }
             }
             if (!l.dirty[i] && l.kind[i] != Layout.NONE && l.kind[i] != Layout.BLEND) {
                 // already built: shown a little faded so new work stands out
@@ -1902,7 +1932,7 @@ public class RoadPlannerScreen extends Screen {
     }
 
     /** A district's tint on the map: what it is at a glance. */
-    private static final int[] DISTRICT_TINT = {0x50E050E0, 0x5050C0E0, 0x50E0C040, 0x504080FF, 0x5040D040, 0x50FF8030};
+    private static final int[] DISTRICT_TINT = {0x50E050E0, 0x5050C0E0, 0x50E0C040, 0x504080FF, 0x5040D040, 0x50FF8030, 0x50A0A0A0};
 
     /** Site outlines, the road side picked out, handles on the selected one, and one being marked out. */
     private void drawSites(GuiGraphics g) {
@@ -2089,7 +2119,8 @@ public class RoadPlannerScreen extends Screen {
             "Main road: the town's main road runs through here",
             "Shopping: a retail park and its car park, with a road in",
             "Park: grass and trees, no streets or buildings",
-            "Motorway junction: a dual carriageway across it with a roundabout the town joins"};
+            "Motorway junction: a dual carriageway across it with a roundabout the town joins",
+            "Bypass: a dual carriageway along it, out of town both ends, roundabouts for roads into town"};
 
     private static String paradeNames(SiteLayout sl) {
         StringBuilder s = new StringBuilder(":");

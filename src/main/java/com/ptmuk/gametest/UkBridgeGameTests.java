@@ -1,0 +1,65 @@
+package com.ptmuk.gametest;
+
+import com.ptmuk.PtmUk;
+import com.ptmuk.road.RoadBuilder;
+import com.ptmuk.road.plan.RoadPlan;
+import com.ptmuk.road.plan.RoadStyle;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.registries.ForgeRegistries;
+
+/**
+ * A bridge built in the world, well away from the other tests: a street that goes under and one
+ * crossing it. Where they cross, the street underneath is at ground level with clear headroom
+ * over it, then the concrete deck and the road over it.
+ */
+@GameTestHolder(PtmUk.MOD_ID)
+@PrefixGameTestTemplate(false)
+public final class UkBridgeGameTests {
+    private UkBridgeGameTests() {
+    }
+
+    @GameTest(template = "empty5x4x5", timeoutTicks = 1600)
+    public static void buildsABridge(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        ServerPlayer player = net.minecraftforge.common.util.FakePlayerFactory.get(level,
+                new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "bridge-test"));
+        int ox = 6000, oz = 6000;
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.Segment below = plan.addSegment(plan.addNode(ox, oz + 100).id, plan.addNode(ox + 200, oz + 100).id, RoadStyle.residential());
+        below.under = true;
+        plan.addSegment(plan.addNode(ox + 100, oz).id, plan.addNode(ox + 100, oz + 200).id, RoadStyle.residential());
+        RoadBuilder.start(player, InteractionHand.MAIN_HAND, plan);
+        helper.succeedWhen(() -> {
+            helper.assertFalse(RoadBuilder.busy(player.getUUID()), "still building");
+            int x = ox + 102, z = oz + 102;                  // in a lane of each
+            int top = level.getMaxBuildHeight() - 1;
+            while (top > level.getMinBuildHeight() && level.getBlockState(new BlockPos(x, top, z)).isAir()) {
+                top--;
+            }
+            // down through the road over: its surface, the deck, then headroom down to the road underneath
+            int y = top;
+            while (y > level.getMinBuildHeight() && !level.getBlockState(new BlockPos(x, y, z)).isAir()) {
+                y--;
+            }
+            int deckBottom = y + 1, air = 0;
+            while (y > level.getMinBuildHeight() && level.getBlockState(new BlockPos(x, y, z)).isAir()) {
+                y--;
+                air++;
+            }
+            BlockState road = level.getBlockState(new BlockPos(x, y, z));
+            String id = ForgeRegistries.BLOCKS.getKey(road.getBlock()).toString();
+            helper.assertTrue(air >= 4, "only " + air + " blocks of headroom under the deck (deck bottom " + deckBottom + ", road under at " + y + ")");
+            helper.assertTrue(id.contains("asphalt") || id.contains("tarmac") || id.contains("marking"), "under the bridge: " + id + " at " + y);
+            String deck = ForgeRegistries.BLOCKS.getKey(level.getBlockState(new BlockPos(x, deckBottom, z)).getBlock()).toString();
+            helper.assertTrue(deck.equals("ptmuk:concrete_kerb"), "the deck is " + deck);
+        });
+    }
+}
