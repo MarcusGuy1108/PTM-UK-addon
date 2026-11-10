@@ -135,17 +135,17 @@ public final class UkMapImportGameTests {
         helper.succeed();
     }
 
-    /** A street with a terrace of three houses and a shop on one side of it. */
+    /** A street with a terrace of three houses (tiled roofs, the map says) and a stone shop on one side of it. */
     private static final String STREET = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
             + node(1, -20, 0, "") + node(2, 45, 0, "")
             + node(10, 0, -4, "") + node(11, 5, -4, "") + node(12, 10, -4, "") + node(13, 15, -4, "")
             + node(14, 15, -12, "") + node(15, 10, -12, "") + node(16, 5, -12, "") + node(17, 0, -12, "")
             + node(20, 22, -4, "") + node(21, 34, -4, "") + node(22, 34, -14, "") + node(23, 22, -14, "")
             + way(100, tag("highway", "residential"), 1, 2)
-            + way(101, tag("building", "house"), 10, 11, 16, 17, 10)
-            + way(102, tag("building", "house"), 11, 12, 15, 16, 11)
-            + way(103, tag("building", "house"), 12, 13, 14, 15, 12)
-            + way(104, tag("building", "retail"), 20, 21, 22, 23, 20)
+            + way(101, tag("building", "house") + tag("roof:material", "roof_tiles"), 10, 11, 16, 17, 10)
+            + way(102, tag("building", "house") + tag("roof:material", "roof_tiles"), 11, 12, 15, 16, 11)
+            + way(103, tag("building", "house") + tag("roof:material", "roof_tiles"), 12, 13, 14, 15, 12)
+            + way(104, tag("building", "retail") + tag("building:material", "stone"), 20, 21, 22, 23, 20)
             + "</osm>";
 
     /**
@@ -184,7 +184,7 @@ public final class UkMapImportGameTests {
         int roofMid = roofAt(level, (int) Math.floor(mi.x(LON + 7.5 / (111320.0 * Math.cos(Math.toRadians(LAT))))), zMid, ground);
         helper.assertTrue(roofParty == roofMid && roofMid > ground + 8, "the terrace roof should run on over the party wall: "
                 + roofParty + " vs " + roofMid);
-        int doors = 0, windows = 0, pots = 0, shopWindows = 0;
+        int doors = 0, windows = 0, pots = 0, shopWindows = 0, stone = 0, tiles = 0, otherRoofs = 0;
         boolean deck = false;
         for (int x = 5950; x < 6090; x++) {
             for (int z = 5960; z < 6040; z++) {
@@ -200,6 +200,9 @@ public final class UkMapImportGameTests {
                     windows += id.equals("ptmuk:sash_window") || id.equals("ptmuk:upvc_window") ? 1 : 0;
                     shopWindows += id.equals("ptmuk:shop_window") ? 1 : 0;
                     pots += s.is(Blocks.FLOWER_POT) ? 1 : 0;
+                    stone += id.equals("ptmuk:portland_stone") ? 1 : 0;
+                    tiles += id.equals("ptmuk:roof_clay_tiles_stairs") ? 1 : 0;
+                    otherRoofs += id.equals("ptmuk:roof_slate_stairs") || id.equals("ptmuk:roof_concrete_tiles_stairs") ? 1 : 0;
                     deck |= s.is(Blocks.GRAY_CONCRETE);
                 }
             }
@@ -209,6 +212,8 @@ public final class UkMapImportGameTests {
         helper.assertTrue(shopWindows >= 4, "the shop should have a shop window, found " + shopWindows);
         helper.assertTrue(pots == 3, "each house should have a chimney, found " + pots);
         helper.assertTrue(deck, "the shop should have a flat roof");
+        helper.assertTrue(stone > 20, "the map says the shop's stone, found " + stone + " stone blocks");
+        helper.assertTrue(tiles > 20 && otherRoofs == 0, "the map says the terrace has tiled roofs: " + tiles + " tiles, " + otherRoofs + " others");
         helper.succeed();
     }
 
@@ -256,6 +261,156 @@ public final class UkMapImportGameTests {
         helper.assertTrue(!nearest(plan, 600, 0).built && nearest(plan, 700, 0).built, "only the part's own points are built");
         helper.assertTrue(nearest(plan, 600, 0).y == 64, "the heights fixed in the part should be kept");
         helper.succeed();
+    }
+
+    /**
+     * Real heights from the LIDAR survey: its GeoTIFFs read (big-endian 48-pixel tiles placed by a
+     * model transformation as the service sends them, and little-endian strips placed by pixel
+     * scale and tie point, with no-data gaps), and a street measured from them: a pitched house
+     * (eaves 5 m, ridge 9 m), a flat-roofed block 12 m tall, and an outline with nothing standing
+     * in it. The map's buildings then get those heights and roofs; saved and read back the same.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void measuresRealHeights(GameTestHelper helper) throws Exception {
+        int w = 110, h = 60;                                  // a metre a pixel, from 20 m west and 20 m north of the middle
+        double mLon = 111320.0 * Math.cos(Math.toRadians(LAT)), dLat = 1 / 111250.0, dLon = 1 / mLon;
+        double lat0 = LAT + 20 * dLat, lon0 = LON - 20 * dLon;
+        float[] top = new float[w * h], ground = new float[w * h];
+        for (int r = 0; r < h; r++) {
+            for (int c = 0; c < w; c++) {
+                double east = c + 0.5 - 20, north = 20 - (r + 0.5);
+                double building = east >= 5 && east <= 10 && north >= -12 && north <= -4 ? 5 + 4 - Math.abs(north + 8)
+                        : east >= 22 && east <= 34 && north >= -14 && north <= -4 ? 12 : 0;
+                ground[r * w + c] = (float) (50 + 0.05 * east);   // sloping ground
+                top[r * w + c] = east > 85 ? Float.NaN : (float) (ground[r * w + c] + building);
+            }
+        }
+        com.ptmuk.road.Lidar.Grid t = com.ptmuk.road.Lidar.tiff(geoTiff(top, w, h, lat0, lon0, dLat, dLon, true));
+        com.ptmuk.road.Lidar.Grid g = com.ptmuk.road.Lidar.tiff(geoTiff(ground, w, h, lat0, lon0, dLat, dLon, false));
+        helper.assertTrue(t != null && g != null && t.w() == w && t.h() == h && g.w() == w && g.h() == h, "the GeoTIFFs didn't read");
+        helper.assertTrue(Math.abs(t.lat0() - lat0) < 1e-9 && Math.abs(g.lon0() - lon0) < 1e-9 && Math.abs(g.dLat() - dLat) < 1e-12,
+                "placed wrong: " + t + " / " + g);
+        helper.assertTrue(Float.isNaN(t.v()[30 * w + 109]) && t.v()[59 * w + 50] == top[59 * w + 50] && g.v()[59 * w + 109] == ground[59 * w + 109],
+                "the heights (or the gaps) didn't come through, in the last tile and the last strip");
+        com.ptmuk.road.Lidar lidar = new com.ptmuk.road.Lidar();
+        lidar.add(t, g);
+        com.ptmuk.road.Lidar.Shape house = lidar.shape(lats(-12, -4, -4, -12), lons(5, 5, 10, 10));
+        com.ptmuk.road.Lidar.Shape block = lidar.shape(lats(-14, -4, -4, -14), lons(22, 22, 34, 34));
+        helper.assertTrue(house != null && house.pitched() && house.eaves() >= 5 && house.eaves() <= 7 && house.top() >= 8 && house.top() <= 9.01,
+                "the house should be pitched, eaves about 5 m and ridge 9: " + house);
+        helper.assertTrue(block != null && block.roof().equals("flat") && Math.abs(block.eaves() - 12) < 0.01, "the block should be flat at 12 m: " + block);
+        helper.assertTrue(lidar.shape(lats(-12, -4, -4, -12), lons(40, 40, 50, 50)) == null, "nothing stands in the garden");
+        var bytes = new java.io.ByteArrayOutputStream();
+        lidar.write(bytes);
+        com.ptmuk.road.Lidar again = com.ptmuk.road.Lidar.read(new ByteArrayInputStream(bytes.toByteArray()));
+        helper.assertTrue(house.equals(again.shape(lats(-12, -4, -4, -12), lons(5, 5, 10, 10))), "not the same read back");
+        // the map's buildings: walls up to the eaves, roofs as measured; one with nothing there guessed as before
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
+                + node(1, 5, -12, "") + node(2, 5, -4, "") + node(3, 10, -4, "") + node(4, 10, -12, "")
+                + node(5, 22, -14, "") + node(6, 22, -4, "") + node(7, 34, -4, "") + node(8, 34, -14, "")
+                + node(9, 40, -12, "") + node(10, 40, -4, "") + node(11, 50, -4, "") + node(12, 50, -12, "")
+                + way(100, tag("building", "house"), 1, 2, 3, 4, 1) + way(101, tag("building", "retail"), 5, 6, 7, 8, 5)
+                + way(102, tag("building", "house"), 9, 10, 11, 12, 9) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        map.lidar = again;
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        List<OsmMap.Outline> b = map.buildings(mi);
+        helper.assertTrue(b.size() == 3, "three buildings, got " + b.size());
+        OsmMap.Outline oh = b.get(0), ob = b.get(1), og = b.get(2);
+        helper.assertTrue(oh.roof().equals("gabled") && oh.height() == (int) Math.round(house.eaves() * mi.scale), "the house: " + oh.roof() + " " + oh.height());
+        helper.assertTrue(ob.roof().equals("flat") && ob.height() == 22 && ob.floors() == 4, "the block: " + ob.roof() + " " + ob.height() + " " + ob.floors());
+        helper.assertTrue(og.roof().isEmpty() && og.height() == 10, "the empty one should be guessed: " + og.roof() + " " + og.height());
+        helper.succeed();
+    }
+
+    private static double[] lats(double... north) {
+        double[] out = new double[north.length + 1];
+        for (int i = 0; i <= north.length; i++) {
+            out[i] = LAT + north[i % north.length] / 111250.0;
+        }
+        return out;
+    }
+
+    private static double[] lons(double... east) {
+        double[] out = new double[east.length + 1];
+        for (int i = 0; i <= east.length; i++) {
+            out[i] = LON + east[i % east.length] / (111320.0 * Math.cos(Math.toRadians(LAT)));
+        }
+        return out;
+    }
+
+    /**
+     * A GeoTIFF of heights: 32-bit floats, NaN written as the service's no-data value; big-endian
+     * in 48-pixel tiles placed by a model transformation, or little-endian 16-row strips placed by
+     * pixel scale and tie point.
+     */
+    private static byte[] geoTiff(float[] v, int w, int h, double lat0, double lon0, double dLat, double dLon, boolean tiled) {
+        int bw = tiled ? 48 : w, bh = tiled ? 48 : 16, across = (w + bw - 1) / bw, blocks = across * ((h + bh - 1) / bh), size = bw * bh * 4;
+        java.nio.ByteBuffer b = java.nio.ByteBuffer.allocate(8 + blocks * size + 4096)
+                .order(tiled ? java.nio.ByteOrder.BIG_ENDIAN : java.nio.ByteOrder.LITTLE_ENDIAN);
+        b.put(0, (byte) (tiled ? 'M' : 'I')).put(1, (byte) (tiled ? 'M' : 'I')).putShort(2, (short) 42);
+        for (int k = 0; k < blocks; k++) {
+            for (int r = 0; r < bh; r++) {
+                for (int c = 0; c < bw; c++) {
+                    int x = (k % across) * bw + c, y = (k / across) * bh + r;
+                    float f = x < w && y < h ? v[y * w + x] : Float.NaN;
+                    b.putFloat(8 + k * size + 4 * (r * bw + c), Float.isNaN(f) ? -Float.MAX_VALUE : f);
+                }
+            }
+        }
+        int at = 8 + blocks * size;                         // the arrays, then the directory
+        int offsets = at, counts = at + 4 * blocks, geo = counts + 4 * blocks;
+        for (int k = 0; k < blocks; k++) {
+            b.putInt(offsets + 4 * k, 8 + k * size).putInt(counts + 4 * k, size);
+        }
+        double[] place = tiled ? new double[]{dLon, 0, 0, lon0, 0, -dLat, 0, lat0, 0, 0, 0, 0, 0, 0, 0, 1}
+                : new double[]{dLon, dLat, 0, 0, 0, 0, lon0, lat0, 0};    // pixel scale (3), then the tie point (6)
+        for (int i = 0; i < place.length; i++) {
+            b.putDouble(geo + 8 * i, place[i]);
+        }
+        byte[] nodata = "-3.4028234663852886E38\0".getBytes(StandardCharsets.US_ASCII);
+        int text = geo + 8 * place.length;
+        b.put(text, nodata);
+        int ifd = text + nodata.length + 1 & ~1;
+        b.putInt(4, ifd);
+        List<int[]> e = new java.util.ArrayList<>();          // tag, type, count, value or offset
+        e.add(new int[]{256, 4, 1, w});
+        e.add(new int[]{257, 4, 1, h});
+        e.add(new int[]{258, 3, 1, 32});
+        e.add(new int[]{259, 3, 1, 1});
+        if (!tiled) {
+            e.add(new int[]{273, 4, blocks, offsets});
+            e.add(new int[]{278, 3, 1, bh});
+            e.add(new int[]{279, 4, blocks, counts});
+        } else {
+            e.add(new int[]{322, 3, 1, bw});
+            e.add(new int[]{323, 3, 1, bh});
+            e.add(new int[]{324, 4, blocks, offsets});
+            e.add(new int[]{325, 4, blocks, counts});
+        }
+        e.add(new int[]{339, 3, 1, 3});
+        if (tiled) {
+            e.add(new int[]{34264, 12, 16, geo});
+        } else {
+            e.add(new int[]{33550, 12, 3, geo});
+            e.add(new int[]{33922, 12, 6, geo + 24});
+        }
+        e.add(new int[]{42113, 2, nodata.length, text});
+        b.putShort(ifd, (short) e.size());
+        for (int i = 0; i < e.size(); i++) {
+            int[] x = e.get(i);
+            int p = ifd + 2 + 12 * i;
+            b.putShort(p, (short) x[0]).putShort(p + 2, (short) x[1]).putInt(p + 4, x[2]);
+            if (x[1] == 3 && x[2] == 1) {
+                b.putShort(p + 8, (short) x[3]);
+            } else {
+                b.putInt(p + 8, x[3]);
+            }
+        }
+        b.putInt(ifd + 2 + 12 * e.size(), 0);
+        return java.util.Arrays.copyOf(b.array(), ifd + 6 + 12 * e.size());
     }
 
     private static RoadPlan.Node nearest(RoadPlan plan, double x, double z) {

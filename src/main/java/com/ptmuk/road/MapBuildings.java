@@ -38,7 +38,7 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class MapBuildings {
     /** One building as sent from the planner: corners in quarter blocks (nudge added), and what the map says it is. */
     public static final class Footprint {
-        public String kind = "yes", roof = "";
+        public String kind = "yes", roof = "", material = "", roofMaterial = "";
         public int floors = 1, height = 6;
         public int[] x, z;
     }
@@ -116,6 +116,8 @@ public final class MapBuildings {
             Footprint f = new Footprint();
             f.kind = o.kind();
             f.roof = o.roof();
+            f.material = o.material();
+            f.roofMaterial = o.roofMaterial();
             f.floors = o.floors();
             f.height = o.height();
             f.x = new int[o.x().length];
@@ -161,6 +163,8 @@ public final class MapBuildings {
         for (Footprint f : b.buildings) {
             f.kind = f.kind == null ? "yes" : f.kind;
             f.roof = f.roof == null ? "" : f.roof;
+            f.material = f.material == null ? "" : f.material;
+            f.roofMaterial = f.roofMaterial == null ? "" : f.roofMaterial;
             f.height = Math.max(3, Math.min(200, f.height));
             f.floors = Math.max(1, Math.min(60, f.floors));
         }
@@ -260,7 +264,7 @@ public final class MapBuildings {
         }
         for (Shell s : shells) {
             Shell r = shells.get(root(s.parent));
-            s.style = style(s.use, s.pitched, Long.hashCode(r.cells[0]) * 0x9E3779B1 + r.fp.kind.hashCode());
+            s.style = material(style(s.use, s.pitched, Long.hashCode(r.cells[0]) * 0x9E3779B1 + r.fp.kind.hashCode()), s.fp, s.pitched);
         }
         // roads near enough to have a front door on them
         for (RoadPlan.Segment sg : plan.segments) {
@@ -398,6 +402,25 @@ public final class MapBuildings {
             case SHED -> new Style(pick(seed, 1, red, red, render), pitched ? "ptmuk:roof_concrete_tiles" : "minecraft:black_concrete",
                     null, null, "minecraft:smooth_stone", "minecraft:spruce_door");
         };
+    }
+
+    /** What the map says a building's walls and roof are made of (building:material, roof:material), where it says. */
+    private static Style material(Style st, Footprint fp, boolean pitched) {
+        String wall = switch (fp.material) {
+            case "brick" -> st.wall().equals("ptmuk:london_stock_brick") ? st.wall() : "ptmuk:red_brick";
+            case "stone", "sandstone", "limestone", "granite" -> "ptmuk:portland_stone";
+            case "plaster", "render", "stucco" -> "ptmuk:white_render";
+            case "concrete", "cement_block" -> "minecraft:light_gray_concrete";
+            case "wood", "timber_framing" -> "minecraft:spruce_planks";
+            default -> st.wall();
+        };
+        String roof = !pitched ? st.roof() : switch (fp.roofMaterial) {
+            case "roof_tiles", "tile", "tiles", "clay" -> "ptmuk:roof_clay_tiles";
+            case "slate" -> "ptmuk:roof_slate";
+            case "concrete" -> "ptmuk:roof_concrete_tiles";
+            default -> st.roof();
+        };
+        return new Style(wall, roof, st.window(), st.ground(), st.floor(), st.door());
     }
 
     private static String pick(int seed, int salt, String... options) {

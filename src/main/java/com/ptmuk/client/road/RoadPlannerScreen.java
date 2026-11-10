@@ -96,6 +96,8 @@ public class RoadPlannerScreen extends Screen {
     private static int downloadSize = 1;
     private static final int[] DOWNLOAD_METRES = {400, 800, 1500, 3000};
     private static boolean downloading;
+    /** Why a download came without real heights, said once it's imported. */
+    private static String heightsNote = "";
     private double mapGrabX, mapGrabZ, mapDX, mapDZ;
     private static boolean dragMapMode = true;
     /** Where the preview of a big plan was last laid out round (it follows the view). */
@@ -575,6 +577,9 @@ public class RoadPlannerScreen extends Screen {
         y += ROW;
         button(y, () -> "Buildings: " + (mi.buildings ? "build them" : "outlines only"), b -> mi.buildings = !mi.buildings);
         y += ROW;
+        button(y, () -> osm != null && osm.lidar != null ? "Real heights: in use" : downloading ? "Real heights: fetching..." : "Real heights: fetch",
+                b -> fetchHeights());
+        y += ROW;
         button(y, () -> "Build the whole map", b -> build(true));
         y += ROW;
         button(y, () -> "Remove map", b -> {
@@ -832,7 +837,15 @@ public class RoadPlannerScreen extends Screen {
         Minecraft mc = Minecraft.getInstance();
         MapDownload.find(place).thenCompose(r -> {
             mc.execute(() -> flash("Downloading " + metres + " m round " + r[2] + " from OpenStreetMap..."));
-            return MapDownload.download((String) r[2], (Double) r[0], (Double) r[1], metres / 2.0);
+            double lat = (Double) r[0], lon = (Double) r[1];
+            // then the real heights of its buildings, where there are any (England)
+            return MapDownload.download((String) r[2], lat, lon, metres / 2.0).thenCompose(file -> {
+                double[] b = OsmMap.box(lat, lon, metres / 2.0);
+                return MapDownload.heights(file, b[0], b[1], b[2], b[3], msg -> mc.execute(() -> flash(msg))).handle((l, err) -> {
+                    heightsNote = err == null ? "" : " No real heights: " + (err.getCause() != null ? err.getCause() : err).getMessage() + ".";
+                    return file;
+                });
+            });
         }).whenComplete((file, err) -> mc.execute(() -> {
             downloading = false;
             if (err != null) {
@@ -847,6 +860,29 @@ public class RoadPlannerScreen extends Screen {
                 rebuildPanel();
             }
         }));
+        rebuildPanel();
+    }
+
+    /** Real heights (England's LIDAR survey) for the imported map's buildings: fetched, saved beside it, and used from now on. */
+    private void fetchHeights() {
+        OsmMap m = osm;
+        if (m == null || m.lidar != null || downloading) {
+            return;
+        }
+        downloading = true;
+        Minecraft mc = Minecraft.getInstance();
+        MapDownload.heights(plan.map.file, m.minLat, m.minLon, m.maxLat, m.maxLon, msg -> mc.execute(() -> flash(msg)))
+                .whenComplete((l, err) -> mc.execute(() -> {
+                    downloading = false;
+                    if (err != null) {
+                        flash("No real heights: " + (err.getCause() != null ? err.getCause() : err).getMessage());
+                    } else {
+                        m.lidar = l;
+                        showOutlines();
+                        flash("The map's buildings now have their real heights and roofs (from LIDAR). Build to use them.");
+                    }
+                    rebuildPanel();
+                }));
         rebuildPanel();
     }
 
@@ -877,7 +913,9 @@ public class RoadPlannerScreen extends Screen {
         changed();
         int kb = RoadPlans.pack(plan).length / 1024;
         flash(kb > RoadPlans.MAX_PLAN / 1024 ? "That map's too big for one planner (" + kb + " KB of " + RoadPlans.MAX_PLAN / 1024 + ") - export a smaller area"
-                : roads + " roads, " + b.size() + " buildings and " + stops + " bus stops from " + mi.file + ". Drag it to where it goes.");
+                : roads + " roads, " + b.size() + " buildings and " + stops + " bus stops from " + mi.file + (m.lidar != null ? ", at their real heights" : "")
+                + ". Drag it to where it goes." + heightsNote);
+        heightsNote = "";
     }
 
     /** Take out the map's roads that haven't been built (and points left with no roads). */

@@ -2,6 +2,8 @@ package com.ptmuk.client.road;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
+import com.ptmuk.PtmUk;
+import com.ptmuk.road.Lidar;
 import com.ptmuk.road.OsmMap;
 import java.io.IOException;
 import java.net.URI;
@@ -13,15 +15,23 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
+import net.minecraft.Util;
 
 /**
  * Real map data fetched for you: a place found by name (OpenStreetMap's Nominatim search), and the
  * roads, buildings and bus stops round it (the Overpass API) saved into the osm_maps folder as an
- * ordinary .osm file, ready to import. Both are free public services with fair-use rules: one
- * search at a time, a named user agent, and an area no bigger than a few kilometres.
+ * ordinary .osm file, ready to import; and in England, real heights for its buildings from the
+ * Environment Agency's LIDAR survey. All free public services with fair-use rules: one search at a
+ * time, a named user agent, and an area no bigger than a few kilometres.
  */
 final class MapDownload {
     private static final String AGENT = "PTM-UK-Addon (Minecraft mod; github.com/MarcusGuy1108/PTM-UK-addon)";
@@ -81,6 +91,109 @@ final class MapDownload {
         String file = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "") + "_" + (int) (half * 2) + "m.osm";
         Path path = MapFiles.folder().resolve(file);
         return tryServer(0, body, path).thenApply(p -> file);
+    }
+
+    /** England's LIDAR survey (Environment Agency, Open Government Licence): the tops of things, and the bare ground. */
+    private static final String SURFACE = "https://environment.data.gov.uk/spatialdata/lidar-composite-digital-surface-model-last-return-dsm-1m/wcs"
+            + "?coverageId=9ba4d5ac-d596-445a-9056-dae3ddec0178__Lidar_Composite_Elevation_LZ_DSM_1m",
+            GROUND = "https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wcs"
+            + "?coverageId=13787b9a-26a4-4775-8523-806d13af58fc__Lidar_Composite_Elevation_DTM_1m";
+    /** Degrees of latitude and longitude in one tile asked for (about 450 by 420 m). */
+    private static final double TILE_LAT = 0.004, TILE_LON = 0.006;
+
+    /**
+     * Real heights for a map, south, west, north, east in degrees: the LIDAR survey fetched a tile
+     * at a time (a metre a pixel; two for a big map) and saved beside the map file (see
+     * MapFiles.lidar). England only: anywhere else it fails, and the map is used without them.
+     */
+    static CompletableFuture<Lidar> heights(String file, double s, double w, double n, double e, Consumer<String> progress) {
+        return CompletableFuture.supplyAsync(() -> {
+            int rows = (int) Math.ceil((n - s) / TILE_LAT - 1e-9), cols = (int) Math.ceil((e - w) / TILE_LON - 1e-9);
+            if (rows * cols > 150) {
+                throw new IllegalStateException("that map's too big to fetch heights for (3 km across at most)");
+            }
+            String coarse = (n - s) * 111_000 > 1600 ? "&scaleFactor=0.5" : "";       // a big map: 2 m pixels, a quarter of the download
+            ExecutorService pool = Executors.newFixedThreadPool(3, r -> {
+                Thread t = new Thread(r, "PTM UK real heights");
+                t.setDaemon(true);
+                return t;
+            });
+            try {
+                List<Future<Lidar.Grid[]>> parts = new ArrayList<>();
+                for (int r = 0; r < rows; r++) {
+                    for (int c = 0; c < cols; c++) {
+                        double ts = s + r * TILE_LAT, tw = w + c * TILE_LON;
+                        String box = String.format(Locale.ROOT, "&subset=Lat(%.6f,%.6f)&subset=Long(%.6f,%.6f)", ts, Math.min(n, ts + TILE_LAT), tw,
+                                Math.min(e, tw + TILE_LON)) + coarse;
+                        parts.add(pool.submit(() -> new Lidar.Grid[]{tile(SURFACE + box), tile(GROUND + box)}));
+                    }
+                }
+                Lidar lidar = new Lidar();
+                int failed = 0;
+                for (int i = 0; i < parts.size(); i++) {
+                    progress.accept("Fetching real heights (England's LIDAR survey): " + (i + 1) + " of " + parts.size() + "...");
+                    try {
+                        Lidar.Grid[] t = parts.get(i).get();
+                        if (t[0] != null && t[1] != null) {
+                            lidar.add(t[0], t[1]);
+                        }
+                    } catch (ExecutionException ex) {
+                        failed++;                                   // its buildings get the usual guesses
+                        PtmUk.LOGGER.warn("A tile of real heights didn't come: {}", ex.getCause().toString());
+                    }
+                }
+                if (failed * 2 > parts.size()) {
+                    throw new IllegalStateException("the LIDAR service isn't answering just now (press Real heights: fetch later)");
+                }
+                lidar.tiles.removeIf(t -> {
+                    for (float v : t.v()) {
+                        if (!Float.isNaN(v)) {
+                            return false;
+                        }
+                    }
+                    return true;                                    // nothing surveyed in it
+                });
+                if (lidar.isEmpty()) {
+                    throw new IllegalStateException("there's no LIDAR survey here (it covers England)");
+                }
+                Path path = MapFiles.lidar(file), part = path.resolveSibling(path.getFileName() + ".part");
+                try (var out = new java.io.BufferedOutputStream(Files.newOutputStream(part))) {
+                    lidar.write(out);
+                }
+                Files.move(part, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                return lidar;
+            } catch (IOException ex) {
+                throw new IllegalStateException("couldn't save them: " + ex.getMessage());
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("stopped");
+            } finally {
+                pool.shutdownNow();
+            }
+        }, Util.backgroundExecutor());
+    }
+
+    /** One tile of the survey (tried three times: the service has its moments), or null where it has none (outside England). */
+    private static Lidar.Grid tile(String coverage) throws IOException, InterruptedException {
+        HttpRequest req = HttpRequest.newBuilder(URI.create(coverage + "&service=WCS&version=2.0.1&request=GetCoverage&format=image/tiff"
+                        + "&subsettingCrs=http://www.opengis.net/def/crs/EPSG/0/4326&outputCrs=http://www.opengis.net/def/crs/EPSG/0/4326"))
+                .header("User-Agent", AGENT).timeout(Duration.ofSeconds(60)).build();
+        for (int tries = 1; ; tries++) {
+            try {
+                HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
+                if (res.statusCode() < 500) {
+                    return res.statusCode() == 200 ? Lidar.tiff(res.body()) : null;
+                }
+                if (tries == 3) {
+                    throw new IOException("the LIDAR service said " + res.statusCode());
+                }
+            } catch (java.net.http.HttpTimeoutException ex) {
+                if (tries == 3) {
+                    throw ex;
+                }
+            }
+            Thread.sleep(2000L * tries);
+        }
     }
 
     private static CompletableFuture<Path> tryServer(int k, String body, Path path) {

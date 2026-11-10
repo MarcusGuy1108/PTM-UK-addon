@@ -1,5 +1,6 @@
 package com.ptmuk.client.road;
 
+import com.ptmuk.road.Lidar;
 import com.ptmuk.road.OsmMap;
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -48,24 +49,38 @@ public final class MapFiles {
         if (name == null || name.contains("/") || name.contains("\\") || name.contains("..")) {
             return CompletableFuture.failedFuture(new IOException("not a map file: " + name));
         }
-        Path path = folder().resolve(name);
+        Path path = folder().resolve(name), heights = lidar(name);
         long modified;
         try {
-            modified = Files.getLastModifiedTime(path).toMillis();
+            modified = Files.getLastModifiedTime(path).toMillis() * 31 + (Files.exists(heights) ? Files.getLastModifiedTime(heights).toMillis() : 0);
         } catch (IOException e) {
             return CompletableFuture.failedFuture(new IOException(name + " isn't in the osm_maps folder"));
         }
         Loaded l = CACHE.get(name);
         if (l == null || l.modified() != modified) {
             l = new Loaded(modified, CompletableFuture.supplyAsync(() -> {
+                OsmMap map;
                 try (InputStream in = new BufferedInputStream(Files.newInputStream(path))) {
-                    return OsmMap.read(in);
+                    map = OsmMap.read(in);
                 } catch (Exception e) {
                     throw new CompletionException(e);
                 }
+                if (Files.exists(heights)) {
+                    try (InputStream in = new BufferedInputStream(Files.newInputStream(heights))) {
+                        map.lidar = Lidar.read(in);
+                    } catch (IOException e) {
+                        com.ptmuk.PtmUk.LOGGER.warn("Couldn't read the real heights for {}: {}", name, e.toString());
+                    }
+                }
+                return map;
             }, Util.backgroundExecutor()));
             CACHE.put(name, l);
         }
         return l.map();
+    }
+
+    /** Where a map's real heights (see MapDownload.heights) are kept: beside it. */
+    static Path lidar(String name) {
+        return folder().resolve(name + ".lidar");
     }
 }

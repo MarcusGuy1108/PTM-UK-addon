@@ -28,9 +28,8 @@ import javax.xml.stream.XMLStreamReader;
  * outlines with a height from their floors. Plain Java, shared by the planner and the game tests.
  */
 public final class OsmMap {
-    /** One building: its outline in blocks (before any nudge) and how tall it is. */
-    /** A building: its corners (the first again at the end), blocks tall, and what OSM says it is (its building and roof:shape tags, and floors). */
-    public record Outline(double[] x, double[] z, int height, String kind, String roof, int floors) {
+    /** A building: its corners (the first again at the end), blocks tall, and what OSM says it is (its building, roof:shape, building:material and roof:material tags, and floors). */
+    public record Outline(double[] x, double[] z, int height, String kind, String roof, int floors, String material, String roofMaterial) {
     }
 
     private record Way(long id, long[] nodes, Map<String, String> tags) {
@@ -62,6 +61,8 @@ public final class OsmMap {
     private final List<Way> ways = new ArrayList<>();
     private final List<Relation> relations = new ArrayList<>();
     public double minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+    /** Real heights for the map (England's LIDAR survey), if they've been fetched: each building's height and roof come from them. */
+    public Lidar lidar;
 
     private OsmMap() {
     }
@@ -262,19 +263,30 @@ public final class OsmMap {
     }
 
     private void outline(List<Outline> out, long[] ids, Map<String, String> tags, MapImport mi) {
-        double[] x = new double[ids.length], z = new double[ids.length];
+        double[] x = new double[ids.length], z = new double[ids.length], lat = new double[ids.length], lon = new double[ids.length];
         for (int i = 0; i < ids.length; i++) {
             double[] ll = nodes.get(ids[i]);
             if (ll == null) {
                 return;                                     // part of it is outside the export
             }
+            lat[i] = ll[0];
+            lon[i] = ll[1];
             x[i] = mi.x(ll[1]);
             z[i] = mi.z(ll[0]);
         }
-        int height = height(tags, mi.scale);
+        String roof = tags.getOrDefault("roof:shape", "");
+        Lidar.Shape real = lidar == null ? null : lidar.shape(lat, lon);
+        int height;
+        if (real != null) {                                 // measured: walls up to the eaves, its roof flat or pitched
+            height = Math.max(2, (int) Math.round(real.eaves() * mi.scale));
+            roof = roof.isEmpty() ? real.roof() : roof;
+        } else {
+            height = height(tags, mi.scale);
+        }
         double levels = metres(tags.get("building:levels"));
         int floors = Double.isNaN(levels) ? (int) Math.max(1, Math.round(height / (STOREY_M * mi.scale))) : (int) Math.max(1, levels);
-        out.add(new Outline(x, z, height, tags.getOrDefault("building", "yes"), tags.getOrDefault("roof:shape", ""), floors));
+        out.add(new Outline(x, z, height, tags.getOrDefault("building", "yes"), roof, floors,
+                tags.getOrDefault("building:material", "").toLowerCase(java.util.Locale.ROOT), tags.getOrDefault("roof:material", "").toLowerCase(java.util.Locale.ROOT)));
     }
 
     /** Blocks tall: from its height, or its floors, or a guess from what kind of building it is. */
