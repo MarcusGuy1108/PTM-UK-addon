@@ -87,6 +87,26 @@ public final class Lidar {
         return new Shape(p90, roof.equals("gabled") ? p10 : p50, roof, v.length);
     }
 
+    /**
+     * The height above the ground at a point: the middle one of its pixel and the four beside it,
+     * so a chimney pot or an aerial doesn't count but a ridge does; NaN off the survey.
+     */
+    public float at(double lat, double lon) {
+        for (Grid g : tiles) {
+            int c = (int) Math.floor((lon - g.lon0) / g.dLon), r = (int) Math.floor((g.lat0 - lat) / g.dLat);
+            if (c >= 0 && r >= 0 && c < g.w && r < g.h) {
+                float[] five = {g.at(lat, lon), g.at(lat + g.dLat, lon), g.at(lat - g.dLat, lon), g.at(lat, lon - g.dLon), g.at(lat, lon + g.dLon)};
+                Arrays.sort(five);                              // NaNs go last
+                int n = 0;
+                while (n < 5 && !Float.isNaN(five[n])) {
+                    n++;
+                }
+                return n == 0 ? Float.NaN : five[n / 2];
+            }
+        }
+        return Float.NaN;
+    }
+
     /** The heights above the ground of the survey's points inside an outline, more than 0.6 m in from its walls, lowest first; null if there are none. */
     public float[] samples(double[] lat, double[] lon) {
         double s = Double.MAX_VALUE, n = -Double.MAX_VALUE, w = Double.MAX_VALUE, e = -Double.MAX_VALUE;

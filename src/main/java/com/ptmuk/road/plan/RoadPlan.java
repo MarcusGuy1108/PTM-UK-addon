@@ -306,6 +306,15 @@ public final class RoadPlan {
             return z - (lat - lat0) * perLat() * scale;
         }
 
+        /** The real place at block x (or z): the other way round. */
+        public double lon(double bx) {
+            return lon0 + (bx - x) / (perLon() * scale);
+        }
+
+        public double lat(double bz) {
+            return lat0 - (bz - z) / (perLat() * scale);
+        }
+
         public boolean owns(int id) {
             return id >= firstId && id <= lastId;
         }

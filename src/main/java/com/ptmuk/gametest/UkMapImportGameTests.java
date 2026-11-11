@@ -272,19 +272,10 @@ public final class UkMapImportGameTests {
      */
     @GameTest(template = "empty5x4x5")
     public static void measuresRealHeights(GameTestHelper helper) throws Exception {
-        int w = 110, h = 60;                                  // a metre a pixel, from 20 m west and 20 m north of the middle
-        double mLon = 111320.0 * Math.cos(Math.toRadians(LAT)), dLat = 1 / 111250.0, dLon = 1 / mLon;
-        double lat0 = LAT + 20 * dLat, lon0 = LON - 20 * dLon;
-        float[] top = new float[w * h], ground = new float[w * h];
-        for (int r = 0; r < h; r++) {
-            for (int c = 0; c < w; c++) {
-                double east = c + 0.5 - 20, north = 20 - (r + 0.5);
-                double building = east >= 5 && east <= 10 && north >= -12 && north <= -4 ? 5 + 4 - Math.abs(north + 8)
-                        : east >= 22 && east <= 34 && north >= -14 && north <= -4 ? 12 : 0;
-                ground[r * w + c] = (float) (50 + 0.05 * east);   // sloping ground
-                top[r * w + c] = east > 85 ? Float.NaN : (float) (ground[r * w + c] + building);
-            }
-        }
+        int w = STREET_W, h = STREET_H;
+        double dLat = 1 / 111250.0, dLon = 1 / (111320.0 * Math.cos(Math.toRadians(LAT))), lat0 = LAT + 20 * dLat, lon0 = LON - 20 * dLon;
+        float[][] heights = streetHeights();
+        float[] top = heights[0], ground = heights[1];
         com.ptmuk.road.Lidar.Grid t = com.ptmuk.road.Lidar.tiff(geoTiff(top, w, h, lat0, lon0, dLat, dLon, true));
         com.ptmuk.road.Lidar.Grid g = com.ptmuk.road.Lidar.tiff(geoTiff(ground, w, h, lat0, lon0, dLat, dLon, false));
         helper.assertTrue(t != null && g != null && t.w() == w && t.h() == h && g.w() == w && g.h() == h, "the GeoTIFFs didn't read");
@@ -322,6 +313,87 @@ public final class UkMapImportGameTests {
         helper.assertTrue(oh.roof().equals("gabled") && oh.height() == (int) Math.round(house.eaves() * mi.scale), "the house: " + oh.roof() + " " + oh.height());
         helper.assertTrue(ob.roof().equals("flat") && ob.height() == 22 && ob.floors() == 4, "the block: " + ob.roof() + " " + ob.height() + " " + ob.floors());
         helper.assertTrue(og.roof().isEmpty() && og.height() == 10, "the empty one should be guessed: " + og.roof() + " " + og.height());
+        helper.succeed();
+    }
+
+    private static final int STREET_W = 110, STREET_H = 60;
+
+    /**
+     * A street's LIDAR, a metre a pixel from 20 m west and 20 m north of the middle, on sloping
+     * ground: the tops of things, then the ground. A house 5 m by 8 m, its ridge running east-west
+     * (eaves 5 m, ridge 9 m); a flat-roofed block 12 m tall; and a church, its nave 14 m by 10 m
+     * (eaves 6 m, ridge 11 m) with a tower 20 m tall in the middle. No survey past 85 m east.
+     */
+    private static float[][] streetHeights() {
+        float[] top = new float[STREET_W * STREET_H], ground = new float[STREET_W * STREET_H];
+        for (int r = 0; r < STREET_H; r++) {
+            for (int c = 0; c < STREET_W; c++) {
+                double east = c + 0.5 - 20, north = 20 - (r + 0.5);
+                double building = east >= 5 && east <= 10 && north >= -12 && north <= -4 ? 5 + 4 - Math.abs(north + 8)
+                        : east >= 22 && east <= 34 && north >= -14 && north <= -4 ? 12
+                        : east >= 56 && east <= 60 && north >= -11 && north <= -7 ? 20
+                        : east >= 52 && east <= 66 && north >= -14 && north <= -4 ? 6 + 5 - Math.abs(north + 9) : 0;
+                ground[r * STREET_W + c] = (float) (50 + 0.05 * east);
+                top[r * STREET_W + c] = east > 85 ? Float.NaN : (float) (ground[r * STREET_W + c] + building);
+            }
+        }
+        return new float[][]{top, ground};
+    }
+
+    /**
+     * Real roofs built from the LIDAR's shape, not a guess: the house's roof is gabled at its end
+     * walls (rising to its ridge there, as the real one does, where a guessed roof is hipped) and
+     * its ridge is at the real height; the church's tower stands up out of its roof, walled up
+     * from the nave roof with no gaps. Built far away, high up on a slab of stone.
+     */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 200)
+    public static void buildsRealRoofShapes(GameTestHelper helper) throws Exception {
+        double dLat = 1 / 111250.0, dLon = 1 / (111320.0 * Math.cos(Math.toRadians(LAT)));
+        float[][] heights = streetHeights();
+        com.ptmuk.road.Lidar lidar = new com.ptmuk.road.Lidar();
+        lidar.add(new com.ptmuk.road.Lidar.Grid(LAT + 20 * dLat, LON - 20 * dLon, dLat, dLon, STREET_W, STREET_H, heights[0]),
+                new com.ptmuk.road.Lidar.Grid(LAT + 20 * dLat, LON - 20 * dLon, dLat, dLon, STREET_W, STREET_H, heights[1]));
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
+                + node(1, 5, -12, "") + node(2, 5, -4, "") + node(3, 10, -4, "") + node(4, 10, -12, "")
+                + node(5, 52, -14, "") + node(6, 52, -4, "") + node(7, 66, -4, "") + node(8, 66, -14, "")
+                + way(100, tag("building", "house"), 1, 2, 3, 4, 1) + way(101, tag("building", "church"), 5, 6, 7, 8, 5) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        map.lidar = lidar;
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        mi.x = 7000;
+        mi.z = 7000;
+        plan.map = mi;
+        List<OsmMap.Outline> outlines = map.buildings(mi);
+        helper.assertTrue(outlines.size() == 2 && outlines.get(0).surface() != null && outlines.get(1).surface() != null,
+                "both should have their real roof's shape");
+        net.minecraft.server.level.ServerLevel level = helper.getLevel();
+        int ground = 260;
+        for (int x = 6990; x < 7130; x++) {
+            for (int z = 6990; z < 7040; z++) {
+                level.setBlock(new BlockPos(x, ground - 1, z), Blocks.STONE.defaultBlockState(), 2);
+            }
+        }
+        com.ptmuk.road.layout.Layout layout = com.ptmuk.road.layout.Layout.of(plan, com.ptmuk.road.layout.Terrain.flat(ground));
+        MapBuildings.Batch batch = MapBuildings.unpack(MapBuildings.pack(MapBuildings.around(outlines, mi, 7050, 7010, RoadPlan.PART)));
+        helper.assertTrue(batch != null && MapBuildings.buildAll(level, batch, layout, plan) == 2, "both should be built");
+        // the house: x 7009..7018 (5..10 m east), z 7007..7021 (4..12 m south), its ridge along z 7014
+        int gable = roofAt(level, 7009, 7014, ground), eaves = roofAt(level, 7009, 7008, ground), ridge = roofAt(level, 7013, 7014, ground);
+        helper.assertTrue(gable >= eaves + 3, "the end wall should rise to a gable: " + gable + " at the ridge, " + eaves + " by the eaves");
+        helper.assertTrue(ridge - ground >= 14 && ridge - ground <= 19, "the ridge should be about 9 m (16 blocks) up, is " + (ridge - ground));
+        // the church's tower: x 7102..7109 (56..60 m east), z 7013..7019, its top 20 m (36 blocks) up
+        helper.assertTrue(roofAt(level, 7105, 7016, ground) - ground >= 30, "the tower should stand up out of the roof, top at "
+                + (roofAt(level, 7105, 7016, ground) - ground));
+        // along the church through the tower: wherever the roof steps up, the step's face is walled, not open
+        for (int x = 7096; x < 7116; x++) {
+            int a = roofAt(level, x, 7016, ground), b = roofAt(level, x + 1, 7016, ground), hi = a > b ? x : x + 1;
+            for (int y = Math.min(a, b) + 1; y < Math.max(a, b); y++) {
+                helper.assertTrue(!level.getBlockState(new BlockPos(hi, y, 7016)).isAir(), "an open step in the roof at " + hi + ", " + y
+                        + " (roofs " + a + " and " + b + ")");
+            }
+        }
         helper.succeed();
     }
 

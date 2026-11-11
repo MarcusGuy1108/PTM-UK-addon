@@ -29,7 +29,15 @@ import javax.xml.stream.XMLStreamReader;
  */
 public final class OsmMap {
     /** A building: its corners (the first again at the end), blocks tall, and what OSM says it is (its building, roof:shape, building:material and roof:material tags, and floors). */
-    public record Outline(double[] x, double[] z, int height, String kind, String roof, int floors, String material, String roofMaterial) {
+    public record Outline(double[] x, double[] z, int height, String kind, String roof, int floors, String material, String roofMaterial,
+                          Surface surface) {
+    }
+
+    /**
+     * A pitched roof's real shape (from LIDAR): its height every 2 blocks from block x0, z0, w
+     * points across, in half blocks above the ground; 0 where there's no roof (the ground, or no survey).
+     */
+    public record Surface(int x0, int z0, int w, byte[] v) {
     }
 
     private record Way(long id, long[] nodes, Map<String, String> tags) {
@@ -286,7 +294,33 @@ public final class OsmMap {
         double levels = metres(tags.get("building:levels"));
         int floors = Double.isNaN(levels) ? (int) Math.max(1, Math.round(height / (STOREY_M * mi.scale))) : (int) Math.max(1, levels);
         out.add(new Outline(x, z, height, tags.getOrDefault("building", "yes"), roof, floors,
-                tags.getOrDefault("building:material", "").toLowerCase(java.util.Locale.ROOT), tags.getOrDefault("roof:material", "").toLowerCase(java.util.Locale.ROOT)));
+                tags.getOrDefault("building:material", "").toLowerCase(java.util.Locale.ROOT), tags.getOrDefault("roof:material", "").toLowerCase(java.util.Locale.ROOT),
+                real != null && !roof.equals("flat") ? surface(x, z, mi) : null));
+    }
+
+    /** The real roof over an outline (corners in blocks), sampled from the LIDAR heights; null if it's too big to send. */
+    private Surface surface(double[] x, double[] z, MapImport mi) {
+        double x1 = -Double.MAX_VALUE, z1 = -Double.MAX_VALUE;
+        int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE;
+        for (int i = 0; i < x.length; i++) {
+            x0 = Math.min(x0, (int) Math.floor(x[i]));
+            z0 = Math.min(z0, (int) Math.floor(z[i]));
+            x1 = Math.max(x1, x[i]);
+            z1 = Math.max(z1, z[i]);
+        }
+        int w = (int) Math.ceil((x1 - x0) / 2) + 1, h = (int) Math.ceil((z1 - z0) / 2) + 1;
+        if ((long) w * h > 20_000) {
+            return null;
+        }
+        byte[] v = new byte[w * h];
+        for (int r = 0; r < h; r++) {
+            for (int c = 0; c < w; c++) {
+                float m = lidar.at(mi.lat(z0 + 2 * r), mi.lon(x0 + 2 * c));
+                // the ground round it (or a gap in the survey) isn't roof
+                v[r * w + c] = Float.isNaN(m) || m < 2 ? 0 : (byte) Math.min(255, Math.round(m * mi.scale * 2));
+            }
+        }
+        return new Surface(x0, z0, w, v);
     }
 
     /** Blocks tall: from its height, or its floors, or a guess from what kind of building it is. */

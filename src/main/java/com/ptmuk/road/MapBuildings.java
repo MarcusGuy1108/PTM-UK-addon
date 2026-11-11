@@ -41,6 +41,10 @@ public final class MapBuildings {
         public String kind = "yes", roof = "", material = "", roofMaterial = "";
         public int floors = 1, height = 6;
         public int[] x, z;
+        /** Its real roof (see OsmMap.Surface), Base64, from block sx, sz, sw points across; "" if it has none. */
+        public String surface = "";
+        public int sx, sz, sw;
+        transient byte[] roofs;
     }
 
     /** The buildings round where you build: the square they came from (x0, z0, x1, z1) and the map's scale. */
@@ -77,6 +81,8 @@ public final class MapBuildings {
     private static final int MAX_BUILDINGS = 20000, MAX_CORNERS = 2000, MAX_CELLS = 250 * 250;
     /** A roof goes up a block for every block in from the eaves (45 degrees), this high at most. */
     private static final int MAX_RISE = 8;
+    /** A measured roof (a real one, from LIDAR) can go higher: 9 m over a house's eaves, more for a church tower or the like. */
+    private static final int MAX_HOUSE_RISE = 16, MAX_MEASURED_RISE = 48;
     /** N, E, S, W: as Direction's horizontal order from north. */
     private static final int[][] SIDES = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
     private static final Direction[] FACING = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
@@ -120,6 +126,12 @@ public final class MapBuildings {
             f.roofMaterial = o.roofMaterial();
             f.floors = o.floors();
             f.height = o.height();
+            if (o.surface() != null) {
+                f.surface = java.util.Base64.getEncoder().encodeToString(o.surface().v());
+                f.sx = o.surface().x0() + mi.nudgeX;
+                f.sz = o.surface().z0() + mi.nudgeZ;
+                f.sw = o.surface().w();
+            }
             f.x = new int[o.x().length];
             f.z = new int[o.z().length];
             for (int i = 0; i < f.x.length; i++) {
@@ -167,6 +179,13 @@ public final class MapBuildings {
             f.roofMaterial = f.roofMaterial == null ? "" : f.roofMaterial;
             f.height = Math.max(3, Math.min(200, f.height));
             f.floors = Math.max(1, Math.min(60, f.floors));
+            try {
+                byte[] r = f.surface == null || f.surface.isEmpty() ? null : java.util.Base64.getDecoder().decode(f.surface);
+                f.roofs = r != null && f.sw > 0 && r.length % f.sw == 0 && r.length <= MAX_CELLS ? r : null;
+            } catch (IllegalArgumentException e) {
+                f.roofs = null;                                 // not Base64: build it without
+            }
+            f.surface = null;
         }
         return b.buildings.isEmpty() ? null : b;
     }
@@ -245,6 +264,18 @@ public final class MapBuildings {
         }
         // a roof runs on over houses joined wall to wall, and they look alike
         rise = distances(pitchedCells);
+        rise.replaceAll((c, r) -> Math.min(MAX_RISE, r));
+        // or it's the shape the real one has: its ridges, hips, gables and lower roofs where it's measured
+        for (Shell s : shells) {
+            for (int i = 0; s.pitched && s.fp.roofs != null && i < s.cells.length; i++) {
+                double up = surfaceAt(s.fp, kx(s.cells[i]) + 0.5, kz(s.cells[i]) + 0.5);
+                if (!Double.isNaN(up)) {
+                    // shortcut: a tree over a roof reads as roof; capped for houses, where no real roof is that tall
+                    int cap = s.use == Use.HOUSE ? MAX_HOUSE_RISE : MAX_MEASURED_RISE;
+                    rise.put(s.cells[i], (int) Math.max(1, Math.min(cap, Math.round(up) - s.fp.height)));
+                }
+            }
+        }
         Map<Long, Integer> owner = new HashMap<>();
         for (int i = 0; i < shells.size(); i++) {
             for (long c : shells.get(i).cells) {
@@ -496,9 +527,13 @@ public final class MapBuildings {
             }
             int roofTop;
             if (s.pitched) {
-                int r = riseAt(x, z);
+                int r = riseAt(x, z), low = r;
+                for (int[] d : SIDES) {
+                    low = Math.min(low, riseAt(x + d[0], z + d[1]));
+                }
                 for (int y = top + 1; y < top + r; y++) {
-                    out.set(p.set(x, y, z), edge ? wall : air);         // gable and party walls up to the roof
+                    // gable and party walls up to the roof, and walls up from a lower roof beside it (a tower, a taller wing)
+                    out.set(p.set(x, y, z), edge || y > top + low ? wall : air);
                 }
                 out.set(p.set(x, top + r, z), roof(pal, st, x, z, r));
                 out.join(p.immutable());
@@ -607,7 +642,24 @@ public final class MapBuildings {
     }
 
     private int riseAt(int x, int z) {
-        return Math.min(MAX_RISE, rise.getOrDefault(key(x, z), 0));
+        return rise.getOrDefault(key(x, z), 0);
+    }
+
+    /** A measured roof's height (blocks above the ground) at x, z: between its four nearest points, leaving out ones off the roof; NaN if all are. */
+    private static double surfaceAt(Footprint f, double x, double z) {
+        double u = (x - f.sx) / 2, w = (z - f.sz) / 2;
+        int c = (int) Math.floor(u), r = (int) Math.floor(w), rows = f.roofs.length / f.sw;
+        double sum = 0, weight = 0;
+        for (int k = 0; k < 4; k++) {
+            int cc = c + (k & 1), rr = r + (k >> 1);
+            double wt = (1 - Math.abs(u - cc)) * (1 - Math.abs(w - rr));
+            int v = cc >= 0 && rr >= 0 && cc < f.sw && rr < rows ? f.roofs[rr * f.sw + cc] & 0xFF : 0;
+            if (v > 0 && wt > 0) {
+                sum += wt * v / 2.0;
+                weight += wt;
+            }
+        }
+        return weight == 0 ? Double.NaN : sum / weight;
     }
 
     /** A roof stair looking up towards the ridge, or a slab along the ridge (and on top of a big roof, flat). */
