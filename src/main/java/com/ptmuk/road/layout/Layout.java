@@ -500,8 +500,10 @@ public final class Layout {
                 jnByNode.put(n.id, j);
             }
         }
+        Map<Integer, Node> byId = new HashMap<>();
+        plan.nodes.forEach(n -> byId.put(n.id, n));         // (plan.node looks through them all: a big plan's would take a while)
         for (Segment s : plan.segments) {
-            Node a = plan.node(s.a), b = plan.node(s.b);
+            Node a = byId.get(s.a), b = byId.get(s.b);
             if (a == null || b == null || Math.hypot(b.x - a.x, b.z - a.z) < 1) {
                 continue;
             }
@@ -1552,6 +1554,7 @@ public final class Layout {
         }
         yellows();
         zebras();
+        crossings();
         boxJunctions();
         busStops();
     }
@@ -2401,24 +2404,85 @@ public final class Layout {
      * and a Belisha beacon at each end.
      */
     private void zebras() {
-        int blk = (int) Math.round(1 / Curve.STEP);
         for (Seg g : segs) {
             if (!g.st.zebra || g.st.footway() == 0) {
                 continue;
             }
-            Curve c = g.c;
             double s0 = stretchEnd(g, true), s1 = stretchEnd(g, false);
             if (s1 - s0 < 50) {
                 continue;
             }
-            int m = c.index((s0 + s1) / 2), half = (int) Math.round(1.5 / Curve.STEP);
+            zebraAt(g, g.c.index((s0 + s1) / 2), RoadPlan.CrossingType.ZEBRA);
+        }
+    }
+
+    /**
+     * The crossings mapped at real spots (see RoadPlan.Crossing), kept clear of the junctions at
+     * either end: a zebra; one with lights (studs, stop lines each way, zig-zags, tactile paving,
+     * a signal head each way); or plain, dropped kerbs and tactile paving.
+     */
+    private void crossings() {
+        Map<Integer, Seg> bySeg = new HashMap<>();
+        segs.forEach(g -> bySeg.put(g.seg.id, g));
+        for (RoadPlan.Crossing x : plan.crossings) {
+            Seg g = bySeg.get(x.segment);
+            if (g == null || g.st.footway() == 0) {
+                continue;
+            }
+            double s0 = stretchEnd(g, true) + 6, s1 = stretchEnd(g, false) - 6;
+            if (s1 <= s0) {
+                continue;                                   // no room clear of the junctions: they have their own
+            }
+            int m = g.c.index(Math.max(s0, Math.min(s1, x.at * g.c.length)));
+            if (x.type == RoadPlan.CrossingType.PLAIN) {
+                int blk = (int) Math.round(1 / Curve.STEP);
+                tactile(g, m - blk, m + blk, 8);
+            } else {
+                zebraAt(g, m, x.type);
+            }
+        }
+    }
+
+    /** A zebra (or a crossing with lights) across a road at point m of its curve. */
+    private void zebraAt(Seg g, int m, RoadPlan.CrossingType type) {
+        int blk = (int) Math.round(1 / Curve.STEP);
+        boolean lights = type == RoadPlan.CrossingType.SIGNALS;
+        {
+            Curve c = g.c;
+            int half = (int) Math.round(1.5 / Curve.STEP);
             for (int k = m - half; k <= m + half; k++) {
                 int across = rot8(c.leftX(k), c.leftZ(k));
                 boolean line = k == m - half || k == m + half;
+                if (lights && !line) {
+                    continue;                               // a crossing with lights: just its two lines of studs
+                }
                 for (double d = -g.hc + 0.01; d < g.hc; d += 0.25) {
                     int idx = index((int) Math.floor(c.x[k] + c.leftX(k) * d), (int) Math.floor(c.z[k] + c.leftZ(k) * d));
                     if (idx >= 0) {
                         setMark(idx, line ? M_HALF : M_ZEBRA, across, 9);
+                    }
+                }
+            }
+            if (lights) {
+                // a stop line before it each way (traffic keeps left: going a to b on the left), and a signal head on that kerb
+                for (int dir = -1; dir <= 1; dir += 2) {
+                    if (g.st.oneWay && dir > 0) {
+                        continue;                           // one way: traffic only comes from a
+                    }
+                    int k = m + dir * (half + 2 * blk);
+                    double tx = c.tx[k] * -dir, tz = c.tz[k] * -dir;
+                    int inbound = rot8(tx, tz);
+                    double from = g.st.oneWay ? -g.hc : 0, to = g.hc;
+                    for (double d = from + 0.01; d < to; d += 0.25) {
+                        double side = -dir * d;
+                        int idx = index((int) Math.floor(c.x[k] + c.leftX(k) * side), (int) Math.floor(c.z[k] + c.leftZ(k) * side));
+                        if (idx >= 0 && kind[idx] == ROAD) {
+                            setMark(idx, M_STOP, inbound, 9);
+                        }
+                    }
+                    int at = pavement(g, k, -dir, 8, false);
+                    if (at >= 0) {
+                        signalAt(cellX(at), cellZ(at), top[at], rot8(-tx, -tz));
                     }
                 }
             }
@@ -2438,7 +2502,7 @@ public final class Layout {
                 }
             }
             tactile(g, m - half + blk, m + half - blk, 8);
-            for (int sideSign = -1; sideSign <= 1; sideSign += 2) {
+            for (int sideSign = -1; sideSign <= 1 && !lights; sideSign += 2) {
                 int k = m + sideSign * (half + blk);
                 int idx = pavement(g, k, sideSign, 8, false);
                 if (idx >= 0 && !tooClose(cellX(idx), cellZ(idx), 0)) {

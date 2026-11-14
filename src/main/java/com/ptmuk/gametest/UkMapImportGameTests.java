@@ -424,6 +424,157 @@ public final class UkMapImportGameTests {
         return n;
     }
 
+    /**
+     * A high street from the map, in two OSM ways (different lanes tagged): one width all along.
+     * Lights mapped 25 m back from a junction put lights on the junction; lights with nothing near
+     * are a crossing with lights; a zebra and a plain crossing go where they're mapped, a crossing
+     * right by a junction is left to it. Laid out: zebra stripes, stop lines, signal heads and
+     * Belisha beacons. Then the same map in two sections, side by side, joined at the seam.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void readsCrossingsLightsAndSections(GameTestHelper helper) throws Exception {
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
+                + node(1, -200, 0, "") + node(2, -150, 0, tag("highway", "crossing") + tag("crossing", "uncontrolled") + tag("crossing_ref", "zebra"))
+                + node(3, -100, 0, "") + node(4, -60, 0, tag("highway", "crossing") + tag("crossing", "unmarked"))
+                + node(5, -10, 0, "") + node(6, -5, 0, tag("highway", "crossing") + tag("crossing", "traffic_signals"))
+                + node(7, 15, 0, tag("highway", "traffic_signals")) + node(8, 100, 0, "")
+                + node(9, 150, 0, tag("highway", "crossing") + tag("crossing", "traffic_signals")) + node(10, 200, 0, "")
+                + node(11, -10, -100, "")
+                + way(100, tag("highway", "primary") + tag("name", "High Street") + tag("lanes", "2"), 1, 2, 3, 4, 5)
+                + way(101, tag("highway", "primary") + tag("name", "High Street"), 5, 6, 7, 8, 9, 10)
+                + way(102, tag("highway", "residential") + tag("name", "Church Lane"), 5, 11) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        map.roads(plan, mi, map.buildings(mi), -1e9, -1e9, 1e9, 1e9);
+        RoadPlan.Node junction = nearest(plan, -10 * RoadPlan.MapImport.SCALE, 0);
+        helper.assertTrue(junction.junction == RoadPlan.Junction.SIGNALS, "lights 25 m back should light the junction, it's " + junction.junction);
+        java.util.Set<String> widths = new java.util.TreeSet<>();
+        plan.segments.stream().filter(sg -> sg.name.equals("High Street")).forEach(sg -> widths.add(sg.style.halfCarriageway() + "/" + sg.style.pavement));
+        helper.assertTrue(widths.size() == 1, "the high street should be one width all along: " + widths);
+        String types = plan.crossings.stream().map(c -> c.type.name()).sorted().toList().toString();
+        helper.assertTrue(types.equals("[PLAIN, SIGNALS, ZEBRA]"), "a zebra, a plain one and one with lights (the junction's own left to it): " + types);
+        com.ptmuk.road.layout.Layout l = com.ptmuk.road.layout.Layout.of(plan, com.ptmuk.road.layout.Terrain.flat(64));
+        int zebra = 0, stop = 0;
+        for (byte m : l.mark) {
+            zebra += (m & 0x3F) == com.ptmuk.road.layout.Layout.M_ZEBRA ? 1 : 0;
+            stop += (m & 0x3F) == com.ptmuk.road.layout.Layout.M_STOP ? 1 : 0;
+        }
+        long beacons = l.fixtures.stream().filter(f -> f.type() == com.ptmuk.road.layout.Layout.FixtureType.BELISHA_BEACON).count();
+        double crossX = 150 * RoadPlan.MapImport.SCALE;
+        long heads = l.fixtures.stream().filter(f -> f.type() == com.ptmuk.road.layout.Layout.FixtureType.SIGNAL && Math.abs(f.x() - crossX) < 20).count();
+        helper.assertTrue(zebra > 10 && beacons >= 2, "the zebra should be painted, with its beacons: " + zebra + " stripes, " + beacons + " beacons");
+        helper.assertTrue(stop > 10 && heads >= 2, "the crossing with lights should have stop lines and a head each way: " + stop + " stop line, " + heads + " heads");
+        // in two sections (west of the middle, then east), the second joining the first at the seam
+        RoadPlan two = new RoadPlan();
+        RoadPlan.MapImport ms = new RoadPlan.MapImport();
+        ms.lat0 = LAT;
+        ms.lon0 = LON;
+        ms.file = "street.osm";
+        ms.south = LAT - 0.002;
+        ms.west = LON - 0.004;
+        ms.tileLat = 0.004;
+        ms.tileLon = 0.004;
+        ms.sections = new java.util.ArrayList<>(List.of(new int[]{0, 0}, new int[]{1, 0}));
+        double[] w = ms.sectionBlocks(0, 0), e = ms.sectionBlocks(1, 0);
+        List<OsmMap.Outline> outlines = map.buildings(ms);
+        map.roads(two, ms, outlines, w[0], w[1], w[2], w[3], false);
+        long open = two.nodes.stream().filter(n -> n.open).count();
+        helper.assertTrue(open >= 1, "the road over the seam should be left open for the next section");
+        map.roads(two, ms, outlines, e[0], e[1], e[2], e[3], true);
+        RoadPlan.Node seam = two.nodes.stream().filter(n -> Math.abs(n.x - w[2]) < 2).findFirst().orElse(null);
+        helper.assertTrue(seam != null && !seam.open && two.segmentsAt(seam.id).size() == 2, "the seam should join the two sections' road");
+        helper.assertTrue(two.nodes.stream().noneMatch(n -> n.open && Math.abs(n.x - w[2]) < 2), "nothing should be left open at the seam");
+        helper.assertTrue(nearest(two, -10 * RoadPlan.MapImport.SCALE, 0).junction == RoadPlan.Junction.SIGNALS,
+                "the lights over the seam should still light the junction");
+        helper.assertTrue(ms.files().equals(List.of("street.osm", "street_1_0.osm")), "the sections' files: " + ms.files());
+        helper.succeed();
+    }
+
+    /**
+     * A café mapped in a shop gets its sign over the shop's street front, with its name; a car
+     * park's aisle lays its bays either side; a retail park's ground is tarmac.
+     */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 200)
+    public static void buildsShopFrontsAndCarParkAisles(GameTestHelper helper) throws Exception {
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
+                + node(1, -30, 0, "") + node(2, 160, 0, "")
+                + node(3, 0, -4, "") + node(4, 20, -4, "") + node(5, 20, -14, "") + node(6, 0, -14, "")
+                + node(7, 10, -6, tag("amenity", "cafe") + tag("name", "Lindy's Tea Room"))
+                + node(8, 40, -10, "") + node(9, 90, -10, "") + node(10, 90, -30, "") + node(11, 40, -30, "")
+                + node(12, 42, -20, "") + node(13, 88, -20, "")
+                + node(14, 100, -10, "") + node(15, 130, -10, "") + node(16, 130, -30, "") + node(17, 100, -30, "")
+                + way(100, tag("highway", "residential") + tag("name", "Station Road"), 1, 2)
+                + way(101, tag("building", "retail"), 3, 4, 5, 6, 3)
+                + way(102, tag("amenity", "parking"), 8, 9, 10, 11, 8)
+                + way(103, tag("highway", "service") + tag("service", "parking_aisle"), 12, 13)
+                + way(104, tag("landuse", "retail"), 14, 15, 16, 17, 14) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        mi.x = 10000;
+        mi.z = 10000;
+        plan.map = mi;
+        List<OsmMap.Outline> outlines = map.buildings(mi);
+        helper.assertTrue(outlines.get(0).shops().size() == 1 && outlines.get(0).shops().get(0).name().equals("Lindy's Tea Room")
+                && outlines.get(0).shops().get(0).kind().equals("coffee_shop"), "the café should be the shop's: " + outlines.get(0).shops());
+        map.roads(plan, mi, outlines, -1e9, -1e9, 1e9, 1e9);
+        net.minecraft.server.level.ServerLevel level = helper.getLevel();
+        int ground = 260;
+        for (int x = 9940; x < 10300; x++) {
+            for (int z = 9980; z < 10070; z++) {
+                level.setBlock(new BlockPos(x, ground - 1, z), Blocks.STONE.defaultBlockState(), 2);
+            }
+        }
+        com.ptmuk.road.layout.Layout layout = com.ptmuk.road.layout.Layout.of(plan, com.ptmuk.road.layout.Terrain.flat(ground));
+        MapBuildings.Batch batch = MapBuildings.unpack(MapBuildings.pack(MapBuildings.around(outlines, mi, 10100, 10030, RoadPlan.PART)));
+        helper.assertTrue(batch != null && MapBuildings.buildAll(level, batch, layout, plan) == 4, "all four should be built");
+        String sign = null;
+        for (int x = 9995; x < 10045 && sign == null; x++) {
+            for (int z = 9995; z < 10010 && sign == null; z++) {
+                for (int y = ground; y < ground + 10 && sign == null; y++) {
+                    if (level.getBlockEntity(new BlockPos(x, y, z)) instanceof com.ptmuk.building.ShopSignBlockEntity be && !be.text.isBlank()) {
+                        sign = be.text;
+                    }
+                }
+            }
+        }
+        helper.assertTrue("LINDY'S TEA ROOM".equals(sign), "the café's sign should be up on the street front, has " + sign);
+        int bays = 0, tarmac = 0;
+        for (int x = bx2(45); x < bx2(85); x++) {
+            for (int z = bz2(-12); z <= bz2(-28); z++) {
+                String id = id(level, x, ground - 1, z);
+                bays += id.equals("minecraft:white_concrete") ? 1 : 0;
+                tarmac += id.equals("ptmuk:tarmac") ? 1 : 0;
+            }
+        }
+        helper.assertTrue(bays > 40 && tarmac > 400, "the aisle should lay out bays either side: " + bays + " bay lines, " + tarmac + " tarmac");
+        helper.assertTrue(id(level, bx2(115), ground - 1, bz2(-20)).equals("ptmuk:tarmac"), "the retail park's ground should be tarmac, is "
+                + id(level, bx2(115), ground - 1, bz2(-20)));
+        helper.succeed();
+    }
+
+    private static final RoadPlan.MapImport AT_10000 = new RoadPlan.MapImport();
+
+    static {
+        AT_10000.lat0 = LAT;
+        AT_10000.lon0 = LON;
+        AT_10000.x = 10000;
+        AT_10000.z = 10000;
+    }
+
+    private static int bx2(double east) {
+        return (int) Math.floor(AT_10000.x(LON + east / (111320.0 * Math.cos(Math.toRadians(LAT)))));
+    }
+
+    private static int bz2(double north) {
+        return (int) Math.floor(AT_10000.z(LAT + north / 111250.0));
+    }
+
     private static String id(net.minecraft.server.level.ServerLevel level, int x, int y, int z) {
         return net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(level.getBlockState(new BlockPos(x, y, z)).getBlock()).toString();
     }

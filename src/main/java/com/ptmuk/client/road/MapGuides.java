@@ -69,7 +69,7 @@ public final class MapGuides {
         }
         String k = mi.file + "|" + mi.lat0 + "|" + mi.lon0 + "|" + mi.x + "|" + mi.z + "|" + mi.scale;
         if (!k.equals(key) && pending == null) {
-            CompletableFuture<OsmMap> f = MapFiles.get(mi.file);
+            CompletableFuture<OsmMap> f = MapFiles.getAll(mi.files());
             if (f.isDone() && !f.isCompletedExceptionally()) {
                 OsmMap osm = f.join();
                 pendingKey = k;

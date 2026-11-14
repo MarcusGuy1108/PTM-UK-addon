@@ -95,7 +95,7 @@ public class RoadPlannerScreen extends Screen {
     /** Map mode, before a map's chosen: a place to fetch from OpenStreetMap, how big an area, and whether it's being fetched. */
     private EditBox placeBox;
     private static String placeTyped = "";
-    static int downloadSize = 1;
+    static int downloadSize = 0;
     static final int[] DOWNLOAD_METRES = {400, 800, 1500, 3000};
     private static boolean downloading;
     /** Why a download came without real heights, said once it's imported. */
@@ -228,7 +228,7 @@ public class RoadPlannerScreen extends Screen {
         moveButton = addRenderableWidget(Button.builder(Component.literal("Move"), b -> setMode(Mode.MOVE)).bounds(x + 143, 3, 30, 16)
                 .tooltip(Tooltip.create(Component.literal("Copy big parts of the world and paste them anywhere, in this world or another"))).build());
         if (plan.map != null && outlines == null) {
-            readMap(plan.map.file, m -> showOutlines());
+            readMap(m -> showOutlines());
         }
         int right = width - 3;
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(right - 36, 3, 36, 16).build());
@@ -577,6 +577,10 @@ public class RoadPlannerScreen extends Screen {
                     }
                 });
         y += ROW;
+        halfButtons(y, "Extend north", b -> extend(0, 1, "north"), "Extend south", b -> extend(0, -1, "south"));
+        y += ROW;
+        halfButtons(y, "Extend west", b -> extend(-1, 0, "west"), "Extend east", b -> extend(1, 0, "east"));
+        y += ROW;
         button(y, () -> "Guides in world: " + (mi.guides ? "on" : "off"), b -> mi.guides = !mi.guides);
         y += ROW;
         button(y, () -> "Buildings: " + (mi.buildings ? "build them" : "outlines only"), b -> mi.buildings = !mi.buildings);
@@ -823,6 +827,80 @@ public class RoadPlannerScreen extends Screen {
         mapThen = then;
     }
 
+    /** The imported map read: all its sections, together. */
+    private void readMap(Consumer<OsmMap> then) {
+        mapJob = MapFiles.getAll(plan.map.files());
+        mapThen = then;
+    }
+
+    /** A map imported before it came in sections: one section, the size of its own area. */
+    private static void sections(RoadPlan.MapImport mi, OsmMap m) {
+        if (mi.tileLat <= 0 || mi.tileLon <= 0 || mi.sections.isEmpty()) {
+            mi.south = m.minLat;
+            mi.west = m.minLon;
+            mi.tileLat = m.maxLat - m.minLat;
+            mi.tileLon = m.maxLon - m.minLon;
+            mi.sections = new ArrayList<>(List.of(new int[]{0, 0}));
+        }
+    }
+
+    /**
+     * The map extended by a section (the size of the first) the way asked, next to the section
+     * the middle of the view's in (or the last brought in): downloaded from OpenStreetMap with its
+     * real heights where there are any, its roads joined to the map's at the edge. Works whenever,
+     * built or not: the planner keeps where the map is.
+     */
+    private void extend(int di, int dj, String way) {
+        RoadPlan.MapImport mi = plan.map;
+        if (mi == null || osm == null || downloading) {
+            flash(downloading ? "Already fetching a map" : "The map's still loading - try again in a moment");
+            return;
+        }
+        sections(mi, osm);
+        int[] from = mi.sections.get(mi.sections.size() - 1);
+        for (int[] sec : mi.sections) {
+            double[] b = mi.sectionBlocks(sec[0], sec[1]);
+            if (camX >= b[0] && camX < b[2] && camZ >= b[1] && camZ < b[3]) {
+                from = sec;
+            }
+        }
+        int i = from[0] + di, j = from[1] + dj;
+        if (mi.hasSection(i, j)) {
+            flash("The section " + way + " of that one's in already: look at the map's edge and Extend from there");
+            return;
+        }
+        double[] box = mi.section(i, j);
+        String stem = mi.file.toLowerCase(java.util.Locale.ROOT).endsWith(".osm") ? mi.file.substring(0, mi.file.length() - 4) : mi.file;
+        String file = stem + "_" + i + "_" + j + ".osm";
+        downloading = true;
+        flash("Downloading the next section " + way + " from OpenStreetMap...");
+        Minecraft mc = Minecraft.getInstance();
+        MapDownload.downloadBox(file, box[0], box[1], box[2], box[3])
+                .thenCompose(f -> MapDownload.heights(f, box[0], box[1], box[2], box[3], msg -> mc.execute(() -> flash(msg))).handle((l, err) -> f))
+                .whenComplete((f, err) -> mc.execute(() -> {
+                    downloading = false;
+                    if (err != null) {
+                        flash("Couldn't fetch the next section: " + (err.getCause() != null ? err.getCause() : err).getMessage());
+                        rebuildPanel();
+                        return;
+                    }
+                    remember();
+                    mi.sections.add(new int[]{i, j});
+                    readMap(m -> {
+                        osm = m;
+                        double[] blk = mi.sectionBlocks(i, j);
+                        List<OsmMap.Outline> b = m.buildings(mi, false);
+                        int roads = m.roads(plan, mi, b, blk[0], blk[1], blk[2], blk[3], true);
+                        int stops = m.busStops(plan, mi, blk);
+                        showOutlines();
+                        changed();
+                        flash("Added the section " + way + ": " + roads + " roads and " + stops + " bus stops, joined to the map. Build to build it.");
+                    });
+                    rebuildPanel();
+                }));
+        rebuildPanel();
+    }
+
     /**
      * Fetch the typed place's map from OpenStreetMap (found by name, then its roads, buildings and
      * bus stops downloaded), save it in the maps folder and import it at the middle of the view.
@@ -916,6 +994,7 @@ public class RoadPlannerScreen extends Screen {
             mi.lon0 = m.midLon();
             mi.x = (int) Math.floor(camX);
             mi.z = (int) Math.floor(camZ);
+            sections(mi, m);
             plan.map = mi;
             layMapRoads(m);
         });
@@ -925,9 +1004,16 @@ public class RoadPlannerScreen extends Screen {
         osm = m;
         RoadPlan.MapImport mi = plan.map;
         List<OsmMap.Outline> b = m.buildings(mi, false);          // (enough to fit the pavements: the real heights come in the background)
-        // all of it: a big map is previewed and built a part at a time, round where you are
-        int roads = m.roads(plan, mi, b, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
-        int stops = m.busStops(plan, mi);
+        // each section strictly to its edges, joined to the one before (a big map is previewed and built a part at a time)
+        sections(mi, m);
+        int roads = 0, stops = 0;
+        boolean first = true;
+        for (int[] sec : mi.sections) {
+            double[] box = mi.sectionBlocks(sec[0], sec[1]);
+            roads += m.roads(plan, mi, b, box[0], box[1], box[2], box[3], !first);
+            stops += m.busStops(plan, mi, box);
+            first = false;
+        }
         showOutlines();
         changed();
         int kb = RoadPlans.pack(plan).length / 1024;
@@ -943,6 +1029,7 @@ public class RoadPlannerScreen extends Screen {
     private void removeMapRoads() {
         RoadPlan.MapImport mi = plan.map;
         plan.busStops.removeIf(b -> mi.owns(b.segment) && !b.built);
+        plan.crossings.removeIf(x -> mi.owns(x.segment) && !x.built);
         plan.segments.removeIf(sg -> mi.owns(sg.id) && !sg.built);
         plan.nodes.removeIf(n -> mi.owns(n.id) && !n.built && plan.segmentsAt(n.id).isEmpty());
     }
@@ -950,7 +1037,7 @@ public class RoadPlannerScreen extends Screen {
     private void rescale(double scale) {
         RoadPlan.MapImport mi = plan.map;
         double to = Math.max(1, Math.min(3, Math.round(scale * 10) / 10.0));
-        readMap(mi.file, m -> {
+        readMap(m -> {
             remember();
             removeMapRoads();
             mi.scale = to;
@@ -997,7 +1084,8 @@ public class RoadPlannerScreen extends Screen {
                 }
                 OsmMap.Surface sf = o.surface();
                 moved.add(new OsmMap.Outline(xs, zs, o.height(), o.kind(), o.roof(), o.floors(), o.material(), o.roofMaterial(),
-                        sf == null ? null : new OsmMap.Surface(sf.x0() + dx, sf.z0() + dz, sf.w(), sf.v())));
+                        sf == null ? null : new OsmMap.Surface(sf.x0() + dx, sf.z0() + dz, sf.w(), sf.v()),
+                        o.shops().stream().map(sh -> new OsmMap.Shop(sh.kind(), sh.name(), sh.x() + dx, sh.z() + dz)).toList()));
             }
             outlines = moved;
             outlinesKey = outlineKey(mi);
@@ -1015,6 +1103,12 @@ public class RoadPlannerScreen extends Screen {
         }
         rect(g, (int) Math.floor(box[0] + mapDX), (int) Math.floor(box[1] + mapDZ), (int) Math.ceil(box[2] + mapDX),
                 (int) Math.ceil(box[3] + mapDZ), 1, mapDrag ? 0xFFFFD24A : 0xA0FFD24A);
+        RoadPlan.MapImport mi = plan.map;
+        for (int[] sec : mi.tileLat > 0 ? mi.sections : List.<int[]>of()) {
+            double[] b = mi.sectionBlocks(sec[0], sec[1]);
+            rect(g, (int) Math.floor(b[0] + mapDX), (int) Math.floor(b[1] + mapDZ), (int) Math.ceil(b[2] + mapDX), (int) Math.ceil(b[3] + mapDZ), 1,
+                    0x70FFFFFF);
+        }
         if (!mapDrag) {
             return;
         }
@@ -1045,7 +1139,7 @@ public class RoadPlannerScreen extends Screen {
 
     /** What the map's outlines depend on: where it is, its scale, and whether it has real heights (not its nudge: they're drawn nudged). */
     private String outlineKey(RoadPlan.MapImport mi) {
-        return mi.x + "|" + mi.z + "|" + mi.scale + "|" + mi.lat0 + "|" + mi.lon0 + "|" + (osm != null && osm.lidar != null);
+        return mi.x + "|" + mi.z + "|" + mi.scale + "|" + mi.lat0 + "|" + mi.lon0 + "|" + (osm != null && osm.lidar != null) + "|" + mi.sections.size();
     }
 
     /**

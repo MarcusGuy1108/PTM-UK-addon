@@ -113,10 +113,54 @@ final class MapDownload {
      */
     static CompletableFuture<String> download(String name, double lat, double lon, double half) {
         double[] b = OsmMap.box(lat, lon, half);
-        String body = "data=" + URLEncoder.encode(OsmMap.overpassQuery(b[0], b[1], b[2], b[3]), StandardCharsets.UTF_8);
         String file = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "") + "_" + (int) (half * 2) + "m.osm";
-        Path path = MapFiles.folder().resolve(file);
-        return tryServer(0, body, path).thenApply(p -> file);
+        return downloadBox(file, b[0], b[1], b[2], b[3]);
+    }
+
+    /**
+     * Everything OpenStreetMap has in an area (south, west, north, east), saved as file in the maps
+     * folder: from OpenStreetMap's own API (what its Export button gives, the area's edges marked
+     * in it), else from an Overpass server (its edges put in).
+     */
+    static CompletableFuture<String> downloadBox(String file, double s, double w, double n, double e) {
+        Path path = MapFiles.folder().resolve(file), part = path.resolveSibling(file + ".part");
+        HttpRequest req = HttpRequest.newBuilder(URI.create(String.format(Locale.ROOT, "https://api.openstreetmap.org/api/0.6/map?bbox=%.7f,%.7f,%.7f,%.7f",
+                w, s, e, n))).header("User-Agent", AGENT).timeout(Duration.ofMinutes(3)).build();
+        try {
+            Files.createDirectories(path.getParent());
+        } catch (IOException ex) {
+            return CompletableFuture.failedFuture(ex);
+        }
+        return HTTP.sendAsync(req, HttpResponse.BodyHandlers.ofFile(part)).thenApply(res -> {
+            try {
+                String head;
+                try (var in = Files.newInputStream(part)) {
+                    head = new String(in.readNBytes(600), StandardCharsets.UTF_8);
+                }
+                if (res.statusCode() != 200 || !head.contains("<osm")) {
+                    Files.deleteIfExists(part);
+                    throw new IllegalStateException("OpenStreetMap said " + res.statusCode());
+                }
+                Files.move(part, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                return file;
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }).exceptionallyCompose(err -> {
+            String body = "data=" + URLEncoder.encode(OsmMap.overpassQuery(s, w, n, e), StandardCharsets.UTF_8);
+            return tryServer(0, body, path).thenApply(p -> {
+                try {
+                    // Overpass's answer doesn't say the area it's for: put it in, so the map knows its edges
+                    String xml = Files.readString(p);
+                    int at = xml.indexOf('>', xml.indexOf("<osm")) + 1;
+                    Files.writeString(p, xml.substring(0, at) + String.format(Locale.ROOT, "\n <bounds minlat=\"%.7f\" minlon=\"%.7f\" maxlat=\"%.7f\" maxlon=\"%.7f\"/>",
+                            s, w, n, e) + xml.substring(at));
+                } catch (IOException ex) {
+                    throw new IllegalStateException(ex);
+                }
+                return file;
+            });
+        });
     }
 
     /**

@@ -79,6 +79,23 @@ public final class MapFiles {
         return l.map();
     }
 
+    /** A map in sections: its files read (each once, as get) and put together as one; one file is just get. */
+    public static CompletableFuture<OsmMap> getAll(List<String> names) {
+        if (names.size() == 1) {
+            return get(names.get(0));
+        }
+        List<CompletableFuture<OsmMap>> parts = names.stream().map(MapFiles::get).toList();
+        String key = String.join("|", names);
+        long version = parts.stream().mapToLong(System::identityHashCode).reduce(17, (a, b) -> a * 31 + b);     // (a file read again: a new one)
+        Loaded l = CACHE.get(key);
+        if (l == null || l.modified() != version) {
+            l = new Loaded(version, CompletableFuture.allOf(parts.toArray(new CompletableFuture[0]))
+                    .thenApplyAsync(v -> OsmMap.merged(parts.stream().map(CompletableFuture::join).toList()), Util.backgroundExecutor()));
+            CACHE.put(key, l);
+        }
+        return l.map();
+    }
+
     /** Where a map's real heights (see MapDownload.heights) are kept: beside it. */
     static Path lidar(String name) {
         return folder().resolve(name + ".lidar");

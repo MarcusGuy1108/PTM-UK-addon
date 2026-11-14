@@ -143,6 +143,28 @@ public final class RoadPlan {
         public boolean built;
     }
 
+    /** What kind of pedestrian crossing: a zebra, one with lights (a pelican or puffin), or plain (dropped kerbs and tactile paving). */
+    public enum CrossingType { ZEBRA, SIGNALS, PLAIN }
+
+    /** A pedestrian crossing at a real spot along a road (0 to 1, a to b): from a map, where it's mapped. */
+    public static final class Crossing {
+        public int id;
+        public int segment;
+        public double at = 0.5;
+        public CrossingType type = CrossingType.PLAIN;
+        public boolean built;
+    }
+
+    public Crossing addCrossing(int segment, double at, CrossingType type) {
+        Crossing c = new Crossing();
+        c.id = nextId++;
+        c.segment = segment;
+        c.at = Math.max(0.05, Math.min(0.95, at));
+        c.type = type;
+        crossings.add(c);
+        return c;
+    }
+
     public BusStop addBusStop(int segment, double at, int side, String name) {
         BusStop b = new BusStop();
         b.id = nextId++;
@@ -277,6 +299,39 @@ public final class RoadPlan {
         public boolean buildings;
         /** Squares (x0, z0, x1, z1) whose buildings are built: a building is in the one its middle is in. */
         public List<int[]> builtAreas = new ArrayList<>();
+        /**
+         * The map in sections, each the size of the first (its south-west corner and size in degrees):
+         * the sections brought in, as how many east and north of the first (see Extend in the planner).
+         */
+        public double south, west, tileLat, tileLon;
+        public List<int[]> sections = new ArrayList<>();
+
+        /** A section's area: south, west, north, east (degrees). */
+        public double[] section(int i, int j) {
+            return new double[]{south + j * tileLat, west + i * tileLon, south + (j + 1) * tileLat, west + (i + 1) * tileLon};
+        }
+
+        /** A section's area in blocks: x0, z0, x1, z1. */
+        public double[] sectionBlocks(int i, int j) {
+            double[] b = section(i, j);
+            return new double[]{x(b[1]), z(b[2]), x(b[3]), z(b[0])};
+        }
+
+        public boolean hasSection(int i, int j) {
+            return sections.stream().anyMatch(s -> s.length == 2 && s[0] == i && s[1] == j);
+        }
+
+        /** The map's files: the first section's own, the rest named after it (file_i_j.osm). */
+        public List<String> files() {
+            List<String> out = new ArrayList<>();
+            String stem = file.toLowerCase(java.util.Locale.ROOT).endsWith(".osm") ? file.substring(0, file.length() - 4) : file;
+            for (int[] s : sections) {
+                if (s.length == 2) {
+                    out.add(s[0] == 0 && s[1] == 0 ? file : stem + "_" + s[0] + "_" + s[1] + ".osm");
+                }
+            }
+            return out.isEmpty() ? List.of(file) : out;
+        }
 
         public boolean buildingsBuilt(double x, double z) {
             for (int[] a : builtAreas) {
@@ -324,6 +379,7 @@ public final class RoadPlan {
     public List<Segment> segments = new ArrayList<>();
     public List<Site> sites = new ArrayList<>();
     public List<BusStop> busStops = new ArrayList<>();
+    public List<Crossing> crossings = new ArrayList<>();
     public MapImport map;
     /** Where Build was pressed from: a big plan is built a part at a time starting round here (NaN: round the player). */
     public double buildX = Double.NaN, buildZ = Double.NaN;
@@ -432,6 +488,11 @@ public final class RoadPlan {
                 p.busStops.add(b);
             }
         }
+        for (Crossing x : crossings) {
+            if (own.contains(x.segment) || context.contains(x.segment)) {
+                p.crossings.add(x);
+            }
+        }
         RoadPlan c = p.copy();
         for (Node n : c.nodes) {
             n.built |= !inner.contains(n.id);
@@ -496,6 +557,9 @@ public final class RoadPlan {
                 }
             }
         }
+        for (Crossing x : crossings) {
+            x.built |= part.ownSegments.contains(x.segment);
+        }
         if (map != null && part.map != null) {
             map.builtAreas = part.map.builtAreas;
         }
@@ -513,6 +577,9 @@ public final class RoadPlan {
         if (map != null && map.builtAreas == null) {
             map.builtAreas = new ArrayList<>();
         }
+        if (map != null && map.sections == null) {
+            map.sections = new ArrayList<>();
+        }
         if (segments == null) {
             segments = new ArrayList<>();
         }
@@ -521,6 +588,12 @@ public final class RoadPlan {
         }
         if (busStops == null) {
             busStops = new ArrayList<>();
+        }
+        if (crossings == null) {
+            crossings = new ArrayList<>();
+        }
+        for (Crossing x : crossings) {
+            nextId = Math.max(nextId, x.id + 1);
         }
         for (BusStop b : busStops) {
             nextId = Math.max(nextId, b.id + 1);
@@ -645,6 +718,7 @@ public final class RoadPlan {
         }
         segments.remove(s);
         busStops.removeIf(b -> b.segment == id);
+        crossings.removeIf(x -> x.segment == id);
         for (int end : new int[]{s.a, s.b}) {
             if (segmentsAt(end).isEmpty()) {
                 nodes.removeIf(n -> n.id == end);

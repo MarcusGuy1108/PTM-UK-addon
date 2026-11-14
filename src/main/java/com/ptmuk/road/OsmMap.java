@@ -30,7 +30,11 @@ import javax.xml.stream.XMLStreamReader;
 public final class OsmMap {
     /** A building: its corners (the first again at the end), blocks tall, and what OSM says it is (its building, roof:shape, building:material and roof:material tags, and floors). */
     public record Outline(double[] x, double[] z, int height, String kind, String roof, int floors, String material, String roofMaterial,
-                          Surface surface) {
+                          Surface surface, List<Shop> shops) {
+    }
+
+    /** A shop (or café, pub, bank...) in a building: the kind of sign it gets (see ShopNames), its name, and where it's mapped (blocks). */
+    public record Shop(String kind, String name, double x, double z) {
     }
 
     /**
@@ -50,7 +54,7 @@ public final class OsmMap {
         }
     }
 
-    private record Relation(Map<String, String> tags, List<Long> outers) {
+    private record Relation(long id, Map<String, String> tags, List<Long> outers) {
     }
 
     private static final Set<String> ROADS = Set.of("motorway", "trunk", "primary", "secondary", "tertiary", "unclassified",
@@ -64,8 +68,12 @@ public final class OsmMap {
 
     private final Map<Long, double[]> nodes = new HashMap<>();          // lat, lon
     private final Map<Long, String> pointHighway = new HashMap<>();     // traffic_signals, mini_roundabout
+    /** Pedestrian crossings (highway=crossing, or traffic lights that are a crossing's): what kind each is. */
+    private final Map<Long, RoadPlan.CrossingType> crossings = new HashMap<>();
     /** Bus stops (highway=bus_stop, or a bus platform): their names. */
     private final Map<Long, String> busStops = new HashMap<>();
+    /** Shops, cafés, pubs and the like mapped as a point (in their building): the kind of sign each gets, and its name. */
+    private final Map<Long, String[]> pois = new HashMap<>();
     /** Things mapped as a point (trees, benches, bins, pillar boxes, phone boxes, lamps, bollards, bike stands): what each is. */
     private final Map<Long, String> things = new java.util.LinkedHashMap<>();
     private final List<Way> ways = new ArrayList<>();
@@ -96,7 +104,7 @@ public final class OsmMap {
                 + "way[\"natural\"~\"^(water|wood|tree_row)$\"]" + box + ";"
                 + "relation[\"natural\"~\"^(water|wood)$\"][\"type\"=\"multipolygon\"]" + box + ";"
                 + "way[\"waterway\"]" + box + ";"
-                + "way[\"landuse\"~\"^(grass|forest|recreation_ground|village_green|cemetery|reservoir|basin|meadow)$\"]" + box + ";"
+                + "way[\"landuse\"~\"^(grass|forest|recreation_ground|village_green|cemetery|reservoir|basin|meadow|retail|commercial|industrial)$\"]" + box + ";"
                 + "relation[\"landuse\"~\"^(grass|forest|recreation_ground|cemetery|reservoir)$\"][\"type\"=\"multipolygon\"]" + box + ";"
                 + "way[\"leisure\"~\"^(park|garden|pitch|playground|common|recreation_ground|village_green|dog_park)$\"]" + box + ";"
                 + "relation[\"leisure\"~\"^(park|garden|common)$\"][\"type\"=\"multipolygon\"]" + box + ";"
@@ -178,6 +186,10 @@ public final class OsmMap {
                     case "node" -> {
                         if (tags != null && tags.containsKey("highway")) {
                             m.pointHighway.put(id, tags.get("highway"));
+                            RoadPlan.CrossingType crossing = crossingType(tags);
+                            if (crossing != null) {
+                                m.crossings.put(id, crossing);
+                            }
                         }
                         if (tags != null && ("bus_stop".equals(tags.get("highway"))
                                 || "platform".equals(tags.get("public_transport")) && "yes".equals(tags.get("bus")))) {
@@ -186,6 +198,10 @@ public final class OsmMap {
                         String thing = tags == null ? null : pointKind(tags);
                         if (thing != null) {
                             m.things.put(id, thing);
+                        }
+                        String sign = tags == null ? null : signKind(tags);
+                        if (sign != null) {
+                            m.pois.put(id, new String[]{sign, tags.getOrDefault("name", tags.getOrDefault("brand", ""))});
                         }
                         tags = null;
                     }
@@ -196,7 +212,7 @@ public final class OsmMap {
                     }
                     case "relation" -> {
                         if ("multipolygon".equals(tags.get("type")) && areaKind(tags) != null) {
-                            m.relations.add(new Relation(tags, refs));
+                            m.relations.add(new Relation(id, tags, refs));
                         }
                         refs = null;
                         tags = null;
@@ -213,6 +229,33 @@ public final class OsmMap {
         return Double.parseDouble(r.getAttributeValue(null, attr));
     }
 
+    /** Maps of the sections next to each other as one (a way or relation in two of them once), in a new map. */
+    public static OsmMap merged(List<OsmMap> maps) {
+        OsmMap m = new OsmMap();
+        Set<Long> ways = new HashSet<>(), relations = new HashSet<>();
+        for (OsmMap o : maps) {
+            m.nodes.putAll(o.nodes);
+            m.pointHighway.putAll(o.pointHighway);
+            m.crossings.putAll(o.crossings);
+            m.busStops.putAll(o.busStops);
+            m.pois.putAll(o.pois);
+            m.things.putAll(o.things);
+            o.ways.stream().filter(w -> ways.add(w.id())).forEach(m.ways::add);
+            o.relations.stream().filter(r -> relations.add(r.id())).forEach(m.relations::add);
+            m.minLat = Math.min(m.minLat, o.minLat);
+            m.maxLat = Math.max(m.maxLat, o.maxLat);
+            m.minLon = Math.min(m.minLon, o.minLon);
+            m.maxLon = Math.max(m.maxLon, o.maxLon);
+            if (o.lidar != null) {
+                if (m.lidar == null) {
+                    m.lidar = new Lidar();
+                }
+                m.lidar.tiles.addAll(o.lidar.tiles);
+            }
+        }
+        return m;
+    }
+
     public double midLat() {
         return (minLat + maxLat) / 2;
     }
@@ -226,11 +269,16 @@ public final class OsmMap {
      * map road nearest it, on the side it's on, if one's within 25 blocks; what was added.
      */
     public int busStops(RoadPlan plan, MapImport mi) {
+        return busStops(plan, mi, new double[]{-Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE});
+    }
+
+    /** The bus stops in an area (x0, z0, x1, z1: a section of the map). */
+    public int busStops(RoadPlan plan, MapImport mi, double[] area) {
         int added = 0;
         java.util.Set<String> placed = new java.util.HashSet<>();
         for (Map.Entry<Long, String> e : busStops.entrySet()) {
             double[] ll = nodes.get(e.getKey());
-            if (ll == null) {
+            if (ll == null || !inside(area, mi.x(ll[1]), mi.z(ll[0]))) {
                 continue;
             }
             double px = mi.x(ll[1]), pz = mi.z(ll[0]), best = 25, at = 0;
@@ -300,8 +348,9 @@ public final class OsmMap {
             "woodchips", "sand", "pebblestone");
     private static final Set<String> METAL_FENCES = Set.of("palisade", "metal", "railing", "chain_link", "metal_bars", "mesh");
     /** Not buildings: what's laid on the ground, runs along it, or stands on it (see MapBuildings). */
-    private static final Set<String> FEATURES = Set.of("parking", "fuel", "water", "wood", "green", "pitch", "pedestrian", "hedge", "fence",
-            "fence:metal", "wall", "tree_row", "tree", "bench", "bin", "post_box", "phone", "bike", "lamp", "bollard");
+    private static final Set<String> FEATURES = Set.of("parking", "fuel", "water", "wood", "green", "pitch", "pedestrian", "yard:retail",
+            "yard:industrial", "aisle", "hedge", "fence", "fence:metal", "wall", "tree_row", "tree", "bench", "bin", "post_box", "phone", "bike",
+            "lamp", "bollard");
 
     /** Not a building: an area laid on the ground, a line along it (a path, a river, a hedge...) or a thing stood on it. */
     public static boolean feature(String kind) {
@@ -335,7 +384,11 @@ public final class OsmMap {
         if ((highway.equals("pedestrian") || highway.equals("footway")) && "yes".equals(tags.get("area")) || "square".equals(tags.get("place"))) {
             return "pedestrian";
         }
-        return null;
+        // a retail park's, or an estate's, ground between its buildings, car parks and grass: tarmac, or a concrete yard
+        if (landuse.equals("retail") || landuse.equals("commercial")) {
+            return "yard:retail";
+        }
+        return landuse.equals("industrial") ? "yard:industrial" : null;
     }
 
     /**
@@ -349,6 +402,9 @@ public final class OsmMap {
             return null;
         }
         String highway = tags.getOrDefault("highway", ""), waterway = tags.getOrDefault("waterway", ""), barrier = tags.getOrDefault("barrier", "");
+        if (highway.equals("service") && "parking_aisle".equals(tags.get("service"))) {
+            return "aisle";                                 // a car park's aisle: bays either side (see MapBuildings)
+        }
         if (PATHS.contains(highway) && !"sidewalk".equals(tags.get("footway")) && !"crossing".equals(tags.get("footway"))
                 && !"yes".equals(tags.get("area"))) {
             String surface = tags.getOrDefault("surface", "");
@@ -372,6 +428,99 @@ public final class OsmMap {
             case "fence" -> METAL_FENCES.contains(tags.getOrDefault("fence_type", "")) ? "fence:metal" : "fence";
             case "wall", "retaining_wall", "city_wall" -> "wall";
             default -> "tree_row".equals(tags.get("natural")) ? "tree_row" : null;
+        };
+    }
+
+    /**
+     * What kind of crossing a point is: lights (crossing=traffic_signals, or traffic lights tagged as
+     * a crossing's), a zebra (its markings or reference say so), or plain; null if it's not one.
+     */
+    static RoadPlan.CrossingType crossingType(Map<String, String> tags) {
+        String highway = tags.getOrDefault("highway", ""), crossing = tags.getOrDefault("crossing", "");
+        if (highway.equals("traffic_signals")) {
+            String ts = tags.getOrDefault("traffic_signals", "");
+            return !crossing.isEmpty() && !crossing.equals("no") || ts.equals("crossing") || ts.equals("pedestrian_crossing")
+                    ? RoadPlan.CrossingType.SIGNALS : null;
+        }
+        if (!highway.equals("crossing") || crossing.equals("no")) {
+            return null;
+        }
+        if (crossing.equals("traffic_signals")) {
+            return RoadPlan.CrossingType.SIGNALS;
+        }
+        return crossing.equals("zebra") || "zebra".equals(tags.get("crossing_ref")) || "zebra".equals(tags.get("crossing:markings"))
+                ? RoadPlan.CrossingType.ZEBRA : RoadPlan.CrossingType.PLAIN;
+    }
+
+    /**
+     * The kind of shop sign (one of ShopNames') for a shop, café, pub, bank and the like, from its
+     * tags: a nail bar a beauty salon's, a corner shop a newsagent's, a tyre place a trade counter's...;
+     * null if it isn't one.
+     */
+    static String signKind(Map<String, String> tags) {
+        String shop = tags.getOrDefault("shop", ""), amenity = tags.getOrDefault("amenity", ""), cuisine = tags.getOrDefault("cuisine", "");
+        if (shop.equals("vacant") || shop.equals("no")) {
+            return null;
+        }
+        switch (amenity) {
+            case "cafe", "ice_cream" -> {
+                return "coffee_shop";
+            }
+            case "restaurant" -> {
+                return cuisine.contains("indian") || cuisine.contains("curry") ? "indian_restaurant"
+                        : cuisine.contains("chicken") || cuisine.contains("portuguese") ? "peri_peri_restaurant" : "pizza_restaurant";
+            }
+            case "fast_food" -> {
+                return cuisine.contains("fish") ? "fish_and_chips" : cuisine.contains("chinese") ? "chinese_takeaway"
+                        : cuisine.contains("kebab") || cuisine.contains("turkish") ? "kebab_shop" : cuisine.contains("pizza") ? "pizza_takeaway"
+                        : cuisine.contains("chicken") ? "drive_chicken" : cuisine.contains("coffee") ? "coffee_shop" : "drive_burgers";
+            }
+            case "pub" -> {
+                return "corner_pub";
+            }
+            case "bar" -> {
+                return "cocktail_bar";
+            }
+            case "nightclub" -> {
+                return "nightclub";
+            }
+            case "bank", "bureau_de_change", "money_transfer" -> {
+                return "bank";
+            }
+            case "pharmacy" -> {
+                return "pharmacy";
+            }
+            case "post_office" -> {
+                return "newsagent";
+            }
+            default -> {
+            }
+        }
+        if (shop.isEmpty()) {
+            return null;
+        }
+        return switch (shop) {
+            case "convenience", "newsagent", "kiosk", "tobacco", "e-cigarette", "off_licence" -> "newsagent";
+            case "supermarket", "butcher", "greengrocer", "deli", "frozen_food", "seafood" -> "retail_food";
+            case "bakery", "pastry", "confectionery" -> "bakery";
+            case "hairdresser", "barber", "tattoo" -> "barbers";
+            case "beauty", "nails", "cosmetics", "perfumery", "massage", "optician", "hearing_aids" -> "retail_beauty";
+            case "chemist", "medical_supply" -> "pharmacy";
+            case "mobile_phone", "telecommunication", "computer" -> "phone_shop";
+            case "bookmaker", "lottery" -> "bookmakers";
+            case "estate_agent", "travel_agency", "insurance", "money_lender", "pawnbroker" -> "estate_agent";
+            case "laundry", "dry_cleaning" -> "launderette";
+            case "variety_store", "discount", "general" -> "pound_shop";
+            case "clothes", "shoes", "boutique", "fashion", "jewelry", "charity", "second_hand", "bag", "fabric" -> "retail_fashion";
+            case "furniture", "bed", "interior_decoration", "carpet", "kitchen", "bathroom_furnishing" -> "retail_furniture";
+            case "doityourself", "hardware", "trade", "garden_centre", "car_repair", "tyres", "car_parts", "car", "paint", "building_materials" ->
+                    "retail_diy";
+            case "electronics", "electrical", "appliance", "hifi" -> "retail_electricals";
+            case "pet", "pet_grooming" -> "retail_pets";
+            case "sports", "outdoor", "bicycle", "fishing" -> "retail_sports";
+            case "video_games", "games", "toys", "hobby", "model" -> "games_shop";
+            case "alcohol", "wine", "beverages" -> "wine_bar";
+            default -> "retail_home";
         };
     }
 
@@ -424,6 +573,7 @@ public final class OsmMap {
         for (Map.Entry<Long, String> t : things.entrySet()) {
             feature(out, new long[]{t.getKey()}, t.getValue(), mi);
         }
+        shopsInto(out, mi);
         for (Relation rel : relations) {
             for (long id : rel.outers()) {
                 Way w = byId.get(id);
@@ -434,6 +584,63 @@ public final class OsmMap {
             }
         }
         return out;
+    }
+
+    /** The shops mapped as points, each into the building it's in (they're its shop fronts). */
+    private void shopsInto(List<Outline> out, MapImport mi) {
+        if (pois.isEmpty()) {
+            return;
+        }
+        Map<Long, List<Integer>> grid = new HashMap<>();
+        for (int i = 0; i < out.size(); i++) {
+            Outline o = out.get(i);
+            if (feature(o.kind()) || o.x().length < 3) {
+                continue;
+            }
+            double x0 = Double.MAX_VALUE, z0 = Double.MAX_VALUE, x1 = -Double.MAX_VALUE, z1 = -Double.MAX_VALUE;
+            for (int k = 0; k < o.x().length; k++) {
+                x0 = Math.min(x0, o.x()[k]);
+                z0 = Math.min(z0, o.z()[k]);
+                x1 = Math.max(x1, o.x()[k]);
+                z1 = Math.max(z1, o.z()[k]);
+            }
+            for (int cx = (int) Math.floor(x0 / 32); cx <= (int) Math.floor(x1 / 32); cx++) {
+                for (int cz = (int) Math.floor(z0 / 32); cz <= (int) Math.floor(z1 / 32); cz++) {
+                    grid.computeIfAbsent(((long) cx << 32) ^ (cz & 0xffffffffL), k -> new ArrayList<>()).add(i);
+                }
+            }
+        }
+        Map<Integer, List<Shop>> found = new HashMap<>();
+        for (Map.Entry<Long, String[]> p : pois.entrySet()) {
+            double[] ll = nodes.get(p.getKey());
+            if (ll == null) {
+                continue;
+            }
+            double x = mi.x(ll[1]), z = mi.z(ll[0]);
+            for (int i : grid.getOrDefault(((long) (int) Math.floor(x / 32) << 32) ^ ((int) Math.floor(z / 32) & 0xffffffffL), List.of())) {
+                if (inside(out.get(i).x(), out.get(i).z(), x, z)) {
+                    found.computeIfAbsent(i, k -> new ArrayList<>()).add(new Shop(p.getValue()[0], p.getValue()[1], x, z));
+                    break;
+                }
+            }
+        }
+        found.forEach((i, shops) -> {
+            Outline o = out.get(i);
+            List<Shop> all = new ArrayList<>(shops);
+            all.addAll(o.shops().stream().filter(sh -> !sh.name().isEmpty() && shops.stream().noneMatch(p -> p.name().equals(sh.name()))).toList());
+            out.set(i, new Outline(o.x(), o.z(), o.height(), o.kind(), o.roof(), o.floors(), o.material(), o.roofMaterial(), o.surface(), all));
+        });
+    }
+
+    /** Whether a point's inside an outline (its corners, the first again at the end). */
+    static boolean inside(double[] xs, double[] zs, double px, double pz) {
+        boolean in = false;
+        for (int i = 0, j = xs.length - 1; i < xs.length; j = i++) {
+            if ((zs[i] > pz) != (zs[j] > pz) && px < (xs[j] - xs[i]) * (pz - zs[i]) / (zs[j] - zs[i]) + xs[i]) {
+                in = !in;
+            }
+        }
+        return in;
     }
 
     /** A line or a thing (one point): where it is, in blocks. */
@@ -447,7 +654,7 @@ public final class OsmMap {
             x[i] = mi.x(ll[1]);
             z[i] = mi.z(ll[0]);
         }
-        out.add(new Outline(x, z, 1, kind, "flat", 1, "", "", null));
+        out.add(new Outline(x, z, 1, kind, "flat", 1, "", "", null, List.of()));
     }
 
     private void outline(List<Outline> out, long[] ids, Map<String, String> tags, MapImport mi, Lidar lidar) {
@@ -464,7 +671,7 @@ public final class OsmMap {
         }
         String kind = areaKind(tags);
         if (feature(kind)) {
-            out.add(new Outline(x, z, 1, kind, "flat", 1, "", "", null));
+            out.add(new Outline(x, z, 1, kind, "flat", 1, "", "", null, List.of()));
             return;
         }
         String roof = tags.getOrDefault("roof:shape", "");
@@ -478,9 +685,23 @@ public final class OsmMap {
         }
         double levels = metres(tags.get("building:levels"));
         int floors = Double.isNaN(levels) ? (int) Math.max(1, Math.round(height / (STOREY_M * mi.scale))) : (int) Math.max(1, levels);
+        // the building's own shop (or business: a named unit on a retail park or an estate gets its name up)
+        List<Shop> shops = new ArrayList<>();
+        String sign = signKind(tags), name = tags.getOrDefault("name", tags.getOrDefault("brand", ""));
+        if (sign == null && !name.isEmpty() && Set.of("retail", "commercial", "industrial", "warehouse", "office", "supermarket").contains(kind)) {
+            sign = "retail_home";
+        }
+        if (sign != null) {
+            double mx = 0, mz = 0;
+            for (int i = 0; i < x.length; i++) {
+                mx += x[i] / x.length;
+                mz += z[i] / x.length;
+            }
+            shops.add(new Shop(sign, name, mx, mz));
+        }
         out.add(new Outline(x, z, height, kind, roof, floors,
                 tags.getOrDefault("building:material", "").toLowerCase(java.util.Locale.ROOT), tags.getOrDefault("roof:material", "").toLowerCase(java.util.Locale.ROOT),
-                real != null && !roof.equals("flat") ? surface(x, z, mi) : null));
+                real != null && !roof.equals("flat") ? surface(x, z, mi) : null, shops));
     }
 
     /** The real roof over an outline (corners in blocks), sampled from the LIDAR heights; null if it's too big to send. */
@@ -544,7 +765,20 @@ public final class OsmMap {
      * the plan's new ids run from mi.firstId to mi.lastId.
      */
     public int roads(RoadPlan plan, MapImport mi, List<Outline> buildings, double x0, double z0, double x1, double z1) {
-        mi.firstId = plan.nextId;
+        return roads(plan, mi, buildings, x0, z0, x1, z1, false);
+    }
+
+    /**
+     * As above; with a finite area, strictly that area (a section of the map): each road cut where it
+     * leaves it, at a point that's the same block from either side, joined there to what the section
+     * next door brought in (or left open for the next one). extending: another section of a map
+     * already brought in (its ids go on from the first's).
+     */
+    public int roads(RoadPlan plan, MapImport mi, List<Outline> buildings, double x0, double z0, double x1, double z1, boolean extending) {
+        if (!extending) {
+            mi.firstId = plan.nextId;
+        }
+        int fresh = plan.nextId;
         double[] clip = {x0, z0, x1, z1};
         Edges edges = new Edges(buildings, mi.nudgeX, mi.nudgeZ);
         List<Way> roads = new ArrayList<>(), rings = new ArrayList<>();
@@ -556,6 +790,105 @@ public final class OsmMap {
             String j = w.tag("junction");
             (j.equals("roundabout") || j.equals("circular") ? rings : roads).add(w);
         }
+        boolean section = Double.isFinite(x0) && Double.isFinite(x1) && Math.abs(x0) < 1e8 && Math.abs(x1) < 1e8;
+        Map<Long, Node> existing = new HashMap<>();
+        for (Node n : plan.nodes) {
+            existing.putIfAbsent(((long) (int) Math.floor(n.x) << 32) ^ ((int) Math.floor(n.z) & 0xffffffffL), n);
+        }
+        Set<Long> cuts = new HashSet<>();
+        List<Way> whole = roads;
+        if (section) {
+            roads = clipped(roads, clip, mi, cuts);
+        }
+        try {
+            return roads(plan, mi, clip, edges, roads, whole, rings, existing, cuts, fresh);
+        } finally {
+            cuts.forEach(nodes::remove);                    // (the cut points were only for this)
+        }
+    }
+
+    /**
+     * Roads cut to an area: each part inside it as a road of its own (the same tags), with a new
+     * point where it crosses the area's edge (in nodes, its id in cuts).
+     */
+    private List<Way> clipped(List<Way> roads, double[] box, MapImport mi, Set<Long> cuts) {
+        List<Way> out = new ArrayList<>();
+        long next = Long.MIN_VALUE / 2;
+        for (Way w : roads) {
+            double[][] p = project(w.nodes(), mi);
+            if (p == null) {
+                continue;
+            }
+            long[] ids = w.nodes();
+            List<Long> part = null;
+            for (int i = 0; i + 1 < ids.length; i++) {
+                double[] t = clipSegment(p[0][i], p[1][i], p[0][i + 1], p[1][i + 1], box);
+                if (t == null) {
+                    part = null;                            // (it can't have been in: it's outside from here)
+                    continue;
+                }
+                if (part == null) {
+                    part = new ArrayList<>();
+                    if (t[0] <= 0) {
+                        part.add(ids[i]);
+                    } else {
+                        part.add(cut(p, i, t[0], mi, next++, cuts));
+                    }
+                }
+                if (t[1] < 1) {
+                    part.add(cut(p, i, t[1], mi, next++, cuts));
+                    if (part.size() >= 2) {
+                        out.add(new Way(w.id(), part.stream().mapToLong(Long::longValue).toArray(), w.tags()));
+                    }
+                    part = null;
+                } else {
+                    part.add(ids[i + 1]);
+                }
+            }
+            if (part != null && part.size() >= 2) {
+                out.add(new Way(w.id(), part.stream().mapToLong(Long::longValue).toArray(), w.tags()));
+            }
+        }
+        return out;
+    }
+
+    /** A point t of the way along a road's piece i to i+1 (where it crosses an area's edge), as a new point. */
+    private long cut(double[][] p, int i, double t, MapImport mi, long id, Set<Long> cuts) {
+        double x = p[0][i] + (p[0][i + 1] - p[0][i]) * t, z = p[1][i] + (p[1][i + 1] - p[1][i]) * t;
+        nodes.put(id, new double[]{mi.lat(z), mi.lon(x)});
+        cuts.add(id);
+        return id;
+    }
+
+    /** Where a line a to b is inside a box (x0, z0, x1, z1): from t0 to t1 of the way along it, or null if it isn't. */
+    static double[] clipSegment(double ax, double az, double bx, double bz, double[] box) {
+        double t0 = 0, t1 = 1, dx = bx - ax, dz = bz - az;
+        double[] p = {-dx, dx, -dz, dz}, q = {ax - box[0], box[2] - ax, az - box[1], box[3] - az};
+        for (int k = 0; k < 4; k++) {
+            if (p[k] == 0) {
+                if (q[k] < 0) {
+                    return null;
+                }
+            } else {
+                double r = q[k] / p[k];
+                if (p[k] < 0) {
+                    if (r > t1) {
+                        return null;
+                    }
+                    t0 = Math.max(t0, r);
+                } else {
+                    if (r < t0) {
+                        return null;
+                    }
+                    t1 = Math.min(t1, r);
+                }
+            }
+        }
+        return t0 < t1 ? new double[]{t0, t1} : null;
+    }
+
+    private int roads(RoadPlan plan, MapImport mi, double[] clip, Edges edges, List<Way> roads, List<Way> whole, List<Way> rings,
+                      Map<Long, Node> existing, Set<Long> cuts, int fresh) {
         // each roundabout (its pieces joined up) becomes one junction in its middle
         Map<Long, Node> ringNode = new HashMap<>();
         Map<Node, Double> ringRadius = new HashMap<>();
@@ -570,7 +903,24 @@ public final class OsmMap {
                     n++;
                 }
             }
-            if (n < 3 || !inside(clip, sx / n, sz / n)) {
+            if (n < 3) {
+                continue;
+            }
+            if (!inside(clip, sx / n, sz / n)) {
+                // its middle's in another section: the roads here join the one that section made, if it's been brought in
+                Node there = null;
+                for (int dx = -2; dx <= 2 && there == null; dx++) {
+                    for (int dz = -2; dz <= 2 && there == null; dz++) {
+                        Node o = existing.get(((long) ((int) Math.floor(sx / n) + dx) << 32) ^ (((int) Math.floor(sz / n) + dz) & 0xffffffffL));
+                        there = o != null && (o.junction == Junction.ROUNDABOUT || o.junction == Junction.MINI_ROUNDABOUT) ? o : null;
+                    }
+                }
+                if (there != null) {
+                    ringRadius.putIfAbsent(there, 6.0);
+                    for (long id : ring) {
+                        ringNode.put(id, there);
+                    }
+                }
                 continue;
             }
             double cx = sx / n, cz = sz / n, r = 0;
@@ -598,18 +948,19 @@ public final class OsmMap {
         }
         Map<Long, Node> joins = new HashMap<>();
         Set<String> done = new HashSet<>();
+        Map<Way, RoadStyle> styles = streetStyles(roads, mi, edges);
         int count = 0;
         for (Way w : roads) {
             double[][] p = project(w.nodes(), mi);
-            if (p == null) {
+            RoadStyle st = styles.get(w);
+            if (p == null || st == null) {
                 continue;
             }
-            RoadStyle st = style(w, p, edges);
             int start = 0;
             long[] ids = w.nodes();
             for (int i = 1; i < ids.length; i++) {
                 if (i == ids.length - 1 || uses.getOrDefault(ids[i], 0) >= 2 || ringNode.containsKey(ids[i])) {
-                    count += piece(plan, w, p, start, i, st, joins, ringNode, ringRadius, clip, done);
+                    count += piece(plan, w, p, start, i, st, joins, ringNode, ringRadius, clip, done, existing, cuts);
                     start = i;
                 }
             }
@@ -617,34 +968,198 @@ public final class OsmMap {
         // junctions: traffic lights at the junction nearest each signal, mini roundabouts tagged on a point
         Map<Integer, Integer> arms = new HashMap<>();
         for (RoadPlan.Segment s : plan.segments) {
-            if (s.id >= mi.firstId) {
-                arms.merge(s.a, 1, Integer::sum);
-                arms.merge(s.b, 1, Integer::sum);
+            arms.merge(s.a, 1, Integer::sum);
+            arms.merge(s.b, 1, Integer::sum);
+        }
+        // traffic lights: on a junction, or on the way into one (the first along the road, as the UK maps them), else they're a crossing's
+        Map<Long, List<Way>> wayAt = new HashMap<>();
+        for (Way w : whole) {                               // (the whole roads, past the section's edge: the junction may be over it)
+            for (long id : w.nodes()) {
+                wayAt.computeIfAbsent(id, k -> new ArrayList<>()).add(w);
             }
         }
+        List<long[]> crossingsAt = new ArrayList<>();          // OSM point, kind (ordinal)
         for (Map.Entry<Long, String> e : pointHighway.entrySet()) {
-            double[] ll = nodes.get(e.getKey());
-            if (e.getValue().equals("mini_roundabout") && joins.containsKey(e.getKey())) {
-                joins.get(e.getKey()).junction = Junction.MINI_ROUNDABOUT;
-            } else if (e.getValue().equals("traffic_signals") && ll != null) {
-                Node best = null;
-                double bestD = 30;
-                for (Node n : plan.nodes) {
-                    double d = Math.hypot(n.x - mi.x(ll[1]), n.z - mi.z(ll[0]));
-                    if (n.id >= mi.firstId && arms.getOrDefault(n.id, 0) >= 3 && d < bestD && n.junction == Junction.AUTO) {
-                        best = n;
-                        bestD = d;
+            long id = e.getKey();
+            if (e.getValue().equals("mini_roundabout") && joins.containsKey(id)) {
+                joins.get(id).junction = Junction.MINI_ROUNDABOUT;
+            } else if (e.getValue().equals("traffic_signals") && !crossings.containsKey(id)) {
+                Node j = junctionAlong(id, wayAt, joins, existing, arms, 45 * mi.scale, mi);
+                if (j != null) {
+                    if (j.junction == Junction.AUTO) {
+                        j.junction = Junction.SIGNALS;
                     }
-                }
-                if (best != null) {
-                    best.junction = Junction.SIGNALS;
+                } else {
+                    crossingsAt.add(new long[]{id, RoadPlan.CrossingType.SIGNALS.ordinal()});
                 }
             }
+        }
+        crossings.forEach((id, type) -> crossingsAt.add(new long[]{id, type.ordinal()}));
+        int crossed = 0;
+        for (long[] c : crossingsAt) {
+            double[] ll = nodes.get(c[0]);
+            if (ll == null || !inside(clip, mi.x(ll[1]), mi.z(ll[0]))) {
+                continue;
+            }
+            RoadPlan.CrossingType type = RoadPlan.CrossingType.values()[(int) c[1]];
+            // one at a junction (or right by one) is the junction's: lights there are its, a plain one its dropped kerbs
+            Node j = junctionAlong(c[0], wayAt, joins, existing, arms, 12 * mi.scale, mi);
+            if (j != null && type != RoadPlan.CrossingType.ZEBRA) {
+                continue;
+            }
+            crossed += crossingOn(plan, fresh, mi.x(ll[1]), mi.z(ll[0]), type) ? 1 : 0;
         }
         // a roundabout no road reached is left out
-        plan.nodes.removeIf(n -> n.id >= mi.firstId && ringRadius.containsKey(n) && !arms.containsKey(n.id));
+        plan.nodes.removeIf(n -> n.id >= fresh && ringRadius.containsKey(n) && !arms.containsKey(n.id));
         mi.lastId = plan.nextId - 1;
         return count;
+    }
+
+    /**
+     * Each road's style, the same all along a street: OSM splits a street into many ways (at every
+     * change of speed limit, bus lane or bridge) and each piece's own lanes and pavements would make
+     * it narrow and widen again and again. The ways with the same name (or number), main or not,
+     * take the style of its longest piece (its longest one-way piece, for those), with the street's
+     * pavement (the middle of its pieces' by length); a one-way piece of a street that's two-way
+     * elsewhere keeps the street's width, as one wide lane.
+     */
+    private Map<Way, RoadStyle> streetStyles(List<Way> roads, MapImport mi, Edges edges) {
+        Map<Way, RoadStyle> styles = new HashMap<>();
+        Map<Way, Double> length = new HashMap<>();
+        Map<String, List<Way>> streets = new HashMap<>();
+        for (Way w : roads) {
+            double[][] p = project(w.nodes(), mi);
+            if (p == null) {
+                continue;
+            }
+            styles.put(w, style(w, p, edges));
+            double len = 0;
+            for (int i = 0; i + 1 < p[0].length; i++) {
+                len += Math.hypot(p[0][i + 1] - p[0][i], p[1][i + 1] - p[1][i]);
+            }
+            length.put(w, len);
+            String name = !w.tag("name").isEmpty() ? w.tag("name") : w.tag("ref");
+            if (!name.isEmpty()) {
+                streets.computeIfAbsent(name + "|" + MAJOR.contains(w.tag("highway")), k -> new ArrayList<>()).add(w);
+            }
+        }
+        for (List<Way> street : streets.values()) {
+            Way two = null, one = null;
+            List<double[]> pavements = new ArrayList<>();         // pavement, length
+            for (Way w : street) {
+                RoadStyle st = styles.get(w);
+                if (st.oneWay ? one == null || length.get(w) > length.get(one) : two == null || length.get(w) > length.get(two)) {
+                    if (st.oneWay) {
+                        one = w;
+                    } else {
+                        two = w;
+                    }
+                }
+                if (st.pavement > 0) {
+                    pavements.add(new double[]{st.pavement, length.get(w)});
+                }
+            }
+            pavements.sort((a, b) -> Double.compare(a[0], b[0]));
+            double total = pavements.stream().mapToDouble(v -> v[1]).sum(), run = 0;
+            int pavement = 0;
+            for (double[] v : pavements) {
+                run += v[1];
+                if (run >= total / 2) {
+                    pavement = (int) v[0];
+                    break;
+                }
+            }
+            boolean minor = !MAJOR.contains(street.get(0).tag("highway"));
+            for (Way w : street) {
+                RoadStyle st = styles.get(w.equals(one) || styles.get(w).oneWay ? one : two).copy();
+                if (st.pavement > 0 && pavement > 0) {
+                    st.pavement = pavement;
+                }
+                if (st.oneWay && minor && two != null && !w.tag("lanes").equals("2")) {
+                    st.lanes = 1;
+                    st.laneWidth = (int) Math.round(styles.get(two).halfCarriageway() * 2);
+                }
+                styles.put(w, st);
+            }
+        }
+        return styles;
+    }
+
+    /**
+     * The junction (3 or more roads) nearest an OSM point along the roads through it, no further
+     * than reach (blocks) along them; null if there's none that close.
+     */
+    private Node junctionAlong(long from, Map<Long, List<Way>> wayAt, Map<Long, Node> joins, Map<Long, Node> existing, Map<Integer, Integer> arms,
+                               double reach, MapImport mi) {
+        Node best = null;
+        double bestD = reach;
+        for (Way w : wayAt.getOrDefault(from, List.of())) {
+            long[] ids = w.nodes();
+            for (int i = 0; i < ids.length; i++) {
+                if (ids[i] != from) {
+                    continue;
+                }
+                for (int dir = -1; dir <= 1; dir += 2) {
+                    double d = 0;
+                    for (int k = i; k + dir >= 0 && k + dir < ids.length && d < bestD; k += dir) {
+                        double[] a = nodes.get(ids[k]), b = nodes.get(ids[k + dir]);
+                        if (a == null || b == null) {
+                            break;
+                        }
+                        d += Math.hypot(mi.x(b[1]) - mi.x(a[1]), mi.z(b[0]) - mi.z(a[0]));
+                        Node n = joins.get(ids[k + dir]);
+                        if (n == null) {                    // one a section brought in before
+                            n = existing.get(((long) (int) Math.floor(mi.x(b[1])) << 32) ^ ((int) Math.floor(mi.z(b[0])) & 0xffffffffL));
+                        }
+                        if (n != null && arms.getOrDefault(n.id, 0) >= 3 && d < bestD) {
+                            best = n;
+                            bestD = d;
+                        }
+                    }
+                }
+                Node here = joins.get(from);
+                if (here != null && arms.getOrDefault(here.id, 0) >= 3) {
+                    return here;                            // lights on the junction itself
+                }
+            }
+        }
+        return best;
+    }
+
+    /** A crossing on the map's road nearest x, z (within 4 blocks of its line), not too near another; whether it went in. */
+    private static boolean crossingOn(RoadPlan plan, int fresh, double x, double z, RoadPlan.CrossingType type) {
+        Map<Integer, Node> byId = new HashMap<>();
+        plan.nodes.forEach(n -> byId.put(n.id, n));
+        RoadPlan.Segment best = null;
+        double bestD = 4, bestAt = 0.5;
+        for (RoadPlan.Segment sg : plan.segments) {
+            Node a = byId.get(sg.a), b = byId.get(sg.b);
+            if (sg.id < fresh || a == null || b == null) {
+                continue;
+            }
+            double ax = a.x + 0.5, az = a.z + 0.5, dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+            if (l2 < 1) {
+                continue;
+            }
+            double t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+            double d = Math.hypot(ax + dx * t - x, az + dz * t - z) - Math.abs(sg.bend);
+            if (d < bestD) {
+                best = sg;
+                bestD = d;
+                bestAt = t;
+            }
+        }
+        if (best == null) {
+            return false;
+        }
+        double len = Math.hypot(byId.get(best.b).x - byId.get(best.a).x, byId.get(best.b).z - byId.get(best.a).z);
+        for (RoadPlan.Crossing o : plan.crossings) {
+            if (o.segment == best.id && Math.abs(o.at - bestAt) * len < 10) {
+                return false;                               // one's enough (a road and the path beside it both mapped, say)
+            }
+        }
+        plan.addCrossing(best.id, bestAt, type);
+        return true;
     }
 
     private double[][] project(long[] ids, MapImport mi) {
@@ -666,7 +1181,8 @@ public final class OsmMap {
 
     /** One stretch of road between two junctions: its bends kept where it curves, joined at each end. */
     private int piece(RoadPlan plan, Way w, double[][] p, int a, int b, RoadStyle st, Map<Long, Node> joins,
-                      Map<Long, Node> ringNode, Map<Node, Double> ringRadius, double[] clip, Set<String> done) {
+                      Map<Long, Node> ringNode, Map<Node, Double> ringRadius, double[] clip, Set<String> done, Map<Long, Node> existing,
+                      Set<Long> cuts) {
         boolean in = false;
         for (int k = a; k <= b; k++) {
             in |= inside(clip, p[0][k], p[1][k]);
@@ -685,7 +1201,23 @@ public final class OsmMap {
             long id = w.nodes()[k];
             double x = p[0][k], z = p[1][k];
             Node node = ringNode.get(id);
-            if (node == null && (k == a || k == b)) {
+            if (node == null && cuts.contains(id)) {
+                // where it crosses into the next section: that section's road's end, if it's in, else an end left open for it
+                node = joins.computeIfAbsent(id, i -> {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dz = -1; dz <= 1; dz++) {
+                            Node o = existing.get(((long) ((int) Math.floor(x) + dx) << 32) ^ (((int) Math.floor(z) + dz) & 0xffffffffL));
+                            if (o != null && o.open) {
+                                o.open = false;
+                                return o;
+                            }
+                        }
+                    }
+                    Node end = plan.addNode(Math.floor(x), Math.floor(z));
+                    end.open = true;
+                    return end;
+                });
+            } else if (node == null && (k == a || k == b)) {
                 node = joins.computeIfAbsent(id, i -> plan.addNode(Math.floor(x), Math.floor(z)));
             } else if (node == null) {
                 if (near(ringA, ringRadius, x, z) || near(ringB, ringRadius, x, z)) {
@@ -793,6 +1325,7 @@ public final class OsmMap {
         } else if (oneway) {
             st = RoadStyle.oneWayStreet();
             st.lanes = lanes > 0 ? Math.min(lanes, 3) : 1;
+            st.laneWidth = st.lanes == 1 ? 7 : st.laneWidth;          // (a town's one-way street: one lane, as wide as a car and a bit)
         } else if (major) {
             st = lanes >= 4 ? RoadStyle.wideMainRoad() : RoadStyle.mainRoad();
         } else {

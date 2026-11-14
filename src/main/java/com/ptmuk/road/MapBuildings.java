@@ -1,5 +1,7 @@
 package com.ptmuk.road;
 
+import com.ptmuk.building.ShopNames;
+
 import com.google.gson.Gson;
 import com.ptmuk.road.layout.Layout;
 import com.ptmuk.road.plan.RoadPlan;
@@ -41,10 +43,18 @@ public final class MapBuildings {
         public String kind = "yes", roof = "", material = "", roofMaterial = "";
         public int floors = 1, height = 6;
         public int[] x, z;
+        /** Its shops (or business), each to get a sign on its street front. */
+        public List<ShopFront> shops = new ArrayList<>();
         /** Its real roof (see OsmMap.Surface), Base64, from block sx, sz, sw points across; "" if it has none. */
         public String surface = "";
         public int sx, sz, sw;
         transient byte[] roofs;
+    }
+
+    /** A shop in a building: the kind of sign (see ShopNames), its name ("" for a made-up one), where it's mapped (quarter blocks). */
+    public static final class ShopFront {
+        public String kind = "retail_home", name = "";
+        public int x, z;
     }
 
     /** The buildings round where you build: the square they came from (x0, z0, x1, z1) and the map's scale. */
@@ -59,8 +69,8 @@ public final class MapBuildings {
      * pedestrian square, a pitch; water; a park or grass, a wood), lines along it (a river, a path,
      * a hedge, fence or wall, a row of trees), things stood on it, and canopies (a roof on posts).
      */
-    private enum Use { HOUSE, FLATS, SHOP, OFFICE, INDUSTRIAL, CIVIC, CHURCH, SHED, CAR_PARK, FORECOURT, PEDESTRIAN, PITCH, WATER, GREEN, WOOD,
-        RIVER, PATH, HEDGE, FENCE, WALL, TREE_ROW, THING, CANOPY }
+    private enum Use { HOUSE, FLATS, SHOP, OFFICE, INDUSTRIAL, CIVIC, CHURCH, SHED, CAR_PARK, FORECOURT, PEDESTRIAN, YARD, PITCH, WATER, GREEN,
+        WOOD, RIVER, PATH, AISLE, HEDGE, FENCE, WALL, TREE_ROW, THING, CANOPY }
 
     private record Style(String wall, String roof, String window, String ground, String floor, String door) {
     }
@@ -100,6 +110,8 @@ public final class MapBuildings {
     private final Set<Long> occupied = new HashSet<>();
     /** Where the paths, rivers, hedges and the like run. */
     private final Set<Long> lineCells = new HashSet<>();
+    /** Car parks' aisles: they mark out the bays (a car park with aisles in it is just its tarmac; they do the rest). */
+    private final List<Footprint> aisles = new ArrayList<>();
     private final Map<Long, Integer> rise;
     private final List<double[]> roads = new ArrayList<>();
     private WorldTerrain ground;
@@ -136,6 +148,14 @@ public final class MapBuildings {
             f.roofMaterial = o.roofMaterial();
             f.floors = o.floors();
             f.height = o.height();
+            for (com.ptmuk.road.OsmMap.Shop sh : o.shops()) {
+                ShopFront sf = new ShopFront();
+                sf.kind = sh.kind();
+                sf.name = sh.name();
+                sf.x = (int) Math.round((sh.x() + mi.nudgeX) * 4);
+                sf.z = (int) Math.round((sh.z() + mi.nudgeZ) * 4);
+                f.shops.add(sf);
+            }
             if (o.surface() != null) {
                 f.surface = java.util.Base64.getEncoder().encodeToString(o.surface().v());
                 f.sx = o.surface().x0() + mi.nudgeX;
@@ -186,6 +206,12 @@ public final class MapBuildings {
             f.kind = f.kind == null ? "yes" : f.kind;
             f.roof = f.roof == null ? "" : f.roof;
             f.material = f.material == null ? "" : f.material;
+            f.shops = f.shops == null ? new ArrayList<>() : new ArrayList<>(f.shops.subList(0, Math.min(40, f.shops.size())));
+            f.shops.removeIf(sf -> sf == null);
+            for (ShopFront sf : f.shops) {
+                sf.kind = sf.kind != null && com.ptmuk.building.ShopNames.has(sf.kind) ? sf.kind : "retail_home";
+                sf.name = sf.name == null ? "" : sf.name.length() > 30 ? sf.name.substring(0, 30) : sf.name;
+            }
             f.roofMaterial = f.roofMaterial == null ? "" : f.roofMaterial;
             f.height = Math.max(3, Math.min(200, f.height));
             f.floors = Math.max(1, Math.min(60, f.floors));
@@ -269,7 +295,7 @@ public final class MapBuildings {
         Set<Long> paved = new HashSet<>();
         for (Footprint f : order) {
             int rank = rank(f.kind);
-            boolean surface = rank >= 1 && rank <= 3, canopy = canopy(f.kind), small = rank >= 4 && rank <= 6;
+            boolean surface = area(rank), canopy = canopy(f.kind), small = lineOrThing(rank);
             long[] cells = raster(f);
             if (cells == null) {
                 continue;
@@ -292,8 +318,11 @@ public final class MapBuildings {
             if (surface) {
                 paved.addAll(keep);
             } else if (small) {
-                if (rank < 6) {
+                if (rank < 7) {
                     lineCells.addAll(keep);                 // (no trees on paths)
+                }
+                if (f.kind.equals("aisle")) {
+                    aisles.add(f);
                 }
             } else if (!canopy) {
                 occupied.addAll(keep);                      // (a canopy stands over a forecourt: it doesn't keep the ground to itself)
@@ -418,7 +447,7 @@ public final class MapBuildings {
     /** The order things are given their ground and built in (see the constructor). */
     private static int rank(String kind) {
         if (canopy(kind)) {
-            return 7;
+            return 8;
         }
         if (!com.ptmuk.road.OsmMap.feature(kind)) {
             return 0;
@@ -427,9 +456,19 @@ public final class MapBuildings {
             case "water" -> 1;
             case "parking", "fuel", "pedestrian", "pitch" -> 2;
             case "green", "wood" -> 3;
-            case "hedge", "fence", "fence:metal", "wall", "tree_row" -> 5;
-            default -> kind.startsWith("river:") ? 4 : kind.startsWith("path:") ? 5 : 6;
+            case "yard:retail", "yard:industrial" -> 4;
+            case "aisle", "hedge", "fence", "fence:metal", "wall", "tree_row" -> 6;
+            default -> kind.startsWith("river:") ? 5 : kind.startsWith("path:") ? 6 : 7;
         };
+    }
+
+    /** Areas laid on the ground (ranks 1-4), lines along it (5, 6), things stood on it (7). */
+    private static boolean area(int rank) {
+        return rank >= 1 && rank <= 4;
+    }
+
+    private static boolean lineOrThing(int rank) {
+        return rank >= 5 && rank <= 7;
     }
 
     /** A line's width in blocks: the number at the end of its kind ("path:paved:3", "river:18"), else 1. */
@@ -450,7 +489,9 @@ public final class MapBuildings {
             return Use.PATH;
         }
         return switch (kind) {
-            case "pedestrian" -> Use.PEDESTRIAN;
+            case "pedestrian", "yard:retail" -> Use.PEDESTRIAN;
+            case "yard:industrial" -> Use.YARD;
+            case "aisle" -> Use.AISLE;
             case "pitch" -> Use.PITCH;
             case "water" -> Use.WATER;
             case "green" -> Use.GREEN;
@@ -533,7 +574,8 @@ public final class MapBuildings {
             case SHED -> new Style(pick(seed, 1, red, red, render), pitched ? "ptmuk:roof_concrete_tiles" : "minecraft:black_concrete",
                     null, null, "minecraft:smooth_stone", "minecraft:spruce_door");
             // (not walls and windows: see surface and canopy) posts and deck
-            case CAR_PARK, FORECOURT, PEDESTRIAN, PITCH, WATER, GREEN, WOOD, RIVER, PATH, HEDGE, FENCE, WALL, TREE_ROW, THING, CANOPY -> new Style("minecraft:light_gray_concrete", "minecraft:white_concrete", null, null,
+            case CAR_PARK, FORECOURT, PEDESTRIAN, YARD, PITCH, WATER, GREEN, WOOD, RIVER, PATH, AISLE, HEDGE, FENCE, WALL, TREE_ROW, THING, CANOPY ->
+                    new Style("minecraft:light_gray_concrete", "minecraft:white_concrete", null, null,
                     "minecraft:smooth_stone", "minecraft:spruce_door");
         };
     }
@@ -581,7 +623,7 @@ public final class MapBuildings {
         Arrays.sort(sorted);
         int base = sorted[n / 2] - 1;                                  // the ground floor: level with most of the ground under it
         switch (s.use) {
-            case CAR_PARK, FORECOURT, PEDESTRIAN, PITCH -> {
+            case CAR_PARK, FORECOURT, PEDESTRIAN, YARD, PITCH -> {
                 return surface(out, pal, s, base, g);
             }
             case WATER -> {
@@ -590,7 +632,7 @@ public final class MapBuildings {
             case GREEN, WOOD -> {
                 return green(out, pal, s, g);
             }
-            case RIVER, PATH, HEDGE, FENCE, WALL, TREE_ROW, THING -> {
+            case RIVER, PATH, AISLE, HEDGE, FENCE, WALL, TREE_ROW, THING -> {
                 return line(out, pal, s, g);
             }
             case CANOPY -> {
@@ -683,7 +725,75 @@ public final class MapBuildings {
             out.set(p.set(x, y + 1, z), brick);
             out.set(p.set(x, y + 2, z), pal.get("minecraft:flower_pot", null));   // the pot
         }
+        if (!s.fp.shops.isEmpty()) {
+            shopFronts(out, pal, s, base, sh, door);
+        }
         return n * (h + 6);
+    }
+
+    /**
+     * Each shop's sign over its stretch of the building's street front (the side its door's on):
+     * the stretch nearest where the shop's mapped, up to 7 blocks of it, along the top of the ground
+     * floor, with its real name (or a made-up one) in the colours of its kind (see ShopNames).
+     */
+    private void shopFronts(SiteBuildings.Out out, RoadBuilder.Palette pal, Shell s, int base, int sh, long door) {
+        int front = door == Long.MIN_VALUE ? -1 : windowSide(s, door);
+        if (front < 0) {
+            return;
+        }
+        int[] normal = SIDES[front], along = SIDES[(front + 1) % 4];
+        List<Long> frontage = new ArrayList<>();
+        for (long c : s.cells) {
+            if (windowSide(s, c) == front) {
+                frontage.add(c);
+            }
+        }
+        Set<Long> used = new HashSet<>();
+        int y = base + Math.max(3, sh - 1);
+        for (ShopFront shop : s.fp.shops) {
+            long best = Long.MIN_VALUE;
+            double bestD = Double.MAX_VALUE;
+            for (long c : frontage) {
+                double d = Math.hypot(kx(c) + 0.5 - shop.x / 4.0, kz(c) + 0.5 - shop.z / 4.0);
+                if (!used.contains(c) && d < bestD) {
+                    best = c;
+                    bestD = d;
+                }
+            }
+            if (best == Long.MIN_VALUE) {
+                break;                                      // the front's full
+            }
+            // the stretch: out from there along the wall, to its ends or the next shop's
+            List<Long> row = new ArrayList<>(List.of(best));
+            for (int dir = -1; dir <= 1; dir += 2) {
+                for (int i = 1; i <= 3; i++) {
+                    long c = key(kx(best) + along[0] * i * dir, kz(best) + along[1] * i * dir);
+                    if (!frontage.contains(c) || used.contains(c)) {
+                        break;
+                    }
+                    row.add(c);
+                }
+            }
+            for (long c : row) {
+                used.add(c);
+                used.add(key(kx(c) + along[0], kz(c) + along[1]));          // a gap before the next shop's
+                used.add(key(kx(c) - along[0], kz(c) - along[1]));
+            }
+            ShopNames.Sign look = ShopNames.pick(shop.kind, ShopNames.seed(kx(best), kz(best)));
+            BlockState board = RoadBuilder.with(pal.get("ptmuk:shop_sign", "minecraft:oak_wall_sign"), "facing", FACING[front].getSerializedName());
+            for (long c : row) {
+                BlockPos at = new BlockPos(kx(c) + normal[0], y, kz(c) + normal[1]);
+                out.set(at, board);
+                if (look != null && out.level().getBlockEntity(at) instanceof com.ptmuk.building.ShopSignBlockEntity sign) {
+                    sign.text = shop.name.isBlank() ? look.text() : shop.name.toUpperCase(java.util.Locale.ROOT);
+                    sign.sub = look.sub();
+                    sign.board = look.board();
+                    sign.ink = look.ink();
+                    sign.setChanged();
+                    out.level().sendBlockUpdated(at, sign.getBlockState(), sign.getBlockState(), 3);
+                }
+            }
+        }
     }
 
     private static boolean window(Use use, int along, int storey, int row, int sh, boolean highStrip) {
@@ -773,10 +883,11 @@ public final class MapBuildings {
      * a way round inside its edge left clear, and lamp posts down the aisles.
      */
     private int surface(SiteBuildings.Out out, RoadBuilder.Palette pal, Shell s, int base, int[] g) {
-        boolean park = s.use == Use.CAR_PARK;
+        boolean park = s.use == Use.CAR_PARK && !hasAisles(s);
         BlockState top = pal.get(switch (s.use) {
             case CAR_PARK -> "ptmuk:tarmac";
-            case PEDESTRIAN -> "ptmuk:block_paving_grey";
+            case PEDESTRIAN -> s.fp.kind.equals("yard:retail") ? "ptmuk:tarmac" : "ptmuk:block_paving_grey";
+            case YARD -> "minecraft:smooth_stone";
             case PITCH -> "minecraft:grass_block";
             default -> "minecraft:smooth_stone";
         }, "minecraft:gray_concrete");
@@ -970,6 +1081,17 @@ public final class MapBuildings {
                     clear(out, p, x, y + 1, y + 3, z, air);
                     laid.put(c, y);
                 }
+                case AISLE -> {
+                    // the drive down the middle (6 wide), a row of bays (5 deep, 3 wide) either side, square to it; lamps behind the bays
+                    double[] at = alongLine(s.fp, x + 0.5, z + 0.5);
+                    boolean bay = at[0] >= 3 && at[0] < 8 && Math.floorMod((int) Math.floor(at[1]), 3) == 0;
+                    out.set(p.set(x, y, z), bay ? Blocks.WHITE_CONCRETE.defaultBlockState() : pal.get("ptmuk:tarmac", "minecraft:gray_concrete"));
+                    clear(out, p, x, y + 1, y + 3, z, air);
+                    laid.put(c, y);
+                    if (at[0] >= 7.5 && at[0] < 8 && Math.floorMod((int) Math.floor(at[1]), 30) == 15) {
+                        thing(out, pal, "lamp", x, y + 1, z);
+                    }
+                }
                 case HEDGE, FENCE, WALL -> {
                     int high = s.use == Use.FENCE ? 1 : 2;
                     for (int k = 1; k <= high; k++) {
@@ -1017,6 +1139,34 @@ public final class MapBuildings {
             }
             out.set(new BlockPos(x, y + 5, z), RoadBuilder.with(pal.get("ptmuk:street_light_led", "lantern"), "facing", "north"));
         }
+    }
+
+    /** Whether any car park aisle runs through a shell's ground. */
+    private boolean hasAisles(Shell s) {
+        for (Footprint a : aisles) {
+            for (int i = 0; i < a.x.length; i++) {
+                if (s.in.contains(key(Math.floorDiv(a.x[i], 4), Math.floorDiv(a.z[i], 4)))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** How far (x, z) is from a line, and how far along it the nearest point is (blocks): {distance, along}. */
+    private static double[] alongLine(Footprint f, double x, double z) {
+        double best = Double.MAX_VALUE, at = 0, run = 0;
+        for (int i = 0; i + 1 < f.x.length; i++) {
+            double ax = f.x[i] / 4.0, az = f.z[i] / 4.0, dx = f.x[i + 1] / 4.0 - ax, dz = f.z[i + 1] / 4.0 - az, l2 = dx * dx + dz * dz;
+            double t = l2 == 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+            double d = Math.hypot(ax + dx * t - x, az + dz * t - z);
+            if (d < best) {
+                best = d;
+                at = run + t * Math.sqrt(l2);
+            }
+            run += Math.sqrt(l2);
+        }
+        return new double[]{best, at};
     }
 
     /** The way along a footprint's longest side (x, z, length one). */
@@ -1093,8 +1243,8 @@ public final class MapBuildings {
     /** The columns whose middles are inside the outline (along a line, its width; a thing, its one); null if it's too big to build. */
     private static long[] raster(Footprint f) {
         int rank = rank(f.kind);
-        if (rank >= 4 && rank <= 6) {
-            return along(f, width(f.kind));
+        if (lineOrThing(rank)) {
+            return along(f, f.kind.equals("aisle") ? 16 : width(f.kind));
         }
         int n = f.x.length;
         double[] xs = new double[n], zs = new double[n];
@@ -1108,7 +1258,7 @@ public final class MapBuildings {
             z1 = Math.max(z1, zs[i]);
         }
         int ix0 = (int) Math.floor(x0), iz0 = (int) Math.floor(z0), ix1 = (int) Math.ceil(x1), iz1 = (int) Math.ceil(z1);
-        if ((long) (ix1 - ix0) * (iz1 - iz0) > (rank >= 1 && rank <= 3 ? MAX_AREA_CELLS : MAX_CELLS)) {
+        if ((long) (ix1 - ix0) * (iz1 - iz0) > (area(rank) ? MAX_AREA_CELLS : MAX_CELLS)) {
             return null;                                    // shortcut: buildings over 250x250 (parks, woods, water over 500x500) are left out
         }
         List<Long> in = new ArrayList<>();

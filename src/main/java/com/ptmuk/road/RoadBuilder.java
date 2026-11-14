@@ -78,6 +78,8 @@ public final class RoadBuilder {
         InteractionHand hand;
         /** The inventory slot the planner was in (-1: the off hand). */
         int slot;
+        /** How many steps of it in a row have gone wrong (three, and it's stopped). */
+        int failures;
         ServerLevel level;
         Layout layout;
         /** Built after `layout` (the roads underneath it, built first): the rest, and its columns. */
@@ -510,56 +512,85 @@ public final class RoadBuilder {
         Iterator<Job> it = JOBS.iterator();
         while (it.hasNext()) {
             Job job = it.next();
-            long t2 = System.nanoTime();
-            int end = Math.min(job.cells.length, job.next + COLUMNS_PER_TICK);
-            for (; job.next < end; job.next++) {
-                column(job, job.cells[job.next]);
+            try {
+                long t2 = System.nanoTime();
+                int end = Math.min(job.cells.length, job.next + COLUMNS_PER_TICK);
+                for (; job.next < end; job.next++) {
+                    column(job, job.cells[job.next]);
+                }
+                slow("building " + COLUMNS_PER_TICK + " columns", t2);
+                long t3 = System.nanoTime();
+                String step = !job.fixturesDone ? "fixtures" : job.nextTraffic < job.traffic.points().size() ? "PTM2 traffic points"
+                        : job.nextBuilding < job.layout.buildings.size() ? "a site's building" : "the map's buildings, or finishing";
+                ServerPlayer player = server.getPlayerList().getPlayer(job.player);
+                if (job.next >= job.cells.length && !job.fixturesDone && job.then != null) {
+                    fixtures(job);                              // the roads underneath are done: now the rest
+                    job.layout = job.then;
+                    job.cells = job.thenCells;
+                    job.next = 0;
+                    job.then = null;
+                } else if (job.next >= job.cells.length && !job.fixturesDone) {
+                    fixtures(job);
+                    job.fixturesDone = true;
+                    job.traffic = job.layout.allTraffic();
+                } else if (job.fixturesDone && job.nextTraffic < job.traffic.points().size()) {
+                    traffic(job);
+                } else if (job.fixturesDone && job.nextBuilding < job.layout.buildings.size()) {
+                    Layout.SiteBuilding b = job.layout.buildings.get(job.nextBuilding++);
+                    RoadPlan.Site st = job.plan.site(b.siteId());
+                    if (st != null && !st.built) {
+                        SiteBuildings.build(out(job), b, job.palette);
+                    }
+                } else if (job.fixturesDone && job.mapBuildings != null && !job.mapBuildings.done()) {
+                    job.mapBuildings.step(out(job), job.palette, MAP_BUILDING_WORK);
+                    if (player != null) {
+                        player.displayClientMessage(Component.literal("Building the map's buildings: " + job.mapBuildings.built() + " of "
+                                + job.mapBuildings.count()), true);
+                    }
+                } else if (job.fixturesDone) {
+                    // whoever pressed Build: the plan goes back on their planner, and a big plan's next part is theirs, even if they've gone
+                    ServerPlayer by = player != null ? player : job.starter;
+                    finish(job, by);
+                    it.remove();
+                    if (job.full != null) {
+                        // a big plan: on to the next part (once this job's out of the list)
+                        RoadPlan full = job.full;
+                        InteractionHand hand = job.hand;
+                        int slot = job.slot;
+                        NEXT.add(() -> start(by, hand, full, slot, true));
+                    }
+                } else if (player != null && job.next % (COLUMNS_PER_TICK * 10) < COLUMNS_PER_TICK) {
+                    player.displayClientMessage(Component.literal("Building roads: " + (100 * job.next / job.cells.length) + "%"), true);
+                }
+                slow(step, t3);
+                job.failures = 0;
+            } catch (RuntimeException e) {
+                // something in the plan or the world the builder didn't expect: said, and got past, never a crash
+                com.ptmuk.PtmUk.LOGGER.error("Road builder: a step of a build failed", e);
+                ServerPlayer by = server.getPlayerList().getPlayer(job.player);
+                if (by == null) {
+                    by = job.starter;
+                }
+                if (++job.failures >= 3) {
+                    by.sendSystemMessage(Component.literal("The build kept going wrong here (" + e + "), so it's stopped at this part"));
+                    it.remove();
+                    if (job.full != null) {
+                        RoadPlan full = job.full;
+                        InteractionHand hand = job.hand;
+                        int slot = job.slot;
+                        ServerPlayer next = by;
+                        skip(next, hand, slot, full, job.plan);           // the rest of a big map carries on
+                    }
+                } else {
+                    by.sendSystemMessage(Component.literal("Something went wrong building (" + e + "): skipped that bit"));
+                    job.next = Math.min(job.cells.length, job.next + COLUMNS_PER_TICK);
+                    if (job.next >= job.cells.length && !job.fixturesDone) {
+                        job.fixturesDone = job.then == null;
+                        job.traffic = job.fixturesDone ? job.layout.allTraffic() : job.traffic;
+                    }
+                    job.nextTraffic = job.traffic == null ? 0 : job.traffic.points().size();
+                }
             }
-            slow("building " + COLUMNS_PER_TICK + " columns", t2);
-            long t3 = System.nanoTime();
-            String step = !job.fixturesDone ? "fixtures" : job.nextTraffic < job.traffic.points().size() ? "PTM2 traffic points"
-                    : job.nextBuilding < job.layout.buildings.size() ? "a site's building" : "the map's buildings, or finishing";
-            ServerPlayer player = server.getPlayerList().getPlayer(job.player);
-            if (job.next >= job.cells.length && !job.fixturesDone && job.then != null) {
-                fixtures(job);                              // the roads underneath are done: now the rest
-                job.layout = job.then;
-                job.cells = job.thenCells;
-                job.next = 0;
-                job.then = null;
-            } else if (job.next >= job.cells.length && !job.fixturesDone) {
-                fixtures(job);
-                job.fixturesDone = true;
-                job.traffic = job.layout.allTraffic();
-            } else if (job.fixturesDone && job.nextTraffic < job.traffic.points().size()) {
-                traffic(job);
-            } else if (job.fixturesDone && job.nextBuilding < job.layout.buildings.size()) {
-                Layout.SiteBuilding b = job.layout.buildings.get(job.nextBuilding++);
-                RoadPlan.Site st = job.plan.site(b.siteId());
-                if (st != null && !st.built) {
-                    SiteBuildings.build(out(job), b, job.palette);
-                }
-            } else if (job.fixturesDone && job.mapBuildings != null && !job.mapBuildings.done()) {
-                job.mapBuildings.step(out(job), job.palette, MAP_BUILDING_WORK);
-                if (player != null) {
-                    player.displayClientMessage(Component.literal("Building the map's buildings: " + job.mapBuildings.built() + " of "
-                            + job.mapBuildings.count()), true);
-                }
-            } else if (job.fixturesDone) {
-                // whoever pressed Build: the plan goes back on their planner, and a big plan's next part is theirs, even if they've gone
-                ServerPlayer by = player != null ? player : job.starter;
-                finish(job, by);
-                it.remove();
-                if (job.full != null) {
-                    // a big plan: on to the next part (once this job's out of the list)
-                    RoadPlan full = job.full;
-                    InteractionHand hand = job.hand;
-                    int slot = job.slot;
-                    NEXT.add(() -> start(by, hand, full, slot, true));
-                }
-            } else if (player != null && job.next % (COLUMNS_PER_TICK * 10) < COLUMNS_PER_TICK) {
-                player.displayClientMessage(Component.literal("Building roads: " + (100 * job.next / job.cells.length) + "%"), true);
-            }
-            slow(step, t3);
         }
     }
 
@@ -720,6 +751,7 @@ public final class RoadBuilder {
         plan.segments.forEach(sg -> sg.built = true);
         plan.sites.forEach(st -> st.built = true);
         plan.busStops.forEach(b -> b.built = true);
+        plan.crossings.forEach(x -> x.built = true);
     }
 
     // ------------------------------------------------------------------ blocks
