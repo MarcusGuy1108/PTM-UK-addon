@@ -95,6 +95,9 @@ public final class MapGuides {
         int min = mc.level.getMinBuildHeight();
         int reach = mc.options.getEffectiveRenderDistance() * 16;
         for (OsmMap.Outline o : outlines) {
+            if (OsmMap.feature(o.kind())) {
+                continue;                                   // car parks, parks, paths and the like: flat, nothing to build over
+            }
             double[] xs = o.x(), zs = o.z();
             if (Math.abs(xs[0] + mi.nudgeX - player.getX()) > reach || Math.abs(zs[0] + mi.nudgeZ - player.getZ()) > reach) {
                 continue;

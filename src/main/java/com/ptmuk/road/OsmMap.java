@@ -66,6 +66,8 @@ public final class OsmMap {
     private final Map<Long, String> pointHighway = new HashMap<>();     // traffic_signals, mini_roundabout
     /** Bus stops (highway=bus_stop, or a bus platform): their names. */
     private final Map<Long, String> busStops = new HashMap<>();
+    /** Things mapped as a point (trees, benches, bins, pillar boxes, phone boxes, lamps, bollards, bike stands): what each is. */
+    private final Map<Long, String> things = new java.util.LinkedHashMap<>();
     private final List<Way> ways = new ArrayList<>();
     private final List<Relation> relations = new ArrayList<>();
     public double minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
@@ -88,8 +90,22 @@ public final class OsmMap {
                 + "way[\"highway\"]" + box + ";"
                 + "way[\"building\"]" + box + ";"
                 + "relation[\"building\"][\"type\"=\"multipolygon\"]" + box + ";"
-                + "way[\"amenity\"~\"^(parking|fuel)$\"]" + box + ";"
+                + "way[\"amenity\"~\"^(parking|fuel|grave_yard)$\"]" + box + ";"
                 + "relation[\"amenity\"=\"parking\"][\"type\"=\"multipolygon\"]" + box + ";"
+                // the rest of what's there: water, green, woods, paths (highway, above), hedges, fences, walls, trees, street furniture
+                + "way[\"natural\"~\"^(water|wood|tree_row)$\"]" + box + ";"
+                + "relation[\"natural\"~\"^(water|wood)$\"][\"type\"=\"multipolygon\"]" + box + ";"
+                + "way[\"waterway\"]" + box + ";"
+                + "way[\"landuse\"~\"^(grass|forest|recreation_ground|village_green|cemetery|reservoir|basin|meadow)$\"]" + box + ";"
+                + "relation[\"landuse\"~\"^(grass|forest|recreation_ground|cemetery|reservoir)$\"][\"type\"=\"multipolygon\"]" + box + ";"
+                + "way[\"leisure\"~\"^(park|garden|pitch|playground|common|recreation_ground|village_green|dog_park)$\"]" + box + ";"
+                + "relation[\"leisure\"~\"^(park|garden|common)$\"][\"type\"=\"multipolygon\"]" + box + ";"
+                + "way[\"barrier\"~\"^(hedge|fence|wall|retaining_wall|city_wall)$\"]" + box + ";"
+                + "way[\"place\"=\"square\"]" + box + ";"
+                + "node[\"natural\"=\"tree\"]" + box + ";"
+                + "node[\"amenity\"~\"^(bench|waste_basket|post_box|telephone|bicycle_parking)$\"]" + box + ";"
+                + "node[\"highway\"=\"street_lamp\"]" + box + ";"
+                + "node[\"barrier\"=\"bollard\"]" + box + ";"
                 + "node[\"highway\"~\"^(bus_stop|traffic_signals|mini_roundabout|crossing)$\"]" + box + ";"
                 + "node[\"public_transport\"=\"platform\"][\"bus\"=\"yes\"]" + box + ";"
                 + ");(._;>;);out body;";
@@ -167,6 +183,10 @@ public final class OsmMap {
                                 || "platform".equals(tags.get("public_transport")) && "yes".equals(tags.get("bus")))) {
                             m.busStops.put(id, tags.getOrDefault("name", ""));
                         }
+                        String thing = tags == null ? null : pointKind(tags);
+                        if (thing != null) {
+                            m.things.put(id, thing);
+                        }
                         tags = null;
                     }
                     case "way" -> {
@@ -175,7 +195,7 @@ public final class OsmMap {
                         tags = null;
                     }
                     case "relation" -> {
-                        if ("multipolygon".equals(tags.get("type")) && kind(tags) != null) {
+                        if ("multipolygon".equals(tags.get("type")) && areaKind(tags) != null) {
                             m.relations.add(new Relation(tags, refs));
                         }
                         refs = null;
@@ -273,28 +293,164 @@ public final class OsmMap {
         return kind.equals("parking") || kind.equals("fuel");
     }
 
+    private static final Set<String> GREEN_LEISURE = Set.of("park", "garden", "common", "playground", "recreation_ground", "village_green", "dog_park");
+    private static final Set<String> GREEN_LANDUSE = Set.of("grass", "recreation_ground", "village_green", "cemetery", "meadow");
+    private static final Set<String> PATHS = Set.of("footway", "path", "cycleway", "bridleway", "steps", "pedestrian", "track");
+    private static final Set<String> SOFT = Set.of("dirt", "grass", "ground", "earth", "mud", "gravel", "fine_gravel", "compacted", "unpaved",
+            "woodchips", "sand", "pebblestone");
+    private static final Set<String> METAL_FENCES = Set.of("palisade", "metal", "railing", "chain_link", "metal_bars", "mesh");
+    /** Not buildings: what's laid on the ground, runs along it, or stands on it (see MapBuildings). */
+    private static final Set<String> FEATURES = Set.of("parking", "fuel", "water", "wood", "green", "pitch", "pedestrian", "hedge", "fence",
+            "fence:metal", "wall", "tree_row", "tree", "bench", "bin", "post_box", "phone", "bike", "lamp", "bollard");
+
+    /** Not a building: an area laid on the ground, a line along it (a path, a river, a hedge...) or a thing stood on it. */
+    public static boolean feature(String kind) {
+        return FEATURES.contains(kind) || kind.startsWith("path:") || kind.startsWith("river:");
+    }
+
+    /**
+     * What a closed way (or a multipolygon) is as an area: a building (see kind), a car park or
+     * forecourt, or water, a wood, a park or grass ("green"), a sports pitch, a pedestrian square;
+     * null if none of those.
+     */
+    static String areaKind(Map<String, String> tags) {
+        String k = kind(tags);
+        if (k != null) {
+            return k;
+        }
+        String natural = tags.getOrDefault("natural", ""), landuse = tags.getOrDefault("landuse", ""), leisure = tags.getOrDefault("leisure", "");
+        String highway = tags.getOrDefault("highway", "");
+        if (natural.equals("water") || "riverbank".equals(tags.get("waterway")) || landuse.equals("reservoir") || landuse.equals("basin")) {
+            return "water";
+        }
+        if (natural.equals("wood") || landuse.equals("forest")) {
+            return "wood";
+        }
+        if (leisure.equals("pitch")) {
+            return "pitch";
+        }
+        if (GREEN_LEISURE.contains(leisure) || GREEN_LANDUSE.contains(landuse) || "grave_yard".equals(tags.get("amenity"))) {
+            return "green";
+        }
+        if ((highway.equals("pedestrian") || highway.equals("footway")) && "yes".equals(tags.get("area")) || "square".equals(tags.get("place"))) {
+            return "pedestrian";
+        }
+        return null;
+    }
+
+    /**
+     * What a way is as a line, with its width in blocks where it has one: a path ("path:paved",
+     * "path:cycle" or "path:track", then its width), a river, stream or canal ("river:" and its
+     * width), a hedge, fence or wall, a row of trees; null if none (or it's on a bridge or in a
+     * tunnel, or a pavement drawn beside a road, which the road has already).
+     */
+    static String lineKind(Map<String, String> tags, double scale) {
+        if (!tags.getOrDefault("bridge", "no").equals("no") || !tags.getOrDefault("tunnel", "no").equals("no")) {
+            return null;
+        }
+        String highway = tags.getOrDefault("highway", ""), waterway = tags.getOrDefault("waterway", ""), barrier = tags.getOrDefault("barrier", "");
+        if (PATHS.contains(highway) && !"sidewalk".equals(tags.get("footway")) && !"crossing".equals(tags.get("footway"))
+                && !"yes".equals(tags.get("area"))) {
+            String surface = tags.getOrDefault("surface", "");
+            boolean soft = SOFT.contains(surface) || surface.isEmpty() && (highway.equals("path") || highway.equals("bridleway") || highway.equals("track"));
+            double metres = highway.equals("track") ? 3 : highway.equals("cycleway") || highway.equals("bridleway") ? 2.5 : 1.5;
+            return "path:" + (highway.equals("cycleway") ? "cycle" : soft ? "track" : "paved") + ":" + Math.max(2, (int) Math.round(metres * scale));
+        }
+        double width = metres(tags.get("width"));
+        double metres = switch (waterway) {
+            case "river" -> 10;
+            case "canal" -> 12;
+            case "stream" -> 2.5;
+            case "drain", "ditch" -> 1.5;
+            default -> Double.NaN;
+        };
+        if (!Double.isNaN(metres)) {
+            return "river:" + Math.max(1, (int) Math.round((Double.isNaN(width) ? metres : Math.min(60, width)) * scale));
+        }
+        return switch (barrier) {
+            case "hedge" -> "hedge";
+            case "fence" -> METAL_FENCES.contains(tags.getOrDefault("fence_type", "")) ? "fence:metal" : "fence";
+            case "wall", "retaining_wall", "city_wall" -> "wall";
+            default -> "tree_row".equals(tags.get("natural")) ? "tree_row" : null;
+        };
+    }
+
+    /** What a point is, of the things built: a tree, a bench, a bin, a pillar box, a phone box, a bike stand, a street lamp, a bollard; or null. */
+    static String pointKind(Map<String, String> tags) {
+        if ("tree".equals(tags.get("natural"))) {
+            return "tree";
+        }
+        if ("street_lamp".equals(tags.get("highway"))) {
+            return "lamp";
+        }
+        if ("bollard".equals(tags.get("barrier"))) {
+            return "bollard";
+        }
+        return switch (tags.getOrDefault("amenity", "")) {
+            case "bench" -> "bench";
+            case "waste_basket" -> "bin";
+            case "post_box" -> "post_box";
+            case "telephone" -> "phone";
+            case "bicycle_parking" -> "bike";
+            default -> null;
+        };
+    }
+
     public List<Outline> buildings(MapImport mi) {
+        return buildings(mi, true);
+    }
+
+    /**
+     * Everything built from the map: buildings, then the areas, lines and things (see feature)
+     * after them, all as outlines. measured: real heights and roofs from LIDAR, where there are
+     * any (without, it's quick: enough to fit the roads' pavements to the building fronts).
+     */
+    public List<Outline> buildings(MapImport mi, boolean measured) {
         List<Outline> out = new ArrayList<>();
         Map<Long, Way> byId = new HashMap<>();
+        Lidar heights = measured ? lidar : null;
         for (Way w : ways) {
             byId.put(w.id(), w);
-            if (kind(w.tags()) != null && w.closed()) {
-                outline(out, w.nodes(), w.tags(), mi);
+            String area = w.closed() ? areaKind(w.tags()) : null;
+            if (area != null) {
+                outline(out, w.nodes(), w.tags(), mi, heights);
+            } else {
+                String line = lineKind(w.tags(), mi.scale);
+                if (line != null) {
+                    feature(out, w.nodes(), line, mi);
+                }
             }
+        }
+        for (Map.Entry<Long, String> t : things.entrySet()) {
+            feature(out, new long[]{t.getKey()}, t.getValue(), mi);
         }
         for (Relation rel : relations) {
             for (long id : rel.outers()) {
                 Way w = byId.get(id);
                 // shortcut: only outer rings drawn as one closed way; ones split over several ways are skipped
                 if (w != null && w.closed()) {
-                    outline(out, w.nodes(), rel.tags(), mi);
+                    outline(out, w.nodes(), rel.tags(), mi, heights);
                 }
             }
         }
         return out;
     }
 
-    private void outline(List<Outline> out, long[] ids, Map<String, String> tags, MapImport mi) {
+    /** A line or a thing (one point): where it is, in blocks. */
+    private void feature(List<Outline> out, long[] ids, String kind, MapImport mi) {
+        double[] x = new double[ids.length], z = new double[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            double[] ll = nodes.get(ids[i]);
+            if (ll == null) {
+                return;                                     // part of it is outside the export
+            }
+            x[i] = mi.x(ll[1]);
+            z[i] = mi.z(ll[0]);
+        }
+        out.add(new Outline(x, z, 1, kind, "flat", 1, "", "", null));
+    }
+
+    private void outline(List<Outline> out, long[] ids, Map<String, String> tags, MapImport mi, Lidar lidar) {
         double[] x = new double[ids.length], z = new double[ids.length], lat = new double[ids.length], lon = new double[ids.length];
         for (int i = 0; i < ids.length; i++) {
             double[] ll = nodes.get(ids[i]);
@@ -306,8 +462,8 @@ public final class OsmMap {
             x[i] = mi.x(ll[1]);
             z[i] = mi.z(ll[0]);
         }
-        String kind = kind(tags);
-        if (surface(kind)) {
+        String kind = areaKind(tags);
+        if (feature(kind)) {
             out.add(new Outline(x, z, 1, kind, "flat", 1, "", "", null));
             return;
         }
@@ -695,7 +851,7 @@ public final class OsmMap {
 
         Edges(List<Outline> outlines, int nx, int nz) {
             for (Outline o : outlines) {
-                for (int i = 0; i + 1 < o.x().length && !surface(o.kind()); i++) {     // pavements go to building fronts, not car parks
+                for (int i = 0; i + 1 < o.x().length && !feature(o.kind()); i++) {     // pavements go to building fronts, not car parks and parks
                     double[] e = {o.x()[i] + nx, o.z()[i] + nz, o.x()[i + 1] + nx, o.z()[i + 1] + nz};
                     for (int cx = cell(Math.min(e[0], e[2])); cx <= cell(Math.max(e[0], e[2])); cx++) {
                         for (int cz = cell(Math.min(e[1], e[3])); cz <= cell(Math.max(e[1], e[3])); cz++) {

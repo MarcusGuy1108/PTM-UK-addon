@@ -54,8 +54,13 @@ public final class MapBuildings {
         public List<Footprint> buildings = new ArrayList<>();
     }
 
-    /** CAR_PARK and FORECOURT are laid on the ground (see surface); CANOPY is a roof on posts, a petrol station's (see canopy). */
-    private enum Use { HOUSE, FLATS, SHOP, OFFICE, INDUSTRIAL, CIVIC, CHURCH, SHED, CAR_PARK, FORECOURT, CANOPY }
+    /**
+     * What's built. After the buildings: areas laid on the ground (a car park, a forecourt, a
+     * pedestrian square, a pitch; water; a park or grass, a wood), lines along it (a river, a path,
+     * a hedge, fence or wall, a row of trees), things stood on it, and canopies (a roof on posts).
+     */
+    private enum Use { HOUSE, FLATS, SHOP, OFFICE, INDUSTRIAL, CIVIC, CHURCH, SHED, CAR_PARK, FORECOURT, PEDESTRIAN, PITCH, WATER, GREEN, WOOD,
+        RIVER, PATH, HEDGE, FENCE, WALL, TREE_ROW, THING, CANOPY }
 
     private record Style(String wall, String roof, String window, String ground, String floor, String door) {
     }
@@ -79,7 +84,7 @@ public final class MapBuildings {
 
     private static final Gson GSON = new Gson();
     private static final Map<UUID, Batch> PENDING = new HashMap<>();
-    private static final int MAX_BUILDINGS = 60000, MAX_CORNERS = 2000, MAX_CELLS = 250 * 250;
+    private static final int MAX_BUILDINGS = 60000, MAX_CORNERS = 2000, MAX_CELLS = 250 * 250, MAX_AREA_CELLS = 500 * 500;
     /** The most a map's buildings can come to, packed, to send to the server in one go (all of a big map's). */
     public static final int MAX_PACKED = 8 * 1024 * 1024;
     /** A roof goes up a block for every block in from the eaves (45 degrees), this high at most. */
@@ -93,6 +98,8 @@ public final class MapBuildings {
     public final int[] box;
     private final List<Shell> shells = new ArrayList<>();
     private final Set<Long> occupied = new HashSet<>();
+    /** Where the paths, rivers, hedges and the like run. */
+    private final Set<Long> lineCells = new HashSet<>();
     private final Map<Long, Integer> rise;
     private final List<double[]> roads = new ArrayList<>();
     private WorldTerrain ground;
@@ -170,8 +177,8 @@ public final class MapBuildings {
             return null;
         }
         b.scale = Double.isFinite(b.scale) ? Math.max(0.5, Math.min(5, b.scale)) : 1;
-        b.buildings.removeIf(f -> f == null || f.x == null || f.z == null || f.x.length != f.z.length || f.x.length < 3
-                || f.x.length > MAX_CORNERS);
+        b.buildings.removeIf(f -> f == null || f.x == null || f.z == null || f.x.length != f.z.length
+                || f.x.length < (f.kind != null && com.ptmuk.road.OsmMap.feature(f.kind) ? 1 : 3) || f.x.length > MAX_CORNERS);
         if (b.buildings.size() > MAX_BUILDINGS) {
             b.buildings = new ArrayList<>(b.buildings.subList(0, MAX_BUILDINGS));
         }
@@ -255,12 +262,14 @@ public final class MapBuildings {
     /** Works out every building's columns, what it is and its roof; built later a few at a time (see step). */
     MapBuildings(Batch batch, Layout layout, RoadPlan plan) {
         box = batch.box;
-        // buildings take their ground first, then car parks and forecourts round them, then canopies over the forecourts
+        // buildings take their ground first; then water, the car parks, squares and pitches, the parks and woods round them;
+        // then the lines and things over those, and the canopies over the forecourts
         List<Footprint> order = new ArrayList<>(batch.buildings);
-        order.sort(java.util.Comparator.comparingInt(f -> com.ptmuk.road.OsmMap.surface(f.kind) ? 1 : canopy(f.kind) ? 2 : 0));
+        order.sort(java.util.Comparator.comparingInt(f -> rank(f.kind)));
         Set<Long> paved = new HashSet<>();
         for (Footprint f : order) {
-            boolean surface = com.ptmuk.road.OsmMap.surface(f.kind), canopy = canopy(f.kind);
+            int rank = rank(f.kind);
+            boolean surface = rank >= 1 && rank <= 3, canopy = canopy(f.kind), small = rank >= 4 && rank <= 6;
             long[] cells = raster(f);
             if (cells == null) {
                 continue;
@@ -276,11 +285,16 @@ public final class MapBuildings {
                     keep.add(c);
                 }
             }
-            if (keep.size() < 4 || clash * 3 > cells.length) {
+            // a line or a thing loses just what's on a road; an area or building mostly on one isn't built
+            if (small ? keep.isEmpty() : keep.size() < 4 || clash * 3 > cells.length) {
                 continue;
             }
             if (surface) {
                 paved.addAll(keep);
+            } else if (small) {
+                if (rank < 6) {
+                    lineCells.addAll(keep);                 // (no trees on paths)
+                }
             } else if (!canopy) {
                 occupied.addAll(keep);                      // (a canopy stands over a forecourt: it doesn't keep the ground to itself)
             }
@@ -401,8 +415,51 @@ public final class MapBuildings {
         return i;
     }
 
-    private static Use use(String kind, double areaM2, double depthM, int floors) {
+    /** The order things are given their ground and built in (see the constructor). */
+    private static int rank(String kind) {
+        if (canopy(kind)) {
+            return 7;
+        }
+        if (!com.ptmuk.road.OsmMap.feature(kind)) {
+            return 0;
+        }
         return switch (kind) {
+            case "water" -> 1;
+            case "parking", "fuel", "pedestrian", "pitch" -> 2;
+            case "green", "wood" -> 3;
+            case "hedge", "fence", "fence:metal", "wall", "tree_row" -> 5;
+            default -> kind.startsWith("river:") ? 4 : kind.startsWith("path:") ? 5 : 6;
+        };
+    }
+
+    /** A line's width in blocks: the number at the end of its kind ("path:paved:3", "river:18"), else 1. */
+    private static int width(String kind) {
+        int colon = kind.lastIndexOf(':');
+        try {
+            return colon < 0 ? 1 : Math.max(1, Math.min(120, Integer.parseInt(kind.substring(colon + 1))));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    private static Use use(String kind, double areaM2, double depthM, int floors) {
+        if (kind.startsWith("river:")) {
+            return Use.RIVER;
+        }
+        if (kind.startsWith("path:")) {
+            return Use.PATH;
+        }
+        return switch (kind) {
+            case "pedestrian" -> Use.PEDESTRIAN;
+            case "pitch" -> Use.PITCH;
+            case "water" -> Use.WATER;
+            case "green" -> Use.GREEN;
+            case "wood" -> Use.WOOD;
+            case "hedge" -> Use.HEDGE;
+            case "fence", "fence:metal" -> Use.FENCE;
+            case "wall" -> Use.WALL;
+            case "tree_row" -> Use.TREE_ROW;
+            case "tree", "bench", "bin", "post_box", "phone", "bike", "lamp", "bollard" -> Use.THING;
             case "house", "detached", "semidetached_house", "terrace", "bungalow", "residential", "cabin", "farm" ->
                     floors >= 4 ? Use.FLATS : Use.HOUSE;
             case "apartments", "flats", "dormitory", "hotel" -> Use.FLATS;
@@ -427,8 +484,8 @@ public final class MapBuildings {
     }
 
     private static boolean pitched(Shell s, double depthM) {
-        if (s.use == Use.CAR_PARK || s.use == Use.FORECOURT || s.use == Use.CANOPY) {
-            return false;
+        if (s.use.ordinal() >= Use.CAR_PARK.ordinal()) {
+            return false;                                   // not a building
         }
         switch (s.fp.roof) {
             case "flat" -> {
@@ -476,7 +533,7 @@ public final class MapBuildings {
             case SHED -> new Style(pick(seed, 1, red, red, render), pitched ? "ptmuk:roof_concrete_tiles" : "minecraft:black_concrete",
                     null, null, "minecraft:smooth_stone", "minecraft:spruce_door");
             // (not walls and windows: see surface and canopy) posts and deck
-            case CAR_PARK, FORECOURT, CANOPY -> new Style("minecraft:light_gray_concrete", "minecraft:white_concrete", null, null,
+            case CAR_PARK, FORECOURT, PEDESTRIAN, PITCH, WATER, GREEN, WOOD, RIVER, PATH, HEDGE, FENCE, WALL, TREE_ROW, THING, CANOPY -> new Style("minecraft:light_gray_concrete", "minecraft:white_concrete", null, null,
                     "minecraft:smooth_stone", "minecraft:spruce_door");
         };
     }
@@ -523,11 +580,24 @@ public final class MapBuildings {
         int[] sorted = g.clone();
         Arrays.sort(sorted);
         int base = sorted[n / 2] - 1;                                  // the ground floor: level with most of the ground under it
-        if (s.use == Use.CAR_PARK || s.use == Use.FORECOURT) {
-            return surface(out, pal, s, base, g);
-        }
-        if (s.use == Use.CANOPY) {
-            return canopy(out, pal, s, base);
+        switch (s.use) {
+            case CAR_PARK, FORECOURT, PEDESTRIAN, PITCH -> {
+                return surface(out, pal, s, base, g);
+            }
+            case WATER -> {
+                return water(out, s, base, g);
+            }
+            case GREEN, WOOD -> {
+                return green(out, pal, s, g);
+            }
+            case RIVER, PATH, HEDGE, FENCE, WALL, TREE_ROW, THING -> {
+                return line(out, pal, s, g);
+            }
+            case CANOPY -> {
+                return canopy(out, pal, s, base);
+            }
+            default -> {
+            }
         }
         int h = s.fp.height;
         int top = base + h;
@@ -704,7 +774,12 @@ public final class MapBuildings {
      */
     private int surface(SiteBuildings.Out out, RoadBuilder.Palette pal, Shell s, int base, int[] g) {
         boolean park = s.use == Use.CAR_PARK;
-        BlockState top = pal.get(park ? "ptmuk:tarmac" : "minecraft:smooth_stone", "minecraft:gray_concrete");
+        BlockState top = pal.get(switch (s.use) {
+            case CAR_PARK -> "ptmuk:tarmac";
+            case PEDESTRIAN -> "ptmuk:block_paving_grey";
+            case PITCH -> "minecraft:grass_block";
+            default -> "minecraft:smooth_stone";
+        }, "minecraft:gray_concrete");
         BlockState line = Blocks.WHITE_CONCRETE.defaultBlockState(), fill = pal.get("minecraft:stone", null), air = Blocks.AIR.defaultBlockState();
         double[] ax = axis(s.fp);
         Map<Long, Integer> edge = distances(s.in);
@@ -728,7 +803,8 @@ public final class MapBuildings {
                 bay = row < 10 && Math.floorMod(u, 3) == 0;
                 lamp = row == 12 && Math.floorMod(u, 24) == 12;
             }
-            out.set(p.set(x, base, z), bay ? line : top);
+            // a pitch's touchline round it
+            out.set(p.set(x, base, z), bay || s.use == Use.PITCH && edge.getOrDefault(c, 1) == 1 ? line : top);
             laid.put(c, base);
             for (int y = base + 1; y <= Math.max(g[i], base + 1) + 2; y++) {
                 if (!out.level().getBlockState(p.set(x, y, z)).isAir()) {
@@ -791,6 +867,156 @@ public final class MapBuildings {
             }
         }
         return s.cells.length * 3;
+    }
+
+    /**
+     * Water (a lake, pond, reservoir or a river drawn as an area): level with the lowest of its
+     * shore so it stays in, dug down 1 to 3 blocks (deepest away from the edge), on a dirt bed.
+     */
+    private int water(SiteBuildings.Out out, Shell s, int base, int[] g) {
+        Map<Long, Integer> edge = distances(s.in);
+        int level = base;
+        for (int i = 0; i < s.cells.length; i++) {
+            if (edge.getOrDefault(s.cells[i], 1) == 1) {
+                level = Math.min(level, g[i] - 1);
+            }
+        }
+        BlockState water = Blocks.WATER.defaultBlockState(), bed = Blocks.DIRT.defaultBlockState(), air = Blocks.AIR.defaultBlockState();
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        for (int i = 0; i < s.cells.length; i++) {
+            long c = s.cells[i];
+            int x = kx(c), z = kz(c), depth = Math.min(3, edge.getOrDefault(c, 1));
+            out.set(p.set(x, level - depth, z), bed);
+            for (int y = level - depth + 1; y <= level; y++) {
+                out.set(p.set(x, y, z), water);
+            }
+            for (int y = level + 1; y <= Math.max(g[i], level + 1) + 1; y++) {
+                if (!out.level().getBlockState(p.set(x, y, z)).isAir()) {
+                    out.set(p, air);
+                }
+            }
+            laid.put(c, level);
+        }
+        return s.cells.length * 2;
+    }
+
+    /**
+     * A park, grass, a cemetery or a wood: the ground left as it lies, grassed over, with trees:
+     * now and then in a park, close together in a wood (none on the paths through them).
+     */
+    private int green(SiteBuildings.Out out, RoadBuilder.Palette pal, Shell s, int[] g) {
+        Map<Long, Integer> edge = distances(s.in);
+        boolean wood = s.use == Use.WOOD;
+        BlockState grass = Blocks.GRASS_BLOCK.defaultBlockState();
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        for (int i = 0; i < s.cells.length; i++) {
+            long c = s.cells[i];
+            int x = kx(c), z = kz(c), top = g[i] - 1;
+            BlockState was = out.level().getBlockState(p.set(x, top, z));
+            if (!was.is(Blocks.GRASS_BLOCK) && was.getFluidState().isEmpty()) {
+                out.set(p, grass);
+            }
+            laid.put(c, top);
+            int hash = Math.floorMod(x * 73856093 ^ z * 19349663, wood ? 23 : 150);
+            if (hash == 0 && edge.getOrDefault(c, 1) >= (wood ? 2 : 3) && clearOfLines(c)) {
+                thing(out, pal, "tree", x, top + 1, z);
+            }
+        }
+        return s.cells.length;
+    }
+
+    private boolean clearOfLines(long c) {
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (lineCells.contains(key(kx(c) + dx, kz(c) + dz))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * A line along the ground or a thing stood on it, following the ground (or what's been laid
+     * there): a river or stream cut into it, a path, a hedge, fence or wall, a row of trees.
+     */
+    private int line(SiteBuildings.Out out, RoadBuilder.Palette pal, Shell s, int[] g) {
+        String kind = s.fp.kind;
+        Map<Long, Integer> edge = s.use == Use.RIVER ? distances(s.in) : Map.of();
+        BlockState air = Blocks.AIR.defaultBlockState();
+        BlockState path = pal.get(kind.startsWith("path:cycle") ? "ptmuk:tarmac" : kind.startsWith("path:track") ? "minecraft:dirt_path"
+                : "ptmuk:paving_slabs", "minecraft:smooth_stone");
+        BlockState barrier = switch (s.use) {
+            case HEDGE -> RoadBuilder.with(pal.get("minecraft:oak_leaves", null), "persistent", true);
+            case FENCE -> pal.get(kind.equals("fence:metal") ? "ptmuk:palisade_fence" : "minecraft:spruce_fence", "minecraft:oak_fence");
+            case WALL -> pal.get("minecraft:brick_wall", "minecraft:cobblestone_wall");
+            default -> null;
+        };
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        for (int i = 0; i < s.cells.length; i++) {
+            long c = s.cells[i];
+            int x = kx(c), z = kz(c), y = laid.getOrDefault(c, g[i] - 1);
+            switch (s.use) {
+                case RIVER -> {
+                    int depth = Math.min(3, 1 + edge.getOrDefault(c, 1));
+                    out.set(p.set(x, y - depth, z), Blocks.DIRT.defaultBlockState());
+                    for (int k = y - depth + 1; k <= y; k++) {
+                        out.set(p.set(x, k, z), Blocks.WATER.defaultBlockState());
+                    }
+                    clear(out, p, x, y + 1, y + 2, z, air);
+                }
+                case PATH -> {
+                    out.set(p.set(x, y, z), path);
+                    clear(out, p, x, y + 1, y + 3, z, air);
+                    laid.put(c, y);
+                }
+                case HEDGE, FENCE, WALL -> {
+                    int high = s.use == Use.FENCE ? 1 : 2;
+                    for (int k = 1; k <= high; k++) {
+                        out.set(p.set(x, y + k, z), barrier);
+                        out.join(p.immutable());
+                    }
+                }
+                case TREE_ROW -> {
+                    if (Math.floorMod(x * 31 + z * 17, 7) == 0) {
+                        thing(out, pal, "tree", x, y + 1, z);
+                    }
+                }
+                default -> thing(out, pal, kind, x, y + 1, z);
+            }
+        }
+        return s.cells.length * 2;
+    }
+
+    private static void clear(SiteBuildings.Out out, BlockPos.MutableBlockPos p, int x, int y0, int y1, int z, BlockState air) {
+        for (int y = y0; y <= y1; y++) {
+            if (!out.level().getBlockState(p.set(x, y, z)).isAir()) {
+                out.set(p, air);
+            }
+        }
+    }
+
+    /** A thing stood at x, y, z: a tree, a bench, a bin, a pillar box, a phone box, a bike stand, a bollard or a street lamp. */
+    private static void thing(SiteBuildings.Out out, RoadBuilder.Palette pal, String kind, int x, int y, int z) {
+        Layout.FixtureType type = switch (kind) {
+            case "tree" -> Layout.FixtureType.PARK_TREE;
+            case "bench" -> Layout.FixtureType.BENCH;
+            case "bin" -> Layout.FixtureType.BIN;
+            case "post_box" -> Layout.FixtureType.PILLAR_BOX;
+            case "phone" -> Layout.FixtureType.PHONE_BOX;
+            case "bike" -> Layout.FixtureType.BIKE_STAND;
+            case "bollard" -> Layout.FixtureType.BOLLARD;
+            default -> null;
+        };
+        if (type != null) {
+            SiteFixtures.place(out.level(), new Layout.Fixture(type, x, z, y, 0, 0), y, pal, out::set);
+        } else if (kind.equals("lamp")) {
+            BlockState pole = pal.get("ptmuk:sign_pole_galvanised", "iron_bars");
+            for (int k = 0; k < 5; k++) {
+                out.set(new BlockPos(x, y + k, z), RoadBuilder.with(RoadBuilder.with(pole, "base", k == 0), "cap", false));
+            }
+            out.set(new BlockPos(x, y + 5, z), RoadBuilder.with(pal.get("ptmuk:street_light_led", "lantern"), "facing", "north"));
+        }
     }
 
     /** The way along a footprint's longest side (x, z, length one). */
@@ -864,8 +1090,12 @@ public final class MapBuildings {
         return (int) k;
     }
 
-    /** The columns whose middles are inside the outline; null if it's too big to build. */
+    /** The columns whose middles are inside the outline (along a line, its width; a thing, its one); null if it's too big to build. */
     private static long[] raster(Footprint f) {
+        int rank = rank(f.kind);
+        if (rank >= 4 && rank <= 6) {
+            return along(f, width(f.kind));
+        }
         int n = f.x.length;
         double[] xs = new double[n], zs = new double[n];
         double x0 = Double.MAX_VALUE, z0 = Double.MAX_VALUE, x1 = -Double.MAX_VALUE, z1 = -Double.MAX_VALUE;
@@ -878,8 +1108,8 @@ public final class MapBuildings {
             z1 = Math.max(z1, zs[i]);
         }
         int ix0 = (int) Math.floor(x0), iz0 = (int) Math.floor(z0), ix1 = (int) Math.ceil(x1), iz1 = (int) Math.ceil(z1);
-        if ((long) (ix1 - ix0) * (iz1 - iz0) > MAX_CELLS) {
-            return null;                                    // shortcut: buildings over 250x250 are left out, build them by hand
+        if ((long) (ix1 - ix0) * (iz1 - iz0) > (rank >= 1 && rank <= 3 ? MAX_AREA_CELLS : MAX_CELLS)) {
+            return null;                                    // shortcut: buildings over 250x250 (parks, woods, water over 500x500) are left out
         }
         List<Long> in = new ArrayList<>();
         for (int z = iz0; z < iz1; z++) {
@@ -890,6 +1120,34 @@ public final class MapBuildings {
             }
         }
         return in.stream().mapToLong(Long::longValue).toArray();
+    }
+
+    /** The columns within width/2 of a line (a thing: the one it's in). */
+    private static long[] along(Footprint f, int width) {
+        Set<Long> cells = new java.util.LinkedHashSet<>();
+        double r = width / 2.0;
+        int reach = (int) Math.ceil(r);
+        for (int i = 0; i < f.x.length && cells.size() < MAX_AREA_CELLS; i++) {
+            double ax = f.x[i] / 4.0, az = f.z[i] / 4.0;
+            double bx = i + 1 < f.x.length ? f.x[i + 1] / 4.0 : ax, bz = i + 1 < f.z.length ? f.z[i + 1] / 4.0 : az;
+            int steps = Math.max(1, (int) Math.ceil(Math.hypot(bx - ax, bz - az) * 4));      // every quarter block: no gaps on a slant
+            for (int k = 0; k <= steps; k++) {
+                double sx = ax + (bx - ax) * k / steps, sz = az + (bz - az) * k / steps;
+                if (width <= 1) {
+                    cells.add(key((int) Math.floor(sx), (int) Math.floor(sz)));
+                    continue;
+                }
+                for (int dx = -reach; dx <= reach; dx++) {
+                    for (int dz = -reach; dz <= reach; dz++) {
+                        int cx = (int) Math.floor(sx + dx), cz = (int) Math.floor(sz + dz);
+                        if (Math.hypot(cx + 0.5 - sx, cz + 0.5 - sz) <= r) {
+                            cells.add(key(cx, cz));
+                        }
+                    }
+                }
+            }
+        }
+        return cells.stream().mapToLong(Long::longValue).toArray();
     }
 
     static boolean inside(double[] xs, double[] zs, double px, double pz) {

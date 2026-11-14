@@ -27,7 +27,9 @@ import com.ptmuk.road.plan.RoadPlan.Site;
 import com.ptmuk.road.plan.RoadPlan.SiteType;
 import com.ptmuk.road.plan.RoadStyle;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
@@ -922,7 +924,7 @@ public class RoadPlannerScreen extends Screen {
     private void layMapRoads(OsmMap m) {
         osm = m;
         RoadPlan.MapImport mi = plan.map;
-        List<OsmMap.Outline> b = m.buildings(mi);
+        List<OsmMap.Outline> b = m.buildings(mi, false);          // (enough to fit the pavements: the real heights come in the background)
         // all of it: a big map is previewed and built a part at a time, round where you are
         int roads = m.roads(plan, mi, b, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
         int stops = m.busStops(plan, mi);
@@ -930,7 +932,9 @@ public class RoadPlannerScreen extends Screen {
         changed();
         int kb = RoadPlans.pack(plan).length / 1024;
         flash(kb > RoadPlans.MAX_PLAN / 1024 ? "That map's too big for one planner (" + kb + " KB of " + RoadPlans.MAX_PLAN / 1024 + ") - export a smaller area"
-                : roads + " roads, " + b.size() + " buildings and " + stops + " bus stops from " + mi.file + (m.lidar != null ? ", at their real heights" : "")
+                : roads + " roads, " + b.stream().filter(o -> !OsmMap.feature(o.kind())).count() + " buildings, "
+                + b.stream().filter(o -> OsmMap.feature(o.kind())).count() + " other things (car parks, parks, water, paths, trees...) and "
+                + stops + " bus stops from " + mi.file + (m.lidar != null ? ", at their real heights" : "")
                 + ". Drag it to where it goes." + heightsNote);
         heightsNote = "";
     }
@@ -973,14 +977,34 @@ public class RoadPlannerScreen extends Screen {
             flash("Some of the map's built already: Undo the build first (or Nudge just its buildings)");
             return;
         }
-        readMap(mi.file, m -> {
-            remember();
-            removeMapRoads();
-            mi.x += dx;
-            mi.z += dz;
-            layMapRoads(m);
-            flash("Moved the map " + Math.abs(dx) + (dx < 0 ? " west, " : " east, ") + Math.abs(dz) + (dz < 0 ? " north" : " south"));
-        });
+        // moved as it is (its roads, points and outlines shifted), not imported again: a big map's quick to move
+        remember();
+        for (Node n : plan.nodes) {
+            if (mi.owns(n.id)) {
+                n.x += dx;
+                n.z += dz;
+            }
+        }
+        mi.x += dx;
+        mi.z += dz;
+        if (outlines != null && outlinesKey != null) {
+            List<OsmMap.Outline> moved = new ArrayList<>(outlines.size());
+            for (OsmMap.Outline o : outlines) {
+                double[] xs = o.x().clone(), zs = o.z().clone();
+                for (int i = 0; i < xs.length; i++) {
+                    xs[i] += dx;
+                    zs[i] += dz;
+                }
+                OsmMap.Surface sf = o.surface();
+                moved.add(new OsmMap.Outline(xs, zs, o.height(), o.kind(), o.roof(), o.floors(), o.material(), o.roofMaterial(),
+                        sf == null ? null : new OsmMap.Surface(sf.x0() + dx, sf.z0() + dz, sf.w(), sf.v())));
+            }
+            outlines = moved;
+            outlinesKey = outlineKey(mi);
+        }
+        showOutlines();
+        changed();
+        flash("Moved the map " + Math.abs(dx) + (dx < 0 ? " west, " : " east, ") + Math.abs(dz) + (dz < 0 ? " north" : " south"));
     }
 
     /** The map's area on the planner's map, and while it's dragged its roads where they'll go. */
@@ -994,10 +1018,16 @@ public class RoadPlannerScreen extends Screen {
         if (!mapDrag) {
             return;
         }
+        cacheLines();
+        int step = curveStep();
         for (Segment s : plan.segments) {
             Curve c = plan.map.owns(s.id) ? lines.curves.get(s.id) : null;
-            for (int i = 0; c != null && i + 4 < c.n; i += 4) {
-                line(g, screenX(c.x[i] + mapDX), screenY(c.z[i] + mapDZ), screenX(c.x[i + 4] + mapDX), screenY(c.z[i + 4] + mapDZ),
+            double[] b = curveBoxes.get(s.id);
+            if (c == null || b == null || !onScreen(b[0], b[1], b[2], b[3], mapDX, mapDZ)) {
+                continue;
+            }
+            for (int i = 0; i + step < c.n; i += step) {
+                line(g, screenX(c.x[i] + mapDX), screenY(c.z[i] + mapDZ), screenX(c.x[i + step] + mapDX), screenY(c.z[i + step] + mapDZ),
                         1, 0xFFFFD24A);
             }
         }
@@ -1006,14 +1036,44 @@ public class RoadPlannerScreen extends Screen {
     private void nudge(int dx, int dz) {
         plan.map.nudgeX += dx;
         plan.map.nudgeZ += dz;
-        showOutlines();
+        drawOutlines();
     }
 
-    /** The map's buildings, nudged, drawn into a picture laid over the planner's map. */
+    /** The outlines being worked out, and what for (see outlineKey). */
+    private CompletableFuture<List<OsmMap.Outline>> outlinesJob;
+    private String outlinesKey, outlinesJobKey;
+
+    /** What the map's outlines depend on: where it is, its scale, and whether it has real heights (not its nudge: they're drawn nudged). */
+    private String outlineKey(RoadPlan.MapImport mi) {
+        return mi.x + "|" + mi.z + "|" + mi.scale + "|" + mi.lat0 + "|" + mi.lon0 + "|" + (osm != null && osm.lidar != null);
+    }
+
+    /**
+     * The map's buildings (and its car parks, parks, water, paths and the rest) shown: drawn now if
+     * they're known for where the map is, else worked out in the background first (with real
+     * heights and roof shapes, a big map's take a while) and drawn when they're done (see tick).
+     */
     private void showOutlines() {
         RoadPlan.MapImport mi = plan.map;
-        outlines = mi == null || osm == null ? null : osm.buildings(mi);
-        if (outlines == null || map == null) {
+        if (mi == null || osm == null) {
+            outlines = null;
+            outlinesKey = null;
+            return;
+        }
+        String k = outlineKey(mi);
+        if (k.equals(outlinesKey) && outlines != null) {
+            drawOutlines();
+        } else if (outlinesJob == null) {
+            OsmMap m = osm;
+            outlinesJobKey = k;
+            outlinesJob = CompletableFuture.supplyAsync(() -> m.buildings(mi), net.minecraft.Util.backgroundExecutor());
+        }
+    }
+
+    /** The outlines, nudged, drawn into a picture laid over the planner's map: buildings orange, water blue, green green... */
+    private void drawOutlines() {
+        RoadPlan.MapImport mi = plan.map;
+        if (outlines == null || map == null || mi == null) {
             return;
         }
         if (outlineTex == null) {
@@ -1025,8 +1085,20 @@ public class RoadPlannerScreen extends Screen {
             return;
         }
         img.fillRect(0, 0, map.size, map.size, 0);
-        int colour = abgr(0xFF8C1A, 255);
         for (OsmMap.Outline o : outlines) {
+            String what = o.kind();
+            int colour = abgr(!OsmMap.feature(what) ? 0xFF8C1A : what.equals("water") || what.startsWith("river:") ? 0x4A90E2
+                    : what.equals("green") || what.equals("pitch") ? 0x6CC24A
+                    : what.equals("wood") || what.equals("tree") || what.equals("tree_row") || what.equals("hedge") ? 0x2E8B3A
+                    : what.startsWith("path:") ? 0xD9C089 : what.equals("parking") || what.equals("fuel") || what.equals("pedestrian") ? 0xB8B8B8
+                    : 0xE8E8E8, 255);
+            if (o.x().length == 1) {                        // a thing: a dot
+                int px = (int) Math.floor(o.x()[0] + mi.nudgeX - map.originX), pz = (int) Math.floor(o.z()[0] + mi.nudgeZ - map.originZ);
+                if (px >= 0 && pz >= 0 && px < map.size && pz < map.size) {
+                    img.setPixelRGBA(px, pz, colour);
+                }
+                continue;
+            }
             for (int i = 0; i + 1 < o.x().length; i++) {
                 double ax = o.x()[i] + mi.nudgeX - map.originX, az = o.z()[i] + mi.nudgeZ - map.originZ;
                 double bx = o.x()[i + 1] + mi.nudgeX - map.originX, bz = o.z()[i + 1] + mi.nudgeZ - map.originZ;
@@ -1407,6 +1479,17 @@ public class RoadPlannerScreen extends Screen {
         changed();
     }
 
+    private long linesAt;
+
+    /** The lines again while a point or bend is dragged: a big plan's are slow, so ten times a second at most (all again when it's let go). */
+    private void dragLines() {
+        long now = System.nanoTime();
+        if (plan.segments.size() < 1500 || now - linesAt > 100_000_000L) {
+            lines = Layout.lines(plan);
+            linesAt = now;
+        }
+    }
+
     private void changed() {
         lines = Layout.lines(plan);
         previewStale = true;
@@ -1476,8 +1559,9 @@ public class RoadPlannerScreen extends Screen {
         }
         RoadPlan.MapImport mi = plan.map;
         if (mi != null && mi.buildings) {
-            if (outlines == null) {
-                flash("The map's still loading - try again in a moment");
+            if (outlines == null || !outlineKey(mi).equals(outlinesKey)) {
+                showOutlines();
+                flash("Still working out the map's buildings - try again in a moment");
                 return;
             }
             // the buildings go first, all of them still to build: the server builds them with the roads, part by part
@@ -2041,7 +2125,7 @@ public class RoadPlannerScreen extends Screen {
             if (n != null) {
                 n.x = Math.floor(worldX(mx));
                 n.z = Math.floor(worldZ(my));
-                lines = Layout.lines(plan);
+                dragLines();
             }
         } else if (draggingBend && selSeg != null) {
             Segment s = plan.segment(selSeg);
@@ -2052,7 +2136,7 @@ public class RoadPlannerScreen extends Screen {
                 double lx = (bz - az) / len, lz = -(bx - ax) / len;
                 double wx = worldX(mx) - (ax + bx) / 2, wz = worldZ(my) - (az + bz) / 2;
                 s.bend = Math.round(wx * lx + wz * lz);
-                lines = Layout.lines(plan);
+                dragLines();
             }
         }
         lastMouseX = mx;
@@ -2293,6 +2377,17 @@ public class RoadPlannerScreen extends Screen {
         if (messageTicks > 0) {
             messageTicks--;
         }
+        if (outlinesJob != null && outlinesJob.isDone()) {
+            List<OsmMap.Outline> done = outlinesJob.isCompletedExceptionally() ? null : outlinesJob.join();
+            outlinesJob = null;
+            if (plan.map != null && outlinesJobKey.equals(outlineKey(plan.map))) {
+                outlines = done;
+                outlinesKey = outlinesJobKey;
+                drawOutlines();
+            } else {
+                showOutlines();                             // the map moved meanwhile: again, for where it is now
+            }
+        }
         if (mapJob != null && mapJob.isDone()) {
             try {
                 OsmMap m = mapJob.join();
@@ -2422,7 +2517,7 @@ public class RoadPlannerScreen extends Screen {
         if (previewTex != null) {
             RenderSystem.enableBlend();
             ps.pushPose();
-            ps.translate(screenX(previewX0), screenY(previewZ0), 0);
+            ps.translate(screenX(previewX0 + mapDX), screenY(previewZ0 + mapDZ), 0);      // (with the map, while it's dragged)
             ps.scale((float) zoom, (float) zoom, 1);
             g.blit(PREVIEW, 0, 0, 0, 0, previewW, previewH, previewW, previewH);
             ps.popPose();
@@ -2437,13 +2532,16 @@ public class RoadPlannerScreen extends Screen {
             ps.popPose();
             RenderSystem.disableBlend();
         }
-        drawPlan(g);
-        drawMapArea(g);
-        drawMeasure(g);
-        drawSwapBox(g);
-        drawMoveBox(g);
-        drawStops(g);
-        drawPlayer(g);
+        // all the map's lines and points in one go (one at a time, a big map's tens of thousands are far too slow)
+        g.drawManaged(() -> {
+            drawPlan(g);
+            drawMapArea(g);
+            drawMeasure(g);
+            drawSwapBox(g);
+            drawMoveBox(g);
+            drawStops(g);
+            drawPlayer(g);
+        });
         g.disableScissor();
         // panel and bars
         g.fill(0, 0, PANEL, height, 0xF0202226);
@@ -2770,12 +2868,55 @@ public class RoadPlannerScreen extends Screen {
         return n;
     }
 
+    /** For the lines last worked out (see lines): the box round each road's curve, and how many roads meet at each point. */
+    private Layout boxesFor;
+    private final Map<Integer, double[]> curveBoxes = new HashMap<>();
+    private final Map<Integer, Integer> degree = new HashMap<>();
+
+    private void cacheLines() {
+        if (boxesFor == lines) {
+            return;
+        }
+        boxesFor = lines;
+        curveBoxes.clear();
+        degree.clear();
+        for (Segment s : plan.segments) {
+            degree.merge(s.a, 1, Integer::sum);
+            degree.merge(s.b, 1, Integer::sum);
+            Curve c = lines.curves.get(s.id);
+            if (c != null) {
+                double[] b = {Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+                for (int i = 0; i < c.n; i++) {
+                    b[0] = Math.min(b[0], c.x[i]);
+                    b[1] = Math.min(b[1], c.z[i]);
+                    b[2] = Math.max(b[2], c.x[i]);
+                    b[3] = Math.max(b[3], c.z[i]);
+                }
+                curveBoxes.put(s.id, b);
+            }
+        }
+    }
+
+    /** Whether any of the box x0..x1, z0..z1 (blocks, shifted by dx, dz) is on the map on screen, give or take a margin. */
+    private boolean onScreen(double x0, double z0, double x1, double z1, double dx, double dz) {
+        double pad = 24 / zoom;
+        return x1 + dx >= worldX(mapLeft()) - pad && x0 + dx <= worldX(width) + pad && z1 + dz >= worldZ(TOP) - pad && z0 + dz <= worldZ(height) + pad;
+    }
+
+    /** How many of a curve's points to step over between the lines drawn for it: none closer than about 6 pixels. */
+    private int curveStep() {
+        return Math.max(4, (int) Math.ceil(6 / zoom));
+    }
+
     private void drawPlan(GuiGraphics g) {
         drawSites(g);
+        cacheLines();
+        int step = curveStep();
         boolean showLines = preview == null || pending != null || draggingNode || draggingBend || zoom < 1.5;
         for (Segment s : plan.segments) {
             Curve c = lines.curves.get(s.id);
-            if (c == null) {
+            double[] box = curveBoxes.get(s.id);
+            if (c == null || box == null || !onScreen(box[0], box[1], box[2], box[3], 0, 0)) {
                 continue;
             }
             boolean sel = selSeg != null && selSeg == s.id;
@@ -2788,10 +2929,10 @@ public class RoadPlannerScreen extends Screen {
                     w = (float) Math.max(1, s.style.halfCarriageway() * 2 * zoom);
                     colour = sel ? 0xC0FFD24A : 0x90505458;
                 }
-                for (int i = 0; i + 4 < c.n; i += 4) {
-                    line(g, screenX(c.x[i]), screenY(c.z[i]), screenX(c.x[i + 4]), screenY(c.z[i + 4]), w, colour);
+                for (int i = 0; i + step < c.n; i += step) {
+                    line(g, screenX(c.x[i]), screenY(c.z[i]), screenX(c.x[i + step]), screenY(c.z[i + step]), w, colour);
                 }
-                line(g, screenX(c.x[c.n - 1 - (c.n - 1) % 4]), screenY(c.z[c.n - 1 - (c.n - 1) % 4]), screenX(c.x[c.n - 1]),
+                line(g, screenX(c.x[c.n - 1 - (c.n - 1) % step]), screenY(c.z[c.n - 1 - (c.n - 1) % step]), screenX(c.x[c.n - 1]),
                         screenY(c.z[c.n - 1]), w, colour);
             }
             if (sel && mode == Mode.EDIT) {
@@ -2804,6 +2945,9 @@ public class RoadPlannerScreen extends Screen {
         }
         for (Node n : plan.nodes) {
             double x = screenX(n.x + 0.5), y = screenY(n.z + 0.5);
+            if (x < mapLeft() - 40 || x > width + 40 || y < TOP - 40 || y > height + 40) {
+                continue;                                   // off the screen (a roundabout's ring reaches a bit past its point)
+            }
             Junction j = lines.junctions.get(n.id);
             int colour = j == null ? 0xFFFFFFFF : switch (j) {
                 case ROUNDABOUT, MINI_ROUNDABOUT -> 0xFF5AA0FF;
@@ -2813,7 +2957,7 @@ public class RoadPlannerScreen extends Screen {
                 default -> 0xFFFFA040;
             };
             boolean sel = selNode != null && selNode == n.id;
-            if (j == null && !sel && zoom < 1.5 && plan.segmentsAt(n.id).size() == 2) {
+            if (j == null && !sel && zoom < 1.5 && degree.getOrDefault(n.id, 0) == 2) {
                 continue;                                  // plain bends crowd the map zoomed out (a real map has hundreds)
             }
             dot(g, x, y, sel ? 4 : 3, 0xFF000000);

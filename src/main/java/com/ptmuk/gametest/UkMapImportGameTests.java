@@ -300,6 +300,130 @@ public final class UkMapImportGameTests {
         helper.succeed();
     }
 
+    /**
+     * Everything else on a map: a park with a pond, a footpath across it, a tree and a bench in it;
+     * a stream; a hedge, a palisade fence and a wall; a pitch; a town square; a row of trees; a
+     * street lamp and a pillar box. A pavement drawn beside a road and a footbridge are left out.
+     * Each is built as it should be, far away on a slab of stone.
+     */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 200)
+    public static void buildsParksWaterPathsAndStreetFurniture(GameTestHelper helper) throws Exception {
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
+                + node(1, 0, -10, "") + node(2, 60, -10, "") + node(3, 60, -50, "") + node(4, 0, -50, "")
+                + node(5, 10, -20, "") + node(6, 30, -20, "") + node(7, 30, -32, "") + node(8, 10, -32, "")
+                + node(9, 0, -40, "") + node(10, 60, -40, "")
+                + node(11, 45, -20, tag("natural", "tree")) + node(12, 50, -45, tag("amenity", "bench"))
+                + node(13, 70, 0, "") + node(14, 70, -60, "")
+                + node(15, 80, -10, "") + node(16, 100, -10, "") + node(17, 80, -15, "") + node(18, 100, -15, "")
+                + node(19, 80, -20, "") + node(20, 100, -20, "")
+                + node(21, 110, -10, "") + node(22, 140, -10, "") + node(23, 140, -30, "") + node(24, 110, -30, "")
+                + node(25, 150, -10, "") + node(26, 170, -10, "") + node(27, 170, -30, "") + node(28, 150, -30, "")
+                + node(29, 80, -40, "") + node(30, 100, -40, "")
+                + node(31, 85, -30, tag("highway", "street_lamp")) + node(32, 90, -30, tag("amenity", "post_box"))
+                + node(33, 0, -5, "") + node(34, 60, -5, "") + node(35, 72, -30, "") + node(36, 78, -30, "")
+                + way(100, tag("leisure", "park"), 1, 2, 3, 4, 1)
+                + way(101, tag("natural", "water"), 5, 6, 7, 8, 5)
+                + way(102, tag("highway", "footway"), 9, 10)
+                + way(103, tag("waterway", "stream"), 13, 14)
+                + way(104, tag("barrier", "hedge"), 15, 16)
+                + way(105, tag("barrier", "fence") + tag("fence_type", "palisade"), 17, 18)
+                + way(106, tag("barrier", "wall"), 19, 20)
+                + way(107, tag("leisure", "pitch"), 21, 22, 23, 24, 21)
+                + way(108, tag("place", "square"), 25, 26, 27, 28, 25)
+                + way(109, tag("natural", "tree_row"), 29, 30)
+                + way(110, tag("highway", "footway") + tag("footway", "sidewalk"), 33, 34)
+                + way(111, tag("highway", "footway") + tag("bridge", "yes"), 35, 36) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        mi.x = 9000;
+        mi.z = 9000;
+        plan.map = mi;
+        List<OsmMap.Outline> outlines = map.buildings(mi);
+        String kinds = outlines.stream().map(OsmMap.Outline::kind).toList().toString();
+        helper.assertTrue(kinds.equals("[green, water, path:paved:3, river:5, hedge, fence:metal, wall, pitch, pedestrian, tree_row, tree, bench, lamp, post_box]"),
+                "what each is (no pavement or footbridge): " + kinds);
+        helper.assertTrue(OsmMap.overpassQuery(51, 0, 51.01, 0.01).contains("waterway") && OsmMap.overpassQuery(51, 0, 51.01, 0.01).contains("street_lamp"),
+                "all of it should be fetched");
+        net.minecraft.server.level.ServerLevel level = helper.getLevel();
+        int ground = 260, y = ground - 1;
+        for (int x = 8990; x < 9320; x++) {
+            for (int z = 8990; z < 9120; z++) {
+                level.setBlock(new BlockPos(x, y, z), Blocks.STONE.defaultBlockState(), 2);
+            }
+        }
+        com.ptmuk.road.layout.Layout layout = com.ptmuk.road.layout.Layout.of(plan, com.ptmuk.road.layout.Terrain.flat(ground));
+        MapBuildings.Batch batch = MapBuildings.unpack(MapBuildings.pack(MapBuildings.around(outlines, mi, 9150, 9050, RoadPlan.PART)));
+        helper.assertTrue(batch != null && MapBuildings.buildAll(level, batch, layout, plan) == 14, "all fourteen should be built");
+        String[][] want = {
+                {"0", "-25", "minecraft:grass_block", "the park's grass"}, {"20", "-26", "minecraft:water", "the pond"},
+                {"40", "-40", "ptmuk:paving_slabs", "the footpath through the park"}, {"70", "-45", "minecraft:water", "the stream"},
+                {"125", "-10", "minecraft:white_concrete", "the pitch's touchline"}, {"125", "-20", "minecraft:grass_block", "the pitch"},
+                {"160", "-20", "ptmuk:block_paving_grey", "the square"}};
+        for (String[] w : want) {
+            String id = id(level, bx(Double.parseDouble(w[0])), y, bz(Double.parseDouble(w[1])));
+            helper.assertTrue(id.equals(w[2]), w[3] + " should be " + w[2] + ", is " + id);
+        }
+        String[][] above = {{"90", "-10", "minecraft:oak_leaves", "the hedge"}, {"90", "-15", "ptmuk:palisade_fence", "the fence"},
+                {"90", "-20", "minecraft:brick_wall", "the wall"}, {"50", "-45", "ptmuk:bench_metal", "the bench"},
+                {"90", "-30", "ptmuk:pillar_box", "the pillar box"}};
+        for (String[] w : above) {
+            int x = bx(Double.parseDouble(w[0])), z = bz(Double.parseDouble(w[1]));
+            String id = id(level, x, ground, z);
+            StringBuilder round = new StringBuilder();
+            for (int dy = -1; dy <= 2; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dz = -1; dz <= 1; dz++) {
+                        String b = id(level, x + dx, ground + dy, z + dz);
+                        if (!b.equals("minecraft:air") && !b.equals("minecraft:grass_block") && !b.equals("minecraft:stone")) {
+                            round.append(dx).append(',').append(dy).append(',').append(dz).append('=').append(b).append(' ');
+                        }
+                    }
+                }
+            }
+            helper.assertTrue(id.equals(w[2]), w[3] + " should be " + w[2] + ", is " + id + " at " + x + "," + ground + "," + z + "; round it: " + round);
+        }
+        helper.assertTrue(id(level, bx(85), ground + 5, bz(-30)).equals("ptmuk:street_light_led"), "the street lamp's head should be up its pole");
+        helper.assertTrue(logs(level, bx(45) - 1, bz(-20) - 1, bx(45) + 1, bz(-20) + 1, ground) > 0, "the tree should be there");
+        helper.assertTrue(logs(level, bx(80), bz(-40) - 1, bx(100), bz(-40) + 1, ground) > 0, "the row of trees should be there");
+        helper.assertTrue(!id(level, bx(30), y, bz(-5)).equals("ptmuk:paving_slabs"), "the pavement drawn beside a road shouldn't be built");
+        helper.succeed();
+    }
+
+    /** Where a point east and north of the middle is on the map at 9000, 9000, as the map works it out (see node). */
+    private static final RoadPlan.MapImport AT_9000 = new RoadPlan.MapImport();
+
+    static {
+        AT_9000.lat0 = LAT;
+        AT_9000.lon0 = LON;
+        AT_9000.x = 9000;
+        AT_9000.z = 9000;
+    }
+
+    /** (In quarter blocks first, as the planner sends them to the server.) */
+    private static int bx(double east) {
+        return (int) Math.floorDiv(Math.round(AT_9000.x(LON + east / (111320.0 * Math.cos(Math.toRadians(LAT)))) * 4), 4);
+    }
+
+    private static int bz(double north) {
+        return (int) Math.floorDiv(Math.round(AT_9000.z(LAT + north / 111250.0) * 4), 4);
+    }
+
+    /** Tree trunks in a box, from the ground up. */
+    private static int logs(net.minecraft.server.level.ServerLevel level, int x0, int z0, int x1, int z1, int from) {
+        int n = 0;
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                for (int y = from; y < from + 12; y++) {
+                    n += id(level, x, y, z).contains("log") ? 1 : 0;
+                }
+            }
+        }
+        return n;
+    }
+
     private static String id(net.minecraft.server.level.ServerLevel level, int x, int y, int z) {
         return net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(level.getBlockState(new BlockPos(x, y, z)).getBlock()).toString();
     }
