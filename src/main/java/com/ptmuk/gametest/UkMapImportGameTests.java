@@ -494,6 +494,55 @@ public final class UkMapImportGameTests {
     }
 
     /**
+     * A main road that splits into its two sides (two one-way roads ten metres apart) coming up to
+     * a roundabout, a lane joining one side: one two-way road down the middle, in the street's own
+     * style, the lane joining it, one arm into the roundabout.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void makesTheTwoSidesOfARoadOne(GameTestHelper helper) throws Exception {
+        StringBuilder ring = new StringBuilder();
+        StringBuilder ringRefs = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            double a = Math.toRadians(i * 30);
+            ring.append(node(200 + i, 15 * Math.cos(a), 15 * Math.sin(a), ""));
+            ringRefs.append("<nd ref=\"").append(200 + i).append("\"/>");
+        }
+        String side = tag("highway", "primary") + tag("name", "London Road") + tag("oneway", "yes");
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">" + ring
+                + node(1, -300, 0, "") + node(10, -150, 0, "")
+                + node(11, -100, 4, "") + node(12, -50, 5, "")
+                + node(21, -50, -5, "") + node(22, -75, -4.5, "") + node(23, -100, -4, "")
+                + node(30, -75, -100, "") + node(40, 15, -100, "") + node(41, 100, 0, "")
+                + way(100, tag("highway", "primary") + tag("name", "London Road"), 1, 10)
+                + way(101, side, 10, 11, 12, 205)                   // east, on the north side, into the ring at 150 degrees
+                + way(102, side, 207, 21, 22, 23, 10)               // back west from the ring at 210 degrees
+                + way(103, tag("highway", "residential") + tag("name", "Mill Lane"), 22, 30)
+                + way(104, tag("highway", "primary") + tag("name", "Dover Road"), 200, 41)
+                + "<way id=\"105\">" + ringRefs + "<nd ref=\"200\"/>" + tag("highway", "primary") + tag("junction", "roundabout") + "</way>"
+                + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        map.roads(plan, mi, map.buildings(mi), -1e9, -1e9, 1e9, 1e9);
+        List<RoadPlan.Segment> london = plan.segments.stream().filter(sg -> sg.name.equals("London Road")).toList();
+        helper.assertTrue(london.stream().noneMatch(sg -> sg.style.oneWay), "the two sides should be one two-way road");
+        java.util.Set<String> widths = new java.util.TreeSet<>();
+        london.forEach(sg -> widths.add(sg.style.name + " " + sg.style.halfCarriageway()));
+        helper.assertTrue(widths.size() == 1, "the road should be the street's own width all along: " + widths);
+        RoadPlan.Node roundabout = plan.nodes.stream().filter(n -> n.junction == RoadPlan.Junction.ROUNDABOUT).findFirst().orElseThrow();
+        long arms = london.stream().filter(sg -> sg.a == roundabout.id || sg.b == roundabout.id).count();
+        helper.assertTrue(arms == 1, "one arm into the roundabout, not " + arms);
+        double s = RoadPlan.MapImport.SCALE;
+        RoadPlan.Node lane = plan.nodes.stream().filter(n -> plan.segmentsAt(n.id).stream().anyMatch(sg -> sg.name.equals("Mill Lane"))
+                && plan.segmentsAt(n.id).stream().anyMatch(sg -> sg.name.equals("London Road"))).findFirst().orElse(null);
+        helper.assertTrue(lane != null && plan.segmentsAt(lane.id).size() == 3 && Math.abs(lane.z - plan.node(london.get(0).a).z) < 4 * s,
+                "the lane should join the road down its middle: " + (lane == null ? "it doesn't" : lane.x + ", " + lane.z));
+        helper.succeed();
+    }
+
+    /**
      * A café mapped in a shop gets its sign over the shop's street front, with its name; a car
      * park's aisle lays its bays either side; a retail park's ground is tarmac.
      */

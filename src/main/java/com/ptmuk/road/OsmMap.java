@@ -965,6 +965,8 @@ public final class OsmMap {
                 }
             }
         }
+        Map<Node, Node> moved = pairCarriageways(plan, fresh, existing);
+        joins.replaceAll((id, n) -> moved.getOrDefault(n, n));
         // junctions: traffic lights at the junction nearest each signal, mini roundabouts tagged on a point
         Map<Integer, Integer> arms = new HashMap<>();
         for (RoadPlan.Segment s : plan.segments) {
@@ -1126,7 +1128,7 @@ public final class OsmMap {
         return best;
     }
 
-    /** A crossing on the map's road nearest x, z (within 4 blocks of its line), not too near another; whether it went in. */
+    /** A crossing on the map's road nearest x, z (within 4 blocks of its line, more on a wide one), not too near another; whether it went in. */
     private static boolean crossingOn(RoadPlan plan, int fresh, double x, double z, RoadPlan.CrossingType type) {
         Map<Integer, Node> byId = new HashMap<>();
         plan.nodes.forEach(n -> byId.put(n.id, n));
@@ -1142,7 +1144,8 @@ public final class OsmMap {
                 continue;
             }
             double t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
-            double d = Math.hypot(ax + dx * t - x, az + dz * t - z) - Math.abs(sg.bend);
+            // (on a wide road, one mapped on one side, as on the two sides it was mapped as, is still on it)
+            double d = Math.hypot(ax + dx * t - x, az + dz * t - z) - Math.abs(sg.bend) - Math.max(0, sg.style.halfCarriageway() - 3);
             if (d < bestD) {
                 best = sg;
                 bestD = d;
@@ -1243,6 +1246,406 @@ public final class OsmMap {
             prev = node;
         }
         return count;
+    }
+
+    /**
+     * The two sides of a road mapped as two one-way roads close together (a dual carriageway, or a
+     * road split round an island coming up to a roundabout) made one two-way road down the middle:
+     * left as two they'd lie over each other, lines and kerbs across each other's lanes. It takes
+     * the street's own two-way style where it has one (else a dual carriageway's), and the roads
+     * that joined either side join it. Returns the points that went, and what took their place.
+     */
+    private static Map<Node, Node> pairCarriageways(RoadPlan plan, int fresh, Map<Long, Node> existing) {
+        Map<Integer, Node> byId = new HashMap<>();
+        plan.nodes.forEach(n -> byId.put(n.id, n));
+        Map<String, List<RoadPlan.Segment>> from = new HashMap<>(), to = new HashMap<>();
+        List<RoadPlan.Segment> ones = new ArrayList<>();
+        for (RoadPlan.Segment s : plan.segments) {
+            if (s.id >= fresh && s.style.oneWay && !s.name.isEmpty() && s.a != s.b) {
+                ones.add(s);
+                from.computeIfAbsent(s.name + "|" + s.a, k -> new ArrayList<>()).add(s);
+                to.computeIfAbsent(s.name + "|" + s.b, k -> new ArrayList<>()).add(s);
+            }
+        }
+        // each side as a chain of its pieces, running on through plain points (not round a sharp turn)
+        Map<RoadPlan.Segment, RoadPlan.Segment> next = new HashMap<>(), prev = new HashMap<>();
+        for (RoadPlan.Segment s : ones) {
+            Node at = byId.get(s.b);
+            if (at.junction != Junction.AUTO || at.id < fresh) {
+                continue;
+            }
+            RoadPlan.Segment o = straightest(byId, s, from.getOrDefault(s.name + "|" + s.b, List.of()), true);
+            if (o != null && straightest(byId, o, to.get(s.name + "|" + s.b), false) == s) {
+                next.put(s, o);
+                prev.put(o, s);
+            }
+        }
+        List<List<RoadPlan.Segment>> chains = new ArrayList<>();
+        for (RoadPlan.Segment s : ones) {
+            if (!prev.containsKey(s)) {
+                List<RoadPlan.Segment> c = new ArrayList<>();
+                for (RoadPlan.Segment t = s; t != null && c.size() < 2000; t = next.get(t)) {
+                    c.add(t);
+                }
+                chains.add(c);
+            }
+        }
+        Map<Node, Node> moved = new HashMap<>();
+        Set<List<RoadPlan.Segment>> used = new HashSet<>();
+        for (int i = 0; i < chains.size(); i++) {
+            for (int j = i + 1; j < chains.size() && !used.contains(chains.get(i)); j++) {
+                List<RoadPlan.Segment> p = chains.get(i), q = chains.get(j);
+                if (used.contains(q) || !p.get(0).name.equals(q.get(0).name)) {
+                    continue;
+                }
+                // only sides that would lie over each other, or all but: further apart, each is laid out fine as it is
+                double sep = Math.min(32, p.get(0).style.halfCarriageway() + q.get(0).style.halfCarriageway() + 5);
+                double[][] pl = chainLine(p, byId), ql = chainLine(q, byId);
+                double gp = alongside(pl, ql, sep), gq = alongside(ql, pl, sep);
+                if (!Double.isNaN(gp) && !Double.isNaN(gq) && mergeSides(plan, byId, p, q, pl, ql, (gp + gq) / 2, sep, fresh, existing, moved)) {
+                    used.add(p);
+                    used.add(q);
+                }
+            }
+        }
+        moved.replaceAll((o, n) -> {
+            for (int i = 0; i < 100 && moved.containsKey(n); i++) {      // (moved again by a later pair)
+                n = moved.get(n);
+            }
+            return n;
+        });
+        return moved;
+    }
+
+    /** Of the one-way pieces cand, the one running on most nearly straight from s (after it if after, else before it); null if none does. */
+    private static RoadPlan.Segment straightest(Map<Integer, Node> byId, RoadPlan.Segment s, List<RoadPlan.Segment> cand, boolean after) {
+        RoadPlan.Segment best = null;
+        double bestDot = 0.25;                              // (no sharper than about 75 degrees)
+        for (RoadPlan.Segment o : cand == null ? List.<RoadPlan.Segment>of() : cand) {
+            RoadPlan.Segment first = after ? s : o, second = after ? o : s;
+            Node a = byId.get(first.a), b = byId.get(first.b), c = byId.get(second.b);
+            double ux = b.x - a.x, uz = b.z - a.z, vx = c.x - b.x, vz = c.z - b.z, l = Math.hypot(ux, uz) * Math.hypot(vx, vz);
+            double dot = l < 1e-9 ? -1 : (ux * vx + uz * vz) / l;
+            if (o != s && dot > bestDot) {
+                best = o;
+                bestDot = dot;
+            }
+        }
+        return best;
+    }
+
+    private static double[][] chainLine(List<RoadPlan.Segment> c, Map<Integer, Node> byId) {
+        double[][] l = new double[2][c.size() + 1];
+        Node first = byId.get(c.get(0).a);
+        l[0][0] = first.x;
+        l[1][0] = first.z;
+        for (int i = 0; i < c.size(); i++) {
+            Node n = byId.get(c.get(i).b);
+            l[0][i + 1] = n.x;
+            l[1][i + 1] = n.z;
+        }
+        return l;
+    }
+
+    /** The point on line l nearest (x, z): {x, z, how far along l, its direction x, z, distance}. */
+    private static double[] nearestOn(double[][] l, double x, double z) {
+        double[] best = null;
+        double run = 0;
+        for (int i = 0; i + 1 < l[0].length; i++) {
+            double ax = l[0][i], az = l[1][i], dx = l[0][i + 1] - ax, dz = l[1][i + 1] - az, len = Math.hypot(dx, dz);
+            if (len < 1e-9) {
+                continue;
+            }
+            double t = Math.max(0, Math.min(len, ((x - ax) * dx + (z - az) * dz) / len));
+            double px = ax + dx / len * t, pz = az + dz / len * t, d = Math.hypot(px - x, pz - z);
+            if (best == null || d < best[5]) {
+                best = new double[]{px, pz, run + t, dx / len, dz / len, d};
+            }
+            run += len;
+        }
+        return best;
+    }
+
+    /** Points every step along l, its ends included: {x, z, direction x, z}. */
+    private static List<double[]> samples(double[][] l, double step) {
+        List<double[]> out = new ArrayList<>();
+        double carry = 0, lx = 1, lz = 0;
+        for (int i = 0; i + 1 < l[0].length; i++) {
+            double ax = l[0][i], az = l[1][i], dx = l[0][i + 1] - ax, dz = l[1][i + 1] - az, len = Math.hypot(dx, dz);
+            if (len < 1e-9) {
+                continue;
+            }
+            lx = dx / len;
+            lz = dz / len;
+            double t = carry;
+            for (; t < len; t += step) {
+                out.add(new double[]{ax + lx * t, az + lz * t, lx, lz});
+            }
+            carry = t - len;
+        }
+        int n = l[0].length - 1;
+        out.add(new double[]{l[0][n], l[1][n], lx, lz});
+        return out;
+    }
+
+    /**
+     * How far a runs from b (the middle of it), if nearly all of a runs alongside b the other way
+     * within sep (further apart, up to half as far again, near its ends: they spread out to a
+     * junction each); else NaN.
+     */
+    private static double alongside(double[][] a, double[][] b, double sep) {
+        List<double[]> s = samples(a, 2);
+        List<Double> gaps = new ArrayList<>();
+        for (int i = 0; i < s.size(); i++) {
+            double[] p = s.get(i), n = nearestOn(b, p[0], p[1]);
+            double within = Math.min(i, s.size() - 1 - i) * 2 < 40 ? sep * 1.6 : sep;
+            if (n != null && (n[5] < 3 || n[5] <= within && p[2] * n[3] + p[3] * n[4] < -0.3)) {
+                gaps.add(n[5]);
+            }
+        }
+        if (s.size() < 4 || gaps.size() < 0.85 * s.size()) {
+            return Double.NaN;
+        }
+        Collections.sort(gaps);
+        return gaps.get(gaps.size() / 2);
+    }
+
+    /** One side p and the other q (the other way) made one two-way road; false (and nothing changed) if they can't be. */
+    private static boolean mergeSides(RoadPlan plan, Map<Integer, Node> byId, List<RoadPlan.Segment> p, List<RoadPlan.Segment> q,
+                                      double[][] pl, double[][] ql, double gap, double sep, int fresh, Map<Long, Node> existing, Map<Node, Node> moved) {
+        Node pa = byId.get(p.get(0).a), pb = byId.get(p.get(p.size() - 1).b), qa = byId.get(q.get(0).a), qb = byId.get(q.get(q.size() - 1).b);
+        double ends = sep * 1.6;                            // (a dual carriageway's sides meet a road across at two junctions, apart)
+        if (Math.hypot(pa.x - qb.x, pa.z - qb.z) > ends || Math.hypot(pb.x - qa.x, pb.z - qa.z) > ends
+                || pa != qb && fixed(pa, fresh) && fixed(qb, fresh) || pb != qa && fixed(pb, fresh) && fixed(qa, fresh)) {
+            return false;                                   // (two junctions of their own at an end: leave them be)
+        }
+        Set<Integer> sides = new HashSet<>();
+        p.forEach(s -> sides.add(s.id));
+        q.forEach(s -> sides.add(s.id));
+        List<Node> inner = new ArrayList<>();
+        for (List<RoadPlan.Segment> c : List.of(p, q)) {
+            for (int i = 0; i + 1 < c.size(); i++) {
+                Node n = byId.get(c.get(i).b);
+                if (n.id < fresh) {
+                    return false;
+                }
+                inner.add(n);
+            }
+        }
+        // the line down the middle: each point of p halfway to q
+        List<double[]> mid = new ArrayList<>();
+        for (double[] s : samples(pl, 2)) {
+            double[] n = nearestOn(ql, s[0], s[1]);
+            mid.add(new double[]{(s[0] + n[0]) / 2, (s[1] + n[1]) / 2});
+        }
+        Node endA = end(plan, pa, qb, fresh, existing, moved, sides), endB = end(plan, pb, qa, fresh, existing, moved, sides);
+        int last = mid.size() - 1;
+        mid.set(0, new double[]{endA.x, endA.z});
+        mid.set(last, new double[]{endB.x, endB.z});
+        // where other roads joined a side: a point on the middle line there (those close along it one point)
+        Map<Integer, List<Node>> joinAt = new java.util.TreeMap<>();
+        for (Node n : inner) {
+            boolean joined = false;
+            for (RoadPlan.Segment s : plan.segments) {
+                joined |= !sides.contains(s.id) && (s.a == n.id || s.b == n.id);
+            }
+            if (joined) {
+                int k = 0;
+                for (int i = 1; i <= last; i++) {
+                    if (Math.hypot(mid.get(i)[0] - n.x, mid.get(i)[1] - n.z) < Math.hypot(mid.get(k)[0] - n.x, mid.get(k)[1] - n.z)) {
+                        k = i;
+                    }
+                }
+                joinAt.computeIfAbsent(k <= 2 ? 0 : k >= last - 2 ? last : k, x -> new ArrayList<>()).add(n);
+            }
+        }
+        double[] mx = new double[last + 1], mz = new double[last + 1];
+        for (int i = 0; i <= last; i++) {
+            mx[i] = mid.get(i)[0];
+            mz[i] = mid.get(i)[1];
+        }
+        boolean[] keep = simplify(mx, mz, 0, last, 1.0);
+        int prevK = -10;
+        List<Node> group = null;
+        Map<Integer, List<Node>> groups = new java.util.TreeMap<>();
+        for (Map.Entry<Integer, List<Node>> e : joinAt.entrySet()) {
+            if (e.getKey() - prevK > 3 || e.getKey() == last) {
+                group = new ArrayList<>();
+                groups.put(e.getKey(), group);
+            }
+            group.addAll(e.getValue());
+            prevK = e.getKey();
+        }
+        Map<Integer, Node> made = new HashMap<>();
+        made.put(0, endA);
+        made.put(last, endB);
+        for (Map.Entry<Integer, List<Node>> e : groups.entrySet()) {
+            int k = e.getKey();
+            keep[k] = true;
+            Node n = made.computeIfAbsent(k, x -> plan.addNode(Math.floor(mx[k]), Math.floor(mz[k])));
+            for (Node o : e.getValue()) {
+                if (n.junction == Junction.AUTO) {
+                    n.junction = o.junction;
+                }
+                moved.put(o, n);
+            }
+        }
+        RoadStyle st = twoWay(plan, p.get(0).name, endA, endB);
+        if (st == null) {
+            st = RoadStyle.dualCarriageway();
+            st.lanes = Math.max(p.get(0).style.lanes, q.get(0).style.lanes);
+            st.laneWidth = Math.max(p.get(0).style.laneWidth, q.get(0).style.laneWidth);
+            st.reservation = (int) Math.max(1, Math.min(9, Math.round(gap - 2 * st.directionWidth())));
+        }
+        String name = p.get(0).name;
+        Node from = endA;
+        Set<Integer> line = new HashSet<>(List.of(endA.id, endB.id));
+        List<RoadPlan.Segment> added = new ArrayList<>();
+        for (int k = 1; k <= last; k++) {
+            if (!keep[k]) {
+                continue;
+            }
+            int kk = k;
+            Node to = made.computeIfAbsent(k, x -> plan.addNode(Math.floor(mx[kk]), Math.floor(mz[kk])));
+            int pieces = (int) Math.ceil(Math.hypot(to.x - from.x, to.z - from.z) / MAX_STRETCH);
+            for (int i = 1; i < pieces; i++) {
+                Node m = plan.addNode(Math.floor(from.x + (to.x - from.x) * i / pieces), Math.floor(from.z + (to.z - from.z) * i / pieces));
+                added.add(plan.addSegment(from.id, m.id, st));
+                line.add(m.id);
+                from = m;
+            }
+            if (to != from) {
+                added.add(plan.addSegment(from.id, to.id, st));
+            }
+            line.add(to.id);
+            from = to;
+        }
+        added.forEach(s -> s.name = name);
+        Set<Integer> addedIds = new HashSet<>();
+        added.forEach(s -> addedIds.add(s.id));
+        // the sides go; what joined them joins the middle (a bit of road across between them goes too)
+        Map<Integer, Node> to = new HashMap<>();
+        moved.forEach((o, n) -> to.put(o.id, n));
+        plan.segments.removeIf(s -> sides.contains(s.id));
+        for (RoadPlan.Segment s : plan.segments) {
+            s.a = to.containsKey(s.a) ? to.get(s.a).id : s.a;
+            s.b = to.containsKey(s.b) ? to.get(s.b).id : s.b;
+        }
+        plan.segments.removeIf(s -> s.a == s.b || !addedIds.contains(s.id) && line.contains(s.a) && line.contains(s.b));
+        Set<Integer> still = new HashSet<>();
+        plan.segments.forEach(s -> {
+            still.add(s.a);
+            still.add(s.b);
+        });
+        Set<Node> gone = new HashSet<>(inner);
+        gone.addAll(List.of(pa, pb, qa, qb));
+        plan.nodes.removeIf(n -> gone.contains(n) && !still.contains(n.id));
+        plan.nodes.forEach(n -> byId.put(n.id, n));
+        return true;
+    }
+
+    /** A point that has to stay where it is: one brought in before, or a junction of its own (a roundabout, say). */
+    private static boolean fixed(Node n, int fresh) {
+        return n.id < fresh || n.junction != Junction.AUTO;
+    }
+
+    /** The one point the two sides' ends a and b become: the one that has to stay, else halfway between (a section's end left open there, if there's one). */
+    private static Node end(RoadPlan plan, Node a, Node b, int fresh, Map<Long, Node> existing, Map<Node, Node> moved, Set<Integer> sides) {
+        if (a == b) {
+            return a;
+        }
+        List<Node> between = between(plan, a, b, sides);
+        Node keep;
+        if (fixed(a, fresh) || fixed(b, fresh)) {
+            keep = fixed(a, fresh) ? a : b;
+        } else {
+            double x = Math.floor((a.x + b.x) / 2), z = Math.floor((a.z + b.z) / 2);
+            keep = null;
+            for (int dx = -2; dx <= 2 && keep == null; dx++) {
+                for (int dz = -2; dz <= 2 && keep == null; dz++) {
+                    Node o = existing.get(((long) ((int) x + dx) << 32) ^ (((int) z + dz) & 0xffffffffL));
+                    keep = o != null && o.open && plan.nodes.contains(o) ? o : null;
+                }
+            }
+            if (keep != null) {
+                keep.open = false;                          // the next section's: the two sides' ends there join it
+            } else {
+                keep = a;
+                a.x = x;
+                a.z = z;
+                a.open |= b.open;
+            }
+        }
+        if (a != keep) {
+            moved.put(a, keep);
+        }
+        if (b != keep) {
+            moved.put(b, keep);
+        }
+        for (Node n : between) {
+            if (n != keep && !fixed(n, fresh) && !n.open) {
+                moved.put(n, keep);                         // the bit of the road across between them goes into the one junction
+            }
+        }
+        return keep;
+    }
+
+    /** The points along the shortest way by road (not the sides) from a to b, if it's not much further than straight: neither end, in order. */
+    private static List<Node> between(RoadPlan plan, Node a, Node b, Set<Integer> sides) {
+        Map<Integer, Node> byId = new HashMap<>();
+        plan.nodes.forEach(n -> byId.put(n.id, n));
+        Map<Integer, List<Integer>> next = new HashMap<>();
+        for (RoadPlan.Segment s : plan.segments) {
+            if (!sides.contains(s.id)) {
+                next.computeIfAbsent(s.a, k -> new ArrayList<>()).add(s.b);
+                next.computeIfAbsent(s.b, k -> new ArrayList<>()).add(s.a);
+            }
+        }
+        double limit = Math.hypot(a.x - b.x, a.z - b.z) * 1.5 + 2;
+        Map<Integer, Double> dist = new HashMap<>(Map.of(a.id, 0.0));
+        Map<Integer, Integer> from = new HashMap<>();
+        java.util.PriorityQueue<double[]> todo = new java.util.PriorityQueue<>((u, v) -> Double.compare(u[0], v[0]));
+        todo.add(new double[]{0, a.id});
+        while (!todo.isEmpty()) {
+            double[] t = todo.poll();
+            int id = (int) t[1];
+            if (id == b.id) {
+                List<Node> path = new ArrayList<>();
+                for (int k = from.get(id); k != a.id; k = from.get(k)) {
+                    path.add(0, byId.get(k));
+                }
+                return path;
+            }
+            if (t[0] > dist.get(id)) {
+                continue;
+            }
+            Node n = byId.get(id);
+            for (int o : next.getOrDefault(id, List.of())) {
+                Node m = byId.get(o);
+                double d = t[0] + Math.hypot(m.x - n.x, m.z - n.z);
+                if (d <= limit && d < dist.getOrDefault(o, Double.MAX_VALUE)) {
+                    dist.put(o, d);
+                    from.put(o, id);
+                    todo.add(new double[]{d, o});
+                }
+            }
+        }
+        return List.of();
+    }
+
+    /** The street's own two-way style (its widest piece at one of these ends, else anywhere), or null if it has none. */
+    private static RoadStyle twoWay(RoadPlan plan, String name, Node endA, Node endB) {
+        RoadStyle atEnd = null, any = null;
+        for (RoadPlan.Segment s : plan.segments) {
+            if (!s.style.oneWay && s.name.equals(name)) {
+                if ((s.a == endA.id || s.b == endA.id || s.a == endB.id || s.b == endB.id)
+                        && (atEnd == null || s.style.halfCarriageway() > atEnd.halfCarriageway())) {
+                    atEnd = s.style;
+                }
+                any = any == null || s.style.halfCarriageway() > any.halfCarriageway() ? s.style : any;
+            }
+        }
+        return atEnd != null ? atEnd : any;
     }
 
     private static boolean near(Node ring, Map<Node, Double> radius, double x, double z) {
