@@ -16,7 +16,8 @@ import net.minecraftforge.network.NetworkEvent;
 
 /** Client -> server: choose, turn, mirror, place or undo with the Prefab Tool. */
 public record PrefabToolMessage(Action action, String id, BlockPos target, Direction look, boolean offhand) {
-    public enum Action { SELECT, ROTATE, MIRROR, PLACE, UNDO, ON_GROUND }
+    /** PLACE_AT: a 3D model at its real spot, so not turned or mirrored (north stays north). */
+    public enum Action { SELECT, ROTATE, MIRROR, PLACE, UNDO, ON_GROUND, PLACE_AT }
 
     /** How far away a building can be placed (the client aims up to 128 blocks). */
     private static final double MAX_DISTANCE = 160;
@@ -61,14 +62,15 @@ public record PrefabToolMessage(Action action, String id, BlockPos target, Direc
             case MIRROR -> stack.getOrCreateTag().putBoolean(PrefabPlacement.TAG_MIRROR, !PrefabPlacement.mirrored(stack));
             case ON_GROUND -> stack.getOrCreateTag().putBoolean(PrefabPlacement.TAG_ON_GROUND, !PrefabPlacement.onGround(stack));
             case UNDO -> PrefabPlacer.undo(player);
-            case PLACE -> {
+            case PLACE, PLACE_AT -> {
                 PrefabCatalog.Entry entry = PrefabPlacement.selected(stack);
                 if (entry == null || msg.target == null || msg.look.getAxis().isVertical()
                         || player.distanceToSqr(msg.target.getCenter()) > MAX_DISTANCE * MAX_DISTANCE) {
                     return;
                 }
-                PrefabPlacer.place(player, PrefabPlacement.of(entry, msg.target, msg.look, PrefabPlacement.turns(stack),
-                        PrefabPlacement.mirrored(stack)));
+                boolean real = msg.action == Action.PLACE_AT;
+                PrefabPlacer.place(player, PrefabPlacement.of(entry, msg.target, real ? Direction.NORTH : msg.look,
+                        real ? 0 : PrefabPlacement.turns(stack), !real && PrefabPlacement.mirrored(stack)));
             }
         }
     }

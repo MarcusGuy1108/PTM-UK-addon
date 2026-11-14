@@ -26,6 +26,8 @@ public record RoadPlannerMessage(Action action, int part, int parts, byte[] plan
     public enum Action { SAVE, BUILD, UNDO, BUILDINGS }
 
     private static final int MAX_PARTS = RoadPlans.MAX_PLAN / RoadPlans.MAX_BYTES + 1;
+    /** A big map's buildings can come to more than a plan. */
+    private static final int MAX_BUILDING_PARTS = com.ptmuk.road.MapBuildings.MAX_PACKED / RoadPlans.MAX_BYTES + 1;
 
     /** A plan coming in pieces: what's come so far. */
     private record Incoming(Action action, int parts, ByteArrayOutputStream data) {
@@ -57,7 +59,8 @@ public record RoadPlannerMessage(Action action, int part, int parts, byte[] plan
 
     public static void handle(RoadPlannerMessage msg, Supplier<NetworkEvent.Context> ctx) {
         ServerPlayer player = ctx.get().getSender();
-        if (player == null || msg.parts < 1 || msg.parts > MAX_PARTS || msg.part < 0 || msg.part >= msg.parts) {
+        if (player == null || msg.parts < 1 || msg.parts > (msg.action == Action.BUILDINGS ? MAX_BUILDING_PARTS : MAX_PARTS)
+                || msg.part < 0 || msg.part >= msg.parts) {
             return;
         }
         // pieces arrive in order on one connection: start afresh on the first, drop strays

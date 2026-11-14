@@ -7,6 +7,7 @@ import com.ptmuk.network.PrefabToolMessage;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -35,7 +36,9 @@ public class PrefabScreen extends Screen {
     private final List<Button> tabs = new ArrayList<>();
     private int tabRows = 1;
     private Button mirrorButton;
-    private Button groundButton, folderButton, refreshButton;
+    private Button groundButton, folderButton, refreshButton, realButton;
+    /** Why a model couldn't go at its real spot. */
+    private String note;
     private List<SchematicFiles.FileEntry> files = List.of();
     private SchematicFiles.FileEntry chosenFile;
     /** The chosen file is still to be sent to the server once it has been read. */
@@ -125,6 +128,8 @@ public class PrefabScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose()).bounds(bx + 98, by + 24, 92, 20).build());
         groundButton = addRenderableWidget(Button.builder(Component.empty(), b -> PrefabToolClient.send(PrefabToolMessage.Action.ON_GROUND, "", hand))
                 .bounds(bx, by - 24, 190, 20).build());
+        realButton = addRenderableWidget(Button.builder(Component.literal("Place at its real spot"), b -> placeAtRealSpot())
+                .bounds(bx, by - 48, 190, 20).build());
         folderButton = addRenderableWidget(Button.builder(Component.literal("Open folder"), b -> {
             try {
                 java.nio.file.Files.createDirectories(SchematicFiles.mainFolder());
@@ -145,6 +150,8 @@ public class PrefabScreen extends Screen {
         boolean ground = stack != null && PrefabPlacement.onGround(stack);
         groundButton.setMessage(Component.literal(ground ? "Bottom layer: sits on the ground" : "Bottom layer: replaces the ground"));
         groundButton.visible = folderButton.visible = refreshButton.visible = custom();
+        SchematicFiles.Result model = custom() && chosenFile != null ? SchematicFiles.get(chosenFile) : null;
+        realButton.visible = model != null && model.schematic != null && !Double.isNaN(model.schematic.lat);
         for (int i = 0; i < tabs.size(); i++) {
             tabs.get(i).active = !TABS.get(i).equals(category);
         }
@@ -158,6 +165,34 @@ public class PrefabScreen extends Screen {
                 }
             }
         }
+    }
+
+    /** A 3D model that knows where on Earth it is, put where that is on the Road Planner's imported map. */
+    private void placeAtRealSpot() {
+        Minecraft mc = Minecraft.getInstance();
+        SchematicFiles.Result r = chosenFile == null ? null : SchematicFiles.get(chosenFile);
+        if (r == null || r.schematic == null || mc.level == null || mc.player == null) {
+            return;
+        }
+        var s = r.schematic;
+        if (sendWhenRead || !(com.ptmuk.building.schematic.CustomSchematics.ID_PREFIX + s.name).equals(chosen)) {
+            note = "Still sending it to the server: try again in a moment.";
+            return;
+        }
+        int[] at = com.ptmuk.building.schematic.ModelReader.realSpot(s, SchematicFiles.plannerMap());
+        if (at == null) {
+            note = "Import the real map in a Road Planner you're carrying first: the model goes where its place is on that map.";
+            return;
+        }
+        // the middle of its front (south) row, on the ground there: where the tool puts that row
+        int x = at[0] + s.width / 2, z = at[1] + s.depth - 1;
+        if (!mc.level.getChunkSource().hasChunk(x >> 4, z >> 4) || Math.hypot(x + 0.5 - mc.player.getX(), z + 0.5 - mc.player.getZ()) > 150) {
+            note = "Its spot is round x " + (at[0] + s.width / 2) + ", z " + (at[1] + s.depth / 2) + ": go nearer (within 150 blocks) and try again.";
+            return;
+        }
+        int y = mc.level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) - 1;
+        PrefabToolClient.placeAt(new BlockPos(x, y, z), chosen, hand);
+        onClose();
     }
 
     private int listTop() {
@@ -175,6 +210,7 @@ public class PrefabScreen extends Screen {
             int i = (int) ((my - y0) / ROW) + scroll;
             if (i >= 0 && i < files.size()) {
                 chosenFile = files.get(i);
+                note = null;
                 SchematicFiles.get(chosenFile);
                 sendWhenRead = true;
                 return true;
@@ -275,8 +311,8 @@ public class PrefabScreen extends Screen {
         }
         int px = x0 + 210;
         if (files.isEmpty()) {
-            String[] help = {"No schematics found.", "", "Put .schem, .schematic, .litematic or", ".nbt files in the schematics folder",
-                    "(Open folder), or WorldEdit's", "config/worldedit/schematics, then", "press Refresh."};
+            String[] help = {"No schematics found.", "", "Put .schem, .schematic, .litematic or", ".nbt files (or 3D models: .obj, .gltf",
+                    "or .glb) in the schematics folder", "(Open folder), or WorldEdit's", "config/worldedit/schematics, then", "press Refresh."};
             for (int i = 0; i < help.length; i++) {
                 g.drawString(font, help[i], i == 0 ? x0 + 4 : px, i == 0 ? y0 + 3 : y0 + 4 + (i - 1) * 12, 0xA0A0A0);
             }
@@ -291,7 +327,7 @@ public class PrefabScreen extends Screen {
             return;
         }
         SchematicFiles.Result r = SchematicFiles.get(chosenFile);
-        int pic = Math.max(40, Math.min(150, height - y0 - 136));
+        int pic = Math.max(40, Math.min(150, height - y0 - 176));
         g.fill(px, y0 - 2, px + 190, y0 + pic + 2, 0x60B8CCE0);
         if (r.error != null) {
             int ly = y0 + 4;
@@ -314,6 +350,14 @@ public class PrefabScreen extends Screen {
         g.drawString(font, s.format + ", " + r.solid + " blocks", px, ty + 24, 0xA0A0A0);
         boolean ready = chosen != null && chosen.equals(com.ptmuk.building.schematic.CustomSchematics.ID_PREFIX + s.name)
                 && !sendWhenRead;
+        if (note != null) {
+            int ly = ty + 36;
+            for (var line : font.split(Component.literal(note), 190)) {
+                g.drawString(font, line, px, ly, 0xFFB060);
+                ly += 10;
+            }
+            return;
+        }
         g.drawString(font, ready ? "Ready: right-click to place it." : "Sending to the server...", px, ty + 36, ready ? 0x80FF80 : 0xC0C0C0);
     }
 

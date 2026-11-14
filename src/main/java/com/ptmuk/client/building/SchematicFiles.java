@@ -2,10 +2,14 @@ package com.ptmuk.client.building;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.ptmuk.PtmUk;
+import com.ptmuk.building.schematic.ModelReader;
 import com.ptmuk.building.schematic.Schematic;
 import com.ptmuk.building.schematic.SchematicReader;
 import com.ptmuk.network.PtmUkNetwork;
 import com.ptmuk.network.SchematicUploadMessage;
+import com.ptmuk.road.RoadPlannerItem;
+import com.ptmuk.road.RoadPlans;
+import com.ptmuk.road.plan.RoadPlan;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,6 +31,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
@@ -36,13 +41,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * The Custom tab's schematics: files in the game folder's schematics folder (made if missing)
- * and WorldEdit's, read in the background, drawn as a little map from above, and sent to the
- * server when chosen.
+ * The Custom tab's schematics (and 3D models, made into blocks: see ModelReader): files in the
+ * game folder's schematics folder (made if missing) and WorldEdit's, read in the background,
+ * drawn as a little map from above, and sent to the server when chosen.
  */
 @Mod.EventBusSubscriber(modid = PtmUk.MOD_ID, value = Dist.CLIENT)
 public final class SchematicFiles {
-    public static final List<String> EXTENSIONS = List.of(".schem", ".schematic", ".litematic", ".nbt");
+    public static final List<String> EXTENSIONS = List.of(".schem", ".schematic", ".litematic", ".nbt", ".obj", ".gltf", ".glb");
     public static final int THUMB = 128;
 
     /** A file in one of the folders; label is its path inside the folder. */
@@ -140,9 +145,12 @@ public final class SchematicFiles {
         }
         Result fresh = new Result(modified);
         CACHE.put(f.path(), fresh);
+        // a 3D model at the planner map's scale, so it lines up with what's built from the map
+        // shortcut: read at the scale of the time; change the map's scale and the model needs saving again to re-read
+        double scale = ModelReader.isModel(f.path()) ? scale() : 0;
         CompletableFuture.runAsync(() -> {
             try {
-                Schematic s = SchematicReader.read(f.path());
+                Schematic s = scale > 0 ? ModelReader.read(f.path(), scale) : SchematicReader.read(f.path());
                 fresh.solid = s.solidBlocks();
                 fresh.image = map(s);
                 fresh.schematic = s;
@@ -152,6 +160,29 @@ public final class SchematicFiles {
             }
         }, Util.backgroundExecutor());
         return fresh;
+    }
+
+    /** The real map imported into a Road Planner you're carrying (the first one with a map), or null. */
+    public static RoadPlan.MapImport plannerMap() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) {
+            return null;
+        }
+        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+            ItemStack st = player.getInventory().getItem(i);
+            if (st.getItem() instanceof RoadPlannerItem) {
+                RoadPlan.MapImport mi = RoadPlans.read(st).map;
+                if (mi != null) {
+                    return mi;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static double scale() {
+        RoadPlan.MapImport mi = plannerMap();
+        return mi != null ? mi.scale : RoadPlan.MapImport.SCALE;
     }
 
     public static boolean sent(FileEntry f) {

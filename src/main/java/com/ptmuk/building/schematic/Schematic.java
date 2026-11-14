@@ -33,6 +33,9 @@ public final class Schematic {
     public final int[] cells;
     /** Each: x, y, z inside the box and the block entity's data under "nbt". */
     public final List<CompoundTag> blockEntities;
+    /** A 3D model's: where on Earth its origin is (NaN if it doesn't say), and the column of the box it's in (kept on the client). */
+    public double lat = Double.NaN, lon = Double.NaN;
+    public int originX, originZ;
 
     public Schematic(String name, String format, int width, int height, int depth, List<CompoundTag> palette, int[] cells,
                      List<CompoundTag> blockEntities) {

@@ -78,7 +78,9 @@ public final class MapBuildings {
 
     private static final Gson GSON = new Gson();
     private static final Map<UUID, Batch> PENDING = new HashMap<>();
-    private static final int MAX_BUILDINGS = 20000, MAX_CORNERS = 2000, MAX_CELLS = 250 * 250;
+    private static final int MAX_BUILDINGS = 60000, MAX_CORNERS = 2000, MAX_CELLS = 250 * 250;
+    /** The most a map's buildings can come to, packed, to send to the server in one go (all of a big map's). */
+    public static final int MAX_PACKED = 8 * 1024 * 1024;
     /** A roof goes up a block for every block in from the eaves (45 degrees), this high at most. */
     private static final int MAX_RISE = 8;
     /** A measured roof (a real one, from LIDAR) can go higher: 9 m over a house's eaves, more for a church tower or the like. */
@@ -191,6 +193,7 @@ public final class MapBuildings {
     }
 
     /** The part of a batch with its buildings' middles within half each way of (cx, cz); null if none. */
+    /** Takes the buildings with their middles within half each way of (cx, cz) out of all of them (so each is built once); null if none. */
     static Batch within(Batch all, double cx, double cz, int half) {
         if (all == null) {
             return null;
@@ -199,19 +202,39 @@ public final class MapBuildings {
         int x = (int) Math.floor(cx), z = (int) Math.floor(cz);
         b.box = new int[]{x - half, z - half, x + half, z + half};
         b.scale = all.scale;
-        for (Footprint f : all.buildings) {
-            double mx = 0, mz = 0;
-            for (int i = 0; i < f.x.length; i++) {
-                mx += f.x[i] / 4.0;
-                mz += f.z[i] / 4.0;
-            }
-            mx /= f.x.length;
-            mz /= f.x.length;
-            if (mx >= b.box[0] && mx < b.box[2] && mz >= b.box[1] && mz < b.box[3]) {
+        all.buildings.removeIf(f -> {
+            double[] m = middle(f);
+            boolean in = m[0] >= b.box[0] && m[0] < b.box[2] && m[1] >= b.box[1] && m[1] < b.box[3];
+            if (in) {
                 b.buildings.add(f);
             }
-        }
+            return in;
+        });
         return b.buildings.isEmpty() ? null : b;
+    }
+
+    /** The middle of the building still to build nearest (cx, cz); null if there are none left. */
+    static double[] nearest(Batch all, double cx, double cz) {
+        double[] best = null;
+        double bd = Double.MAX_VALUE;
+        for (Footprint f : all == null ? List.<Footprint>of() : all.buildings) {
+            double[] m = middle(f);
+            double d = Math.hypot(m[0] - cx, m[1] - cz);
+            if (d < bd) {
+                bd = d;
+                best = m;
+            }
+        }
+        return best;
+    }
+
+    private static double[] middle(Footprint f) {
+        double mx = 0, mz = 0;
+        for (int i = 0; i < f.x.length; i++) {
+            mx += f.x[i] / 4.0;
+            mz += f.z[i] / 4.0;
+        }
+        return new double[]{mx / f.x.length, mz / f.x.length};
     }
 
     /** The buildings a player's planner sent, kept for the build that follows. */

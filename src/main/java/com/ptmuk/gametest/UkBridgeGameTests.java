@@ -109,7 +109,6 @@ public final class UkBridgeGameTests {
         helper.assertTrue(plan.tooBig(), "the plan should be built a part at a time");
         plan.buildX = ox;
         plan.buildZ = oz;
-        plan.buildAll = true;
         RoadBuilder.start(player, InteractionHand.MAIN_HAND, plan);
         helper.succeedWhen(() -> {
             helper.assertTrue(plan.segments.stream().allMatch(sg -> sg.built), "still building the parts");

@@ -34,7 +34,7 @@ import net.minecraft.Util;
  * time, a named user agent, and an area no bigger than a few kilometres.
  */
 final class MapDownload {
-    private static final String AGENT = "PTM-UK-Addon (Minecraft mod; github.com/MarcusGuy1108/PTM-UK-addon)";
+    static final String AGENT = "PTM-UK-Addon (Minecraft mod; github.com/MarcusGuy1108/PTM-UK-addon)";
     private static final List<String> OVERPASS = List.of("https://overpass-api.de/api/interpreter",
             "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter");
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).proxy(java.net.ProxySelector.getDefault())
@@ -43,8 +43,34 @@ final class MapDownload {
     private MapDownload() {
     }
 
-    /** Where a place is: "lat, lon" as typed, or the best match the search finds (in the UK first); {lat, lon, name}. */
+    /** Where a link points: Google Maps (…/@lat,lon,… or ?q=lat,lon) or openstreetmap.org (#map=zoom/lat/lon, mlat= and mlon=). */
+    private static final java.util.regex.Pattern[] LINKS = {
+            java.util.regex.Pattern.compile("@(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)"),
+            java.util.regex.Pattern.compile("[?&](?:q|ll|query|center)=(-?\\d+\\.\\d+)(?:,|%2C)\\s*(-?\\d+\\.\\d+)"),
+            java.util.regex.Pattern.compile("map=\\d+(?:\\.\\d+)?/(-?\\d+\\.\\d+)/(-?\\d+\\.\\d+)"),
+            java.util.regex.Pattern.compile("mlat=(-?\\d+\\.\\d+)&mlon=(-?\\d+\\.\\d+)")};
+
+    /** The lat, lon a map link points at, or null if it isn't one. */
+    static double[] link(String text) {
+        if (!text.contains("/") && !text.contains("=")) {
+            return null;
+        }
+        for (java.util.regex.Pattern p : LINKS) {
+            java.util.regex.Matcher m = p.matcher(text);
+            if (m.find()) {
+                double lat = Double.parseDouble(m.group(1)), lon = Double.parseDouble(m.group(2));
+                return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? new double[]{lat, lon} : null;
+            }
+        }
+        return null;
+    }
+
+    /** Where a place is: a map link or "lat, lon" as pasted, or the best match the search finds (in the UK first); {lat, lon, name}. */
     static CompletableFuture<Object[]> find(String place) {
+        double[] at = link(place);
+        if (at != null) {
+            return CompletableFuture.completedFuture(new Object[]{at[0], at[1], String.format(Locale.ROOT, "%.4f_%.4f", at[0], at[1])});
+        }
         String[] parts = place.split(",");
         if (parts.length == 2) {
             try {
@@ -91,6 +117,26 @@ final class MapDownload {
         String file = name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "") + "_" + (int) (half * 2) + "m.osm";
         Path path = MapFiles.folder().resolve(file);
         return tryServer(0, body, path).thenApply(p -> file);
+    }
+
+    /**
+     * A picture of OpenStreetMap's map (a 256-pixel PNG tile), from the folder it's kept in for a
+     * week, else from OpenStreetMap's tile server (whose rules: a named app, and keep what you fetch).
+     */
+    static byte[] tile(int z, int x, int y) throws IOException, InterruptedException {
+        Path file = MapFiles.folder().resolve("tiles").resolve(z + "/" + x + "/" + y + ".png");
+        if (Files.isRegularFile(file) && System.currentTimeMillis() - Files.getLastModifiedTime(file).toMillis() < 7L * 24 * 3600 * 1000) {
+            return Files.readAllBytes(file);
+        }
+        HttpRequest req = HttpRequest.newBuilder(URI.create("https://tile.openstreetmap.org/" + z + "/" + x + "/" + y + ".png"))
+                .header("User-Agent", AGENT).timeout(Duration.ofSeconds(30)).build();
+        HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
+        if (res.statusCode() != 200) {
+            throw new IOException("the map server said " + res.statusCode());
+        }
+        Files.createDirectories(file.getParent());
+        Files.write(file, res.body());
+        return res.body();
     }
 
     /** England's LIDAR survey (Environment Agency, Open Government Licence): the tops of things, and the bare ground. */

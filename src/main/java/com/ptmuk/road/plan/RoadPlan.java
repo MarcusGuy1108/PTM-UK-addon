@@ -325,10 +325,8 @@ public final class RoadPlan {
     public List<Site> sites = new ArrayList<>();
     public List<BusStop> busStops = new ArrayList<>();
     public MapImport map;
-    /** Where Build was pressed from: a big plan is built a part at a time round here (NaN: round the player). */
+    /** Where Build was pressed from: a big plan is built a part at a time starting round here (NaN: round the player). */
     public double buildX = Double.NaN, buildZ = Double.NaN;
-    /** Build every part of a big plan, one after another. */
-    public boolean buildAll;
     public int nextId = 1;
 
     private static final Gson GSON = new GsonBuilder().serializeSpecialFloatingPointValues().create();
@@ -357,6 +355,9 @@ public final class RoadPlan {
     public static final int PART = 392;
     /** How far the roads past a part's own come along with it. */
     private static final double STUB = 48;
+
+    /** Building a big plan a part at a time: how many parts so far (on the server). */
+    public transient int partsBuilt;
 
     /** In a part: the roads and points it builds (the rest is there for their junctions). Null in a whole plan. */
     public transient Set<Integer> ownSegments, ownNodes;

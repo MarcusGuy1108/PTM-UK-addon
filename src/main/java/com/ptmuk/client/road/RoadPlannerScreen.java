@@ -93,8 +93,8 @@ public class RoadPlannerScreen extends Screen {
     /** Map mode, before a map's chosen: a place to fetch from OpenStreetMap, how big an area, and whether it's being fetched. */
     private EditBox placeBox;
     private static String placeTyped = "";
-    private static int downloadSize = 1;
-    private static final int[] DOWNLOAD_METRES = {400, 800, 1500, 3000};
+    static int downloadSize = 1;
+    static final int[] DOWNLOAD_METRES = {400, 800, 1500, 3000};
     private static boolean downloading;
     /** Why a download came without real heights, said once it's imported. */
     private static String heightsNote = "";
@@ -541,13 +541,15 @@ public class RoadPlannerScreen extends Screen {
             placeBox = new EditBox(font, 4, y, PANEL - 8, ROW - 1, Component.literal("Place"));
             placeBox.setMaxLength(80);
             placeBox.setValue(placeTyped);
-            placeBox.setHint(Component.literal("place, or lat, lon"));
+            placeBox.setHint(Component.literal("place, lat, lon or map link"));
             placeBox.setResponder(t -> placeTyped = t);
             addRenderableWidget(placeBox);
             y += ROW;
             halfButtons(y, () -> "Area: " + (DOWNLOAD_METRES[downloadSize] >= 1000 ? DOWNLOAD_METRES[downloadSize] / 1000.0 + " km"
                     : DOWNLOAD_METRES[downloadSize] + " m"), b -> downloadSize = (downloadSize + 1) % DOWNLOAD_METRES.length,
                     () -> downloading ? "Fetching..." : "Download", b -> download());
+            y += ROW;
+            button(y, () -> "Pick on a map...", b -> Minecraft.getInstance().setScreen(new MapPickerScreen(this)));
             y += ROW + 6;
             for (int i = 0; i < mapFiles.size() && i < 7; i++) {
                 String f = mapFiles.get(i);
@@ -579,8 +581,6 @@ public class RoadPlannerScreen extends Screen {
         y += ROW;
         button(y, () -> osm != null && osm.lidar != null ? "Real heights: in use" : downloading ? "Real heights: fetching..." : "Real heights: fetch",
                 b -> fetchHeights());
-        y += ROW;
-        button(y, () -> "Build the whole map", b -> build(true));
         y += ROW;
         button(y, () -> "Remove map", b -> {
             remember();
@@ -828,25 +828,42 @@ public class RoadPlannerScreen extends Screen {
     private void download() {
         String place = placeTyped.trim();
         if (place.isEmpty() || downloading) {
-            flash(downloading ? "Already fetching a map" : "Type a place (a town, street or postcode) or lat, lon first");
+            flash(downloading ? "Already fetching a map" : "Type a place (a town, street or postcode), lat, lon, or a map link first");
             return;
         }
         downloading = true;
-        int metres = DOWNLOAD_METRES[downloadSize];
         flash("Finding " + place + "...");
+        fetched(MapDownload.find(place).thenCompose(r -> fetch((String) r[2], (Double) r[0], (Double) r[1])));
+    }
+
+    /** The area picked on the map picker: fetched and imported here. */
+    void downloadAt(String name, double lat, double lon) {
+        if (downloading) {
+            flash("Already fetching a map");
+            return;
+        }
+        downloading = true;
+        fetched(fetch(name, lat, lon));
+    }
+
+    /** The map round lat, lon (the Area chosen) downloaded and saved, then its buildings' real heights where there are any (England). */
+    private CompletableFuture<String> fetch(String name, double lat, double lon) {
+        int metres = DOWNLOAD_METRES[downloadSize];
         Minecraft mc = Minecraft.getInstance();
-        MapDownload.find(place).thenCompose(r -> {
-            mc.execute(() -> flash("Downloading " + metres + " m round " + r[2] + " from OpenStreetMap..."));
-            double lat = (Double) r[0], lon = (Double) r[1];
-            // then the real heights of its buildings, where there are any (England)
-            return MapDownload.download((String) r[2], lat, lon, metres / 2.0).thenCompose(file -> {
-                double[] b = OsmMap.box(lat, lon, metres / 2.0);
-                return MapDownload.heights(file, b[0], b[1], b[2], b[3], msg -> mc.execute(() -> flash(msg))).handle((l, err) -> {
-                    heightsNote = err == null ? "" : " No real heights: " + (err.getCause() != null ? err.getCause() : err).getMessage() + ".";
-                    return file;
-                });
+        mc.execute(() -> flash("Downloading " + metres + " m round " + name + " from OpenStreetMap..."));
+        return MapDownload.download(name, lat, lon, metres / 2.0).thenCompose(file -> {
+            double[] b = OsmMap.box(lat, lon, metres / 2.0);
+            return MapDownload.heights(file, b[0], b[1], b[2], b[3], msg -> mc.execute(() -> flash(msg))).handle((l, err) -> {
+                heightsNote = err == null ? "" : " No real heights: " + (err.getCause() != null ? err.getCause() : err).getMessage() + ".";
+                return file;
             });
-        }).whenComplete((file, err) -> mc.execute(() -> {
+        });
+    }
+
+    /** When a download's done: imported here (if this is still open with no map), or said why not. */
+    private void fetched(CompletableFuture<String> job) {
+        Minecraft mc = Minecraft.getInstance();
+        job.whenComplete((file, err) -> mc.execute(() -> {
             downloading = false;
             if (err != null) {
                 Throwable cause = err.getCause() != null ? err.getCause() : err;
@@ -1428,15 +1445,11 @@ public class RoadPlannerScreen extends Screen {
         messageTicks = 80;
     }
 
-    private void build() {
-        build(false);
-    }
-
     /**
-     * Build: round the middle of the view (a big plan a part at a time, the part you're looking at),
-     * or with whole, every part of a big plan one after another, wherever you are.
+     * Build: all of the plan. A big one (a real map) is built a part at a time on the server, every
+     * part one after another, starting round the middle of the view, wherever you are.
      */
-    private void build(boolean whole) {
+    private void build() {
         if (preview == null && plan.segments.isEmpty() && plan.sites.isEmpty()) {
             flash("Draw a road or a site first");
             return;
@@ -1456,9 +1469,7 @@ public class RoadPlannerScreen extends Screen {
         // where to build: the part of a big plan round the middle of the view, not round you (it needn't be loaded)
         plan.buildX = camX;
         plan.buildZ = camZ;
-        plan.buildAll = whole && plan.tooBig();
         byte[] data = RoadPlans.pack(plan);
-        plan.buildAll = false;
         if (data.length > RoadPlans.MAX_PLAN) {
             flash("The plan is too big (" + data.length / 1024 + " KB of " + RoadPlans.MAX_PLAN / 1024 + ") - remove the map or some roads");
             return;
@@ -1469,18 +1480,17 @@ public class RoadPlannerScreen extends Screen {
                 flash("The map's still loading - try again in a moment");
                 return;
             }
-            // the buildings go first: the server builds them with the roads (all of them for the whole map, if they'll go)
-            MapBuildings.Batch batch = whole ? MapBuildings.around(outlines, mi, camX, camZ, Integer.MAX_VALUE / 4) : null;
+            // the buildings go first, all of them still to build: the server builds them with the roads, part by part
+            MapBuildings.Batch batch = MapBuildings.around(outlines, mi, camX, camZ, Integer.MAX_VALUE / 4);
             byte[] packed = batch == null ? null : MapBuildings.pack(batch);
-            if (packed == null || packed.length > RoadPlans.MAX_PLAN) {
-                if (whole && packed != null) {
-                    Minecraft.getInstance().gui.getChat().addMessage(Component.literal("The map has too many buildings to send in one go: "
-                            + "the roads are built everywhere, the buildings round where you're looking (look at each part and press Build for the rest)"));
-                }
+            if (packed != null && packed.length > MapBuildings.MAX_PACKED) {
+                Minecraft.getInstance().gui.getChat().addMessage(Component.literal("The map has too many buildings to send in one go ("
+                        + packed.length / 1024 / 1024 + " MB): the roads are built everywhere, the buildings round where you're looking "
+                        + "(look at each part and press Build again for the rest)"));
                 batch = MapBuildings.around(outlines, mi, camX, camZ, RoadPlan.PART);
                 packed = batch == null ? null : MapBuildings.pack(batch);
             }
-            if (packed != null && packed.length <= RoadPlans.MAX_PLAN) {
+            if (packed != null && packed.length <= MapBuildings.MAX_PACKED) {
                 RoadPlannerMessage.send(RoadPlannerMessage.Action.BUILDINGS, packed, hand == InteractionHand.OFF_HAND);
             }
         }
@@ -1505,6 +1515,11 @@ public class RoadPlannerScreen extends Screen {
         }
         Minecraft.getInstance().getTextureManager().release(PREVIEW);
         Minecraft.getInstance().getTextureManager().release(OUTLINES);
+        // all made again if this screen's shown again (after the map picker)
+        map = null;
+        previewTex = null;
+        outlineTex = null;
+        previewStale = true;
         lastZoom = zoom;
         super.removed();
     }
@@ -2764,7 +2779,9 @@ public class RoadPlannerScreen extends Screen {
                 continue;
             }
             boolean sel = selSeg != null && selSeg == s.id;
-            if (showLines || sel) {
+            // a big plan's preview is only the part round the view: its other roads are drawn as lines
+            boolean beyond = preview != null && preview.index((int) Math.floor(c.x[c.n / 2]), (int) Math.floor(c.z[c.n / 2])) < 0;
+            if (showLines || sel || beyond) {
                 int colour = sel ? 0xFFFFD24A : 0xA0FFFFFF;
                 float w = sel ? 2 : 1;
                 if (preview == null || draggingNode || draggingBend) {

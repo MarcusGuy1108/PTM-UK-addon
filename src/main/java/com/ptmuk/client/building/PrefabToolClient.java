@@ -98,6 +98,12 @@ public final class PrefabToolClient {
                 target(player, 1.0f), player.getDirection(), hand == InteractionHand.OFF_HAND));
     }
 
+    /** Place the chosen building with the middle of its front row on target, as it is (not turned to face you). */
+    public static void placeAt(BlockPos target, String id, InteractionHand hand) {
+        PtmUkNetwork.CHANNEL.sendToServer(new PrefabToolMessage(PrefabToolMessage.Action.PLACE_AT, id, target, Direction.NORTH,
+                hand == InteractionHand.OFF_HAND));
+    }
+
     public static void send(PrefabToolMessage.Action action, String id, InteractionHand hand) {
         PtmUkNetwork.CHANNEL.sendToServer(new PrefabToolMessage(action, id, BlockPos.ZERO, Direction.NORTH, hand == InteractionHand.OFF_HAND));
     }
