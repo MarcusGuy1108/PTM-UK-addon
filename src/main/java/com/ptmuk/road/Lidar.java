@@ -42,6 +42,7 @@ public final class Lidar {
 
     /** Heights above the ground, a grid for each tile fetched. */
     public final List<Grid> tiles = new ArrayList<>();
+    private int lastTile;
 
     /** A tile from its surface model (the tops of things) and terrain model (the bare ground). */
     public void add(Grid top, Grid ground) {
@@ -92,9 +93,13 @@ public final class Lidar {
      * so a chimney pot or an aerial doesn't count but a ridge does; NaN off the survey.
      */
     public float at(double lat, double lon) {
-        for (Grid g : tiles) {
+        int hint = lastTile;                                    // the tile last looked in: nearly always the one (only a hint, so no locking)
+        for (int i = 0; i < tiles.size(); i++) {
+            int t = (hint + i) % tiles.size();
+            Grid g = tiles.get(t);
             int c = (int) Math.floor((lon - g.lon0) / g.dLon), r = (int) Math.floor((g.lat0 - lat) / g.dLat);
             if (c >= 0 && r >= 0 && c < g.w && r < g.h) {
+                lastTile = t;
                 float[] five = {g.at(lat, lon), g.at(lat + g.dLat, lon), g.at(lat - g.dLat, lon), g.at(lat, lon - g.dLon), g.at(lat, lon + g.dLon)};
                 Arrays.sort(five);                              // NaNs go last
                 int n = 0;

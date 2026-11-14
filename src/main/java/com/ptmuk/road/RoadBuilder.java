@@ -11,6 +11,7 @@ import com.ptmuk.sign.DirectionSignBlockEntity;
 import com.ptmuk.sign.SignDiagram;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,6 +28,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Clearable;
@@ -124,7 +127,7 @@ public final class RoadBuilder {
                 return true;
             }
         }
-        return false;
+        return WAITING.stream().anyMatch(w -> w.player.getUUID().equals(player));
     }
 
     // ------------------------------------------------------------------ starting a build
@@ -167,8 +170,21 @@ public final class RoadBuilder {
             buildings = MapBuildings.within(WHOLE.get(player.getUUID()), at[0], at[1], RoadPlan.PART);
             plan = plan.part(at[0], at[1], RoadPlan.PART);
         }
+        // the chunks it needs loaded (made, if they never have been) in the background first, so the game doesn't stop while they are
+        List<ChunkPos> missing = missingGround(level, plan, buildings);
+        if (!missing.isEmpty()) {
+            WAITING.add(new Waiting(player, hand, slot, full, plan, buildings, missing));
+            player.displayClientMessage(Component.literal("Getting the ground ready: " + missing.size() + " chunks to load..."), true);
+            return;
+        }
+        startPart(player, hand, slot, full, plan, buildings, Map.of());
+    }
+
+    /** Builds a plan, or a part of a big one (full), its ground loaded; a part that can't be built is said and skipped. */
+    private static void startPart(ServerPlayer player, InteractionHand hand, int slot, RoadPlan full, RoadPlan plan, MapBuildings.Batch buildings,
+                                  Map<Long, int[]> ground) {
         try {
-            if (!startJob(player, hand, plan, full, buildings, slot)) {
+            if (!startJob(player, hand, plan, full, buildings, slot, ground)) {
                 if (full != null) {
                     skip(player, hand, slot, full, plan);       // nothing here to build (a road of no length, say): on to the next part
                 } else {
@@ -176,15 +192,140 @@ public final class RoadBuilder {
                 }
             }
         } catch (RuntimeException e) {
+            // said, not thrown (this can be in the server's tick); and one bad part of a big plan doesn't stop the rest
+            com.ptmuk.PtmUk.LOGGER.error("Couldn't build", e);
             if (full == null) {
-                throw e;
+                player.sendSystemMessage(Component.literal("Couldn't build it: " + e));
+                return;
             }
-            // one bad part doesn't stop the rest: say so and go on
-            com.ptmuk.PtmUk.LOGGER.error("Couldn't build a part of the map", e);
             double[] mid = middle(plan);
             player.sendSystemMessage(Component.literal("Couldn't build the part of the map round x " + (int) mid[0] + ", z " + (int) mid[1]
                     + " (" + e + "): skipped it, on to the next"));
             skip(player, hand, slot, full, plan);
+        }
+    }
+
+    /**
+     * Making a build's ground: chunks asked for a batch at a time and let go once they're made (so
+     * they're saved and unloaded as usual, not all held at once: a part's thousands would fill the
+     * memory). Tickets run out on their own after a minute, should a build never let them go.
+     */
+    private static final TicketType<ChunkPos> GROUND = TicketType.create("ptmuk_road_ground", Comparator.comparingLong(ChunkPos::toLong), 1200);
+    private static final int GROUND_BATCH = 16;
+    /** Go ahead after this long even if some of the ground's still to make (it's made as it's needed, as before). */
+    private static final int MAX_WAIT = 20 * 180;
+
+    /** A build waiting for its ground to be made. */
+    private static final class Waiting {
+        final ServerPlayer player;
+        final InteractionHand hand;
+        final int slot;
+        final RoadPlan full, plan;
+        final MapBuildings.Batch buildings;
+        final ArrayDeque<ChunkPos> queue;
+        final List<ChunkPos> asked = new ArrayList<>();
+        /** The ground's height in each column of the chunks made, read as each is made (so they needn't be loaded again to lay it out). */
+        final Map<Long, int[]> ground = new HashMap<>();
+        final int total;
+        int ticks;
+
+        Waiting(ServerPlayer player, InteractionHand hand, int slot, RoadPlan full, RoadPlan plan, MapBuildings.Batch buildings, List<ChunkPos> chunks) {
+            this.player = player;
+            this.hand = hand;
+            this.slot = slot;
+            this.full = full;
+            this.plan = plan;
+            this.buildings = buildings;
+            this.queue = new ArrayDeque<>(chunks);
+            this.total = chunks.size();
+        }
+
+        /** Lets go of the chunks that are ready and asks for more; true when they're all made. */
+        boolean step(ServerLevel level) {
+            asked.removeIf(c -> {
+                boolean ready = level.getChunkSource().hasChunk(c.x, c.z);
+                if (ready) {
+                    int[] tops = new int[256];
+                    for (int i = 0; i < 256; i++) {
+                        tops[i] = WorldTerrain.scan(level, c.getMinBlockX() + (i & 15), c.getMinBlockZ() + (i >> 4), level.getSeaLevel());
+                    }
+                    ground.put(c.toLong(), tops);
+                    level.getChunkSource().removeRegionTicket(GROUND, c, 0, c);
+                }
+                return ready;
+            });
+            while (asked.size() < GROUND_BATCH && !queue.isEmpty()) {
+                ChunkPos c = queue.poll();
+                if (!level.getChunkSource().hasChunk(c.x, c.z)) {
+                    level.getChunkSource().addRegionTicket(GROUND, c, 0, c);
+                    asked.add(c);
+                }
+            }
+            return asked.isEmpty() && queue.isEmpty();
+        }
+
+        void giveUp(ServerLevel level) {
+            asked.forEach(c -> level.getChunkSource().removeRegionTicket(GROUND, c, 0, c));
+            asked.clear();
+        }
+    }
+
+    private static final List<Waiting> WAITING = new ArrayList<>();
+
+    /** The chunks a plan's roads, sites and buildings reach that aren't loaded: 3 chunks round every road, all of every site and building. */
+    private static List<ChunkPos> missingGround(ServerLevel level, RoadPlan plan, MapBuildings.Batch buildings) {
+        Set<Long> want = new HashSet<>();
+        for (RoadPlan.Segment sg : plan.segments) {
+            RoadPlan.Node a = plan.node(sg.a), b = plan.node(sg.b);
+            if (a == null || b == null) {
+                continue;
+            }
+            int steps = Math.max(1, (int) Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 16));
+            for (int i = 0; i <= steps; i++) {
+                int cx = (int) Math.floor(a.x + (b.x - a.x) * i / steps) >> 4, cz = (int) Math.floor(a.z + (b.z - a.z) * i / steps) >> 4;
+                square(want, cx - 3, cz - 3, cx + 3, cz + 3);
+            }
+        }
+        for (RoadPlan.Site st : plan.sites) {
+            square(want, (st.x0 >> 4) - 2, (st.z0 >> 4) - 2, (st.x1 >> 4) + 2, (st.z1 >> 4) + 2);
+        }
+        for (MapBuildings.Footprint f : buildings == null ? List.<MapBuildings.Footprint>of() : buildings.buildings) {
+            int x0 = Integer.MAX_VALUE, z0 = Integer.MAX_VALUE, x1 = Integer.MIN_VALUE, z1 = Integer.MIN_VALUE;
+            for (int i = 0; i < f.x.length; i++) {
+                x0 = Math.min(x0, f.x[i] >> 6);                 // quarter blocks to chunks
+                z0 = Math.min(z0, f.z[i] >> 6);
+                x1 = Math.max(x1, f.x[i] >> 6);
+                z1 = Math.max(z1, f.z[i] >> 6);
+            }
+            if ((long) (x1 - x0) * (z1 - z0) < 400) {
+                square(want, x0, z0, x1, z1);
+            }
+        }
+        List<ChunkPos> out = new ArrayList<>();
+        for (long k : want) {
+            ChunkPos c = new ChunkPos(k);
+            if (!level.getChunkSource().hasChunk(c.x, c.z)) {
+                out.add(c);
+            }
+        }
+        // row by row: making a chunk makes the ones round it part way, and neighbours share them (scattered, they'd fill the memory)
+        out.sort(Comparator.comparingInt((ChunkPos c) -> c.z).thenComparingInt(c -> c.x));
+        return out;
+    }
+
+    private static void square(Set<Long> into, int x0, int z0, int x1, int z1) {
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                into.add(ChunkPos.asLong(x, z));
+            }
+        }
+    }
+
+    /** A note in the log when a step of building held the server up (so slow builds can be looked into). */
+    private static void slow(String what, long since) {
+        long ms = (System.nanoTime() - since) / 1_000_000;
+        if (ms > 500) {
+            com.ptmuk.PtmUk.LOGGER.debug("Road builder: {} took {} ms", what, ms);
         }
     }
 
@@ -208,10 +349,11 @@ public final class RoadBuilder {
     }
 
     /** Lays out a plan (or a part) and starts building it; false if there's nothing in it to build. */
-    private static boolean startJob(ServerPlayer player, InteractionHand hand, RoadPlan plan, RoadPlan full, MapBuildings.Batch buildings, int slot) {
+    private static boolean startJob(ServerPlayer player, InteractionHand hand, RoadPlan plan, RoadPlan full, MapBuildings.Batch buildings, int slot,
+                                    Map<Long, int[]> ground) {
         ServerLevel level = player.serverLevel();
         // node heights come from the ground once, then stay put so later edits don't shift built roads
-        Terrain terrain = new LoadingTerrain(level, (int) Math.floor(player.getY()));
+        Terrain terrain = new LoadingTerrain(level, (int) Math.floor(player.getY()), ground);
         Layout first = Layout.of(plan, terrain);
         for (RoadPlan.Node n : plan.nodes) {
             if (Double.isNaN(n.y)) {
@@ -341,10 +483,25 @@ public final class RoadBuilder {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
+        long t0 = System.nanoTime();
         if (!NEXT.isEmpty()) {
             List<Runnable> next = new ArrayList<>(NEXT);
             NEXT.clear();
             next.forEach(Runnable::run);
+        }
+        slow("starting the next part", t0);
+        for (Waiting w : new ArrayList<>(WAITING)) {
+            long t1 = System.nanoTime();
+            ServerLevel level = w.player.serverLevel();
+            if (w.step(level) || ++w.ticks > MAX_WAIT) {
+                w.giveUp(level);
+                WAITING.remove(w);
+                startPart(w.player, w.hand, w.slot, w.full, w.plan, w.buildings, w.ground);
+                slow("laying out a part (" + w.ground.size() + " chunks' ground known)", t1);
+            } else if (w.ticks % 20 == 0) {
+                w.player.displayClientMessage(Component.literal("Getting the ground ready: " + (w.total - w.queue.size() - w.asked.size()) + " of "
+                        + w.total + " chunks made"), true);
+            }
         }
         if (JOBS.isEmpty()) {
             return;
@@ -353,10 +510,15 @@ public final class RoadBuilder {
         Iterator<Job> it = JOBS.iterator();
         while (it.hasNext()) {
             Job job = it.next();
+            long t2 = System.nanoTime();
             int end = Math.min(job.cells.length, job.next + COLUMNS_PER_TICK);
             for (; job.next < end; job.next++) {
                 column(job, job.cells[job.next]);
             }
+            slow("building " + COLUMNS_PER_TICK + " columns", t2);
+            long t3 = System.nanoTime();
+            String step = !job.fixturesDone ? "fixtures" : job.nextTraffic < job.traffic.points().size() ? "PTM2 traffic points"
+                    : job.nextBuilding < job.layout.buildings.size() ? "a site's building" : "the map's buildings, or finishing";
             ServerPlayer player = server.getPlayerList().getPlayer(job.player);
             if (job.next >= job.cells.length && !job.fixturesDone && job.then != null) {
                 fixtures(job);                              // the roads underneath are done: now the rest
@@ -397,6 +559,7 @@ public final class RoadBuilder {
             } else if (player != null && job.next % (COLUMNS_PER_TICK * 10) < COLUMNS_PER_TICK) {
                 player.displayClientMessage(Component.literal("Building roads: " + (100 * job.next / job.cells.length) + "%"), true);
             }
+            slow(step, t3);
         }
     }
 
@@ -544,7 +707,7 @@ public final class RoadBuilder {
             }
             player.displayClientMessage(Component.literal((job.mapBuildings != null ? "Roads and " + job.mapBuildings.count() + " buildings built (" : "Roads built (")
                     + job.changed + " blocks changed)" + (job.full != null ? " - on to the next part of the map" : "")), true);
-            if (job.trafficAt != null && !Ptm2Traffic.leftHanded(job.level)) {
+            if (job.trafficAt != null && !Ptm2Traffic.leftHanded(job.level) && (job.full == null || job.full.partsBuilt <= 1)) {
                 player.sendSystemMessage(Component.literal("PTM2 has its traffic on the right in this world, so cars on these roads keep right. "
                         + "To drive on the left, open a PTM2 Computer, go to Traffic and set Left traffic to Yes: PTM2 turns every lane round, these too."));
             }
@@ -1064,14 +1227,21 @@ public final class RoadBuilder {
     private static final class LoadingTerrain implements Terrain {
         private final ServerLevel level;
         private final WorldTerrain inner;
+        /** Heights already read from chunks made for this build (see Waiting), by chunk. */
+        private final Map<Long, int[]> known;
 
-        LoadingTerrain(ServerLevel level, int fallback) {
+        LoadingTerrain(ServerLevel level, int fallback, Map<Long, int[]> known) {
             this.level = level;
             this.inner = new WorldTerrain(level, fallback);
+            this.known = known;
         }
 
         @Override
         public int groundTop(int x, int z) {
+            int[] tops = known.get(ChunkPos.asLong(x >> 4, z >> 4));
+            if (tops != null) {
+                return tops[(z & 15) << 4 | (x & 15)];
+            }
             level.getChunk(x >> 4, z >> 4);
             return inner.groundTop(x, z);
         }

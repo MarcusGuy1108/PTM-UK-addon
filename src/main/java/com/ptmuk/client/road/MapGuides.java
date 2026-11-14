@@ -33,8 +33,11 @@ import org.joml.Matrix4f;
 public final class MapGuides {
     private static byte[] lastData;
     private static RoadPlan.MapImport map;
-    private static String key;
+    private static String key, pendingKey;
     private static List<OsmMap.Outline> outlines;
+    /** The plan read, and the outlines worked out, away from the render thread (a big map's take a while). */
+    private static CompletableFuture<RoadPlan.MapImport> unpacking;
+    private static CompletableFuture<List<OsmMap.Outline>> pending;
 
     private MapGuides() {
     }
@@ -52,22 +55,34 @@ public final class MapGuides {
             return;
         }
         byte[] data = tag.getByteArray(RoadPlans.TAG);
-        if (data != lastData) {                             // the same array until the plan is saved again
+        if (data != lastData && unpacking == null) {        // the same array until the plan is saved again
             lastData = data;
-            map = RoadPlans.unpack(data).map;
+            unpacking = CompletableFuture.supplyAsync(() -> RoadPlans.unpack(data).map, net.minecraft.Util.backgroundExecutor());
+        }
+        if (unpacking != null && unpacking.isDone()) {
+            map = unpacking.isCompletedExceptionally() ? null : unpacking.join();
+            unpacking = null;
         }
         RoadPlan.MapImport mi = map;
         if (mi == null || !mi.guides) {
             return;
         }
         String k = mi.file + "|" + mi.lat0 + "|" + mi.lon0 + "|" + mi.x + "|" + mi.z + "|" + mi.scale;
-        if (!k.equals(key)) {
+        if (!k.equals(key) && pending == null) {
             CompletableFuture<OsmMap> f = MapFiles.get(mi.file);
-            if (!f.isDone() || f.isCompletedExceptionally()) {
-                return;
+            if (f.isDone() && !f.isCompletedExceptionally()) {
+                OsmMap osm = f.join();
+                pendingKey = k;
+                pending = CompletableFuture.supplyAsync(() -> osm.buildings(mi), net.minecraft.Util.backgroundExecutor());
             }
-            outlines = f.join().buildings(mi);
-            key = k;
+        }
+        if (pending != null && pending.isDone()) {
+            outlines = pending.isCompletedExceptionally() ? null : pending.join();
+            key = pendingKey;
+            pending = null;
+        }
+        if (outlines == null || !k.equals(key)) {
+            return;
         }
         Vec3 cam = event.getCamera().getPosition();
         PoseStack pose = event.getPoseStack();
