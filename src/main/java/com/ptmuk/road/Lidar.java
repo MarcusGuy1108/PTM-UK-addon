@@ -92,6 +92,19 @@ public final class Lidar {
      * The height above the ground at a point: the middle one of its pixel and the four beside it,
      * so a chimney pot or an aerial doesn't count but a ridge does; NaN off the survey.
      */
+    /** The height above the ground of the one survey point there (no smoothing), NaN where there's none. */
+    public float raw(double lat, double lon) {
+        for (int i = 0; i < tiles.size(); i++) {
+            Grid g = tiles.get((lastTile + i) % tiles.size());
+            float v = g.at(lat, lon);
+            if (!Float.isNaN(v)) {
+                lastTile = (lastTile + i) % tiles.size();
+                return v;
+            }
+        }
+        return Float.NaN;
+    }
+
     public float at(double lat, double lon) {
         int hint = lastTile;                                    // the tile last looked in: nearly always the one (only a hint, so no locking)
         for (int i = 0; i < tiles.size(); i++) {

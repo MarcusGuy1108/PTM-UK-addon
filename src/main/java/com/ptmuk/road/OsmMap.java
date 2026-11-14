@@ -573,7 +573,6 @@ public final class OsmMap {
         for (Map.Entry<Long, String> t : things.entrySet()) {
             feature(out, new long[]{t.getKey()}, t.getValue(), mi);
         }
-        shopsInto(out, mi);
         for (Relation rel : relations) {
             for (long id : rel.outers()) {
                 Way w = byId.get(id);
@@ -583,7 +582,70 @@ public final class OsmMap {
                 }
             }
         }
+        if (heights != null && !heights.isEmpty()) {
+            unmapped(out, mi, heights);
+        }
+        shopsInto(out, mi);
         return out;
+    }
+
+    /**
+     * The buildings the LIDAR survey sees that the map hasn't got (whole streets of houses are
+     * missing from OpenStreetMap in places), at their measured size and place: a house, or a
+     * building if it's big. Not on a road, path or railway (a bus, a bridge), a car park or yard (a
+     * lorry), or a building the map has.
+     */
+    private void unmapped(List<Outline> out, MapImport mi, Lidar lidar) {
+        double s = 90, w = 180, n = -90, e = -180;
+        for (Lidar.Grid g : lidar.tiles) {
+            n = Math.max(n, g.lat0());
+            s = Math.min(s, g.lat0() - g.h() * g.dLat());
+            w = Math.min(w, g.lon0());
+            e = Math.max(e, g.lon0() + g.w() * g.dLon());
+        }
+        s = Math.max(s, minLat);
+        n = Math.min(n, maxLat);
+        w = Math.max(w, minLon);
+        e = Math.min(e, maxLon);
+        if (s >= n || w >= e) {
+            return;
+        }
+        Set<String> ground = Set.of("parking", "fuel", "pedestrian", "yard:retail", "yard:industrial");
+        List<LidarBuildings.Clear> clear = new ArrayList<>();
+        for (Outline o : out) {
+            if (o.x().length < 4 || feature(o.kind()) && !ground.contains(o.kind())) {
+                continue;
+            }
+            double[] lat = new double[o.x().length], lon = new double[o.x().length];
+            for (int i = 0; i < lat.length; i++) {
+                lat[i] = mi.lat(o.z()[i]);
+                lon[i] = mi.lon(o.x()[i]);
+            }
+            clear.add(new LidarBuildings.Clear(lat, lon, true, ground.contains(o.kind()) ? 0 : 1.5));
+        }
+        for (Way way : ways) {
+            String hw = way.tag("highway");
+            double reach = ROADS.contains(hw) ? (MAJOR.contains(hw) ? 7 : 5) : !way.tag("railway").isEmpty() ? 3.5 : !hw.isEmpty() ? 2.5 : 0;
+            long[] ids = way.nodes();
+            double[] lat = new double[ids.length], lon = new double[ids.length];
+            for (int i = 0; i < ids.length && reach > 0; i++) {
+                double[] ll = nodes.get(ids[i]);
+                reach = ll == null ? 0 : reach;             // (part of it is outside the export)
+                lat[i] = ll == null ? 0 : ll[0];
+                lon[i] = ll == null ? 0 : ll[1];
+            }
+            if (reach > 0) {
+                clear.add(new LidarBuildings.Clear(lat, lon, false, reach));
+            }
+        }
+        double kx = 111320 * Math.cos(Math.toRadians((s + n) / 2)), kz = 111250;
+        for (double[][] b : LidarBuildings.find(lidar, s, w, n, e, clear)) {
+            double area = 0;
+            for (int i = 0; i + 1 < b[0].length; i++) {
+                area += (b[1][i] * kx) * (b[0][i + 1] * kz) - (b[1][i + 1] * kx) * (b[0][i] * kz);
+            }
+            outlineAt(out, b[0], b[1], Map.of("building", Math.abs(area) / 2 < 250 ? "house" : "yes"), mi, lidar);
+        }
     }
 
     /** The shops mapped as points, each into the building it's in (they're its shop fronts). */
@@ -658,7 +720,7 @@ public final class OsmMap {
     }
 
     private void outline(List<Outline> out, long[] ids, Map<String, String> tags, MapImport mi, Lidar lidar) {
-        double[] x = new double[ids.length], z = new double[ids.length], lat = new double[ids.length], lon = new double[ids.length];
+        double[] lat = new double[ids.length], lon = new double[ids.length];
         for (int i = 0; i < ids.length; i++) {
             double[] ll = nodes.get(ids[i]);
             if (ll == null) {
@@ -666,8 +728,15 @@ public final class OsmMap {
             }
             lat[i] = ll[0];
             lon[i] = ll[1];
-            x[i] = mi.x(ll[1]);
-            z[i] = mi.z(ll[0]);
+        }
+        outlineAt(out, lat, lon, tags, mi, lidar);
+    }
+
+    private void outlineAt(List<Outline> out, double[] lat, double[] lon, Map<String, String> tags, MapImport mi, Lidar lidar) {
+        double[] x = new double[lat.length], z = new double[lat.length];
+        for (int i = 0; i < lat.length; i++) {
+            x[i] = mi.x(lon[i]);
+            z[i] = mi.z(lat[i]);
         }
         String kind = areaKind(tags);
         if (feature(kind)) {

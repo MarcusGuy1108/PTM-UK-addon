@@ -727,6 +727,63 @@ public final class UkMapImportGameTests {
         helper.succeed();
     }
 
+    /**
+     * A house the LIDAR survey sees but the map hasn't got comes in at its measured size and place;
+     * the house the map has isn't doubled, and a tree (rough) and a bus on the road aren't houses.
+     */
+    @GameTest(template = "empty5x4x5")
+    public static void addsHousesTheMapHasnt(GameTestHelper helper) throws Exception {
+        int w = 60, h = 40;
+        double dLat = 1 / 111250.0, dLon = 1 / (111320.0 * Math.cos(Math.toRadians(LAT))), lat0 = LAT + 20 * dLat, lon0 = LON - 20 * dLon;
+        float[] top = new float[w * h], ground = new float[w * h];
+        java.util.Random rnd = new java.util.Random(7);
+        for (int r = 0; r < h; r++) {
+            for (int c = 0; c < w; c++) {                    // a metre a point; east = c - 20, north = 20 - r
+                ground[r * w + c] = 10;
+                float v = 10;
+                if (c >= 5 && c <= 12 && r >= 5 && r <= 11) {
+                    v = 16;                                 // the mapped house, flat
+                } else if (c >= 25 && c <= 34 && r >= 5 && r <= 12) {
+                    v = (float) (15 + 4 * (1 - Math.abs(r + 0.5 - 9) / 4.0));   // the unmapped one, pitched (eaves 5 m, ridge 9), its ridge east-west
+                } else if (c >= 45 && c <= 51 && r >= 5 && r <= 11) {
+                    v = 13 + rnd.nextFloat() * 6;           // a tree
+                } else if (c >= 20 && c <= 31 && r >= 24 && r <= 26) {
+                    v = 14;                                 // a bus on the road
+                }
+                top[r * w + c] = v;
+            }
+        }
+        com.ptmuk.road.Lidar lidar = new com.ptmuk.road.Lidar();
+        lidar.add(com.ptmuk.road.Lidar.tiff(geoTiff(top, w, h, lat0, lon0, dLat, dLon, true)),
+                com.ptmuk.road.Lidar.tiff(geoTiff(ground, w, h, lat0, lon0, dLat, dLon, false)));
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\"><bounds minlat=\"" + (LAT - 20 * dLat) + "\" minlon=\"" + lon0
+                + "\" maxlat=\"" + lat0 + "\" maxlon=\"" + (LON + 40 * dLon) + "\"/>"
+                + node(1, -15, 15, "") + node(2, -7, 15, "") + node(3, -7, 8, "") + node(4, -15, 8, "")
+                + node(5, -20, -5.5, "") + node(6, 40, -5.5, "")
+                + way(100, tag("building", "house"), 1, 2, 3, 4, 1) + way(101, tag("highway", "residential"), 5, 6) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        map.lidar = lidar;
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        List<OsmMap.Outline> houses = map.buildings(mi).stream().filter(o -> !OsmMap.feature(o.kind())).toList();
+        helper.assertTrue(houses.size() == 2, "the mapped house and the one the survey found, not " + houses.size());
+        OsmMap.Outline found = houses.get(1);
+        double x0 = Double.MAX_VALUE, x1 = -Double.MAX_VALUE, z0 = Double.MAX_VALUE, z1 = -Double.MAX_VALUE;
+        for (int i = 0; i < found.x().length; i++) {
+            x0 = Math.min(x0, found.x()[i]);
+            x1 = Math.max(x1, found.x()[i]);
+            z0 = Math.min(z0, found.z()[i]);
+            z1 = Math.max(z1, found.z()[i]);
+        }
+        // it's 10 m east-west (5 to 15 m east) by 8 m (7 to 15 m north)
+        double wx0 = mi.x(LON + 5 * dLon), wx1 = mi.x(LON + 15 * dLon), wz0 = mi.z(LAT + 15 * dLat), wz1 = mi.z(LAT + 7 * dLat);
+        helper.assertTrue(Math.abs(x0 - wx0) < 1.5 && Math.abs(x1 - wx1) < 1.5 && Math.abs(z0 - wz0) < 1.5 && Math.abs(z1 - wz1) < 1.5,
+                String.format(java.util.Locale.ROOT, "the found house should be at %.0f..%.0f, %.0f..%.0f, is at %.1f..%.1f, %.1f..%.1f", wx0, wx1, wz0, wz1, x0, x1, z0, z1));
+        helper.assertTrue(found.kind().equals("house") && found.roof().equals("gabled"), "a house with a pitched roof: " + found.kind() + " " + found.roof());
+        helper.succeed();
+    }
+
     private static final int STREET_W = 110, STREET_H = 60;
 
     /**
