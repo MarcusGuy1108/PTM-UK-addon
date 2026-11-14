@@ -834,9 +834,11 @@ public final class UkMapImportGameTests {
         mi.x = 7000;
         mi.z = 7000;
         plan.map = mi;
-        List<OsmMap.Outline> outlines = map.buildings(mi);
-        helper.assertTrue(outlines.size() == 2 && outlines.get(0).surface() != null && outlines.get(1).surface() != null,
-                "both should have their real roof's shape");
+        List<OsmMap.Outline> all = map.buildings(mi);
+        // the map's two, then the one the survey sees that the map hasn't got (the flat block between them)
+        helper.assertTrue(all.size() == 3 && all.get(2).roof().equals("flat"), "the survey's block should come in too: " + all.size());
+        List<OsmMap.Outline> outlines = all.subList(0, 2);
+        helper.assertTrue(outlines.get(0).surface() != null && outlines.get(1).surface() != null, "both should have their real roof's shape");
         net.minecraft.server.level.ServerLevel level = helper.getLevel();
         int ground = 260;
         for (int x = 6990; x < 7130; x++) {
