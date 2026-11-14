@@ -383,11 +383,12 @@ public final class RoadBuilder {
                             + job.mapBuildings.count()), true);
                 }
             } else if (job.fixturesDone) {
-                finish(job, player);
+                // whoever pressed Build: the plan goes back on their planner, and a big plan's next part is theirs, even if they've gone
+                ServerPlayer by = player != null ? player : job.starter;
+                finish(job, by);
                 it.remove();
                 if (job.full != null) {
-                    // a big plan: on to the next part (once this job's out of the list), even if they've gone
-                    ServerPlayer by = player != null ? player : job.starter;
+                    // a big plan: on to the next part (once this job's out of the list)
                     RoadPlan full = job.full;
                     InteractionHand hand = job.hand;
                     int slot = job.slot;
