@@ -88,6 +88,8 @@ public final class OsmMap {
                 + "way[\"highway\"]" + box + ";"
                 + "way[\"building\"]" + box + ";"
                 + "relation[\"building\"][\"type\"=\"multipolygon\"]" + box + ";"
+                + "way[\"amenity\"~\"^(parking|fuel)$\"]" + box + ";"
+                + "relation[\"amenity\"=\"parking\"][\"type\"=\"multipolygon\"]" + box + ";"
                 + "node[\"highway\"~\"^(bus_stop|traffic_signals|mini_roundabout|crossing)$\"]" + box + ";"
                 + "node[\"public_transport\"=\"platform\"][\"bus\"=\"yes\"]" + box + ";"
                 + ");(._;>;);out body;";
@@ -173,7 +175,7 @@ public final class OsmMap {
                         tags = null;
                     }
                     case "relation" -> {
-                        if ("multipolygon".equals(tags.get("type")) && building(tags)) {
+                        if ("multipolygon".equals(tags.get("type")) && kind(tags) != null) {
                             m.relations.add(new Relation(tags, refs));
                         }
                         refs = null;
@@ -244,9 +246,31 @@ public final class OsmMap {
 
     // ------------------------------------------------------------------ buildings
 
-    private static boolean building(Map<String, String> tags) {
+    /** What's in a shop, for a building that only says it's a building. */
+    private static final Set<String> SHOP_AMENITIES = Set.of("restaurant", "cafe", "fast_food", "pub", "bar", "bank", "pharmacy", "post_office");
+    /** Car parks that are a building or under or on one: the building's built, not the car park. */
+    private static final Set<String> NOT_ON_THE_GROUND = Set.of("multi-storey", "underground", "rooftop");
+
+    /**
+     * What an area is built as: its building tag (a shop's plain "yes" as retail); a car park
+     * ("parking") or a petrol station's forecourt ("fuel") as a surface (see MapBuildings); null if
+     * it's none of those.
+     */
+    static String kind(Map<String, String> tags) {
         String b = tags.get("building");
-        return b != null && !b.equals("no");
+        if (b != null && !b.equals("no")) {
+            return b.equals("yes") && (tags.containsKey("shop") || SHOP_AMENITIES.contains(tags.getOrDefault("amenity", ""))) ? "retail" : b;
+        }
+        String a = tags.getOrDefault("amenity", "");
+        if (a.equals("parking") && !NOT_ON_THE_GROUND.contains(tags.getOrDefault("parking", ""))) {
+            return "parking";
+        }
+        return a.equals("fuel") ? "fuel" : null;
+    }
+
+    /** A car park or a forecourt: laid on the ground, not built up. */
+    public static boolean surface(String kind) {
+        return kind.equals("parking") || kind.equals("fuel");
     }
 
     public List<Outline> buildings(MapImport mi) {
@@ -254,7 +278,7 @@ public final class OsmMap {
         Map<Long, Way> byId = new HashMap<>();
         for (Way w : ways) {
             byId.put(w.id(), w);
-            if (building(w.tags()) && w.closed()) {
+            if (kind(w.tags()) != null && w.closed()) {
                 outline(out, w.nodes(), w.tags(), mi);
             }
         }
@@ -282,6 +306,11 @@ public final class OsmMap {
             x[i] = mi.x(ll[1]);
             z[i] = mi.z(ll[0]);
         }
+        String kind = kind(tags);
+        if (surface(kind)) {
+            out.add(new Outline(x, z, 1, kind, "flat", 1, "", "", null));
+            return;
+        }
         String roof = tags.getOrDefault("roof:shape", "");
         Lidar.Shape real = lidar == null ? null : lidar.shape(lat, lon);
         int height;
@@ -293,7 +322,7 @@ public final class OsmMap {
         }
         double levels = metres(tags.get("building:levels"));
         int floors = Double.isNaN(levels) ? (int) Math.max(1, Math.round(height / (STOREY_M * mi.scale))) : (int) Math.max(1, levels);
-        out.add(new Outline(x, z, height, tags.getOrDefault("building", "yes"), roof, floors,
+        out.add(new Outline(x, z, height, kind, roof, floors,
                 tags.getOrDefault("building:material", "").toLowerCase(java.util.Locale.ROOT), tags.getOrDefault("roof:material", "").toLowerCase(java.util.Locale.ROOT),
                 real != null && !roof.equals("flat") ? surface(x, z, mi) : null));
     }
@@ -666,7 +695,7 @@ public final class OsmMap {
 
         Edges(List<Outline> outlines, int nx, int nz) {
             for (Outline o : outlines) {
-                for (int i = 0; i + 1 < o.x().length; i++) {
+                for (int i = 0; i + 1 < o.x().length && !surface(o.kind()); i++) {     // pavements go to building fronts, not car parks
                     double[] e = {o.x()[i] + nx, o.z()[i] + nz, o.x()[i + 1] + nx, o.z()[i + 1] + nz};
                     for (int cx = cell(Math.min(e[0], e[2])); cx <= cell(Math.max(e[0], e[2])); cx++) {
                         for (int cz = cell(Math.min(e[1], e[3])); cz <= cell(Math.max(e[1], e[3])); cz++) {

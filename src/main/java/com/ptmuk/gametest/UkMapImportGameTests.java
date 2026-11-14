@@ -217,6 +217,93 @@ public final class UkMapImportGameTests {
         helper.succeed();
     }
 
+    /**
+     * A retail edge of town from the map: a car park (amenity=parking), a petrol station (its
+     * forecourt, amenity=fuel; its canopy, building=roof; its kiosk) and a supermarket mapped only
+     * as a building with a shop on it. The car park's laid as tarmac with its bays marked and lamp
+     * posts; the forecourt's concrete; the canopy's a roof on posts, open underneath, with pumps;
+     * the supermarket's a shop, with shop windows. Built far away on a slab of stone.
+     */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 200)
+    public static void buildsCarParksAndPetrolStations(GameTestHelper helper) throws Exception {
+        String q = OsmMap.overpassQuery(51, 0, 51.01, 0.01);
+        helper.assertTrue(q.contains("parking|fuel") && q.contains("\"amenity\"=\"parking\""), "car parks and petrol stations should be fetched: " + q);
+        String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">"
+                + node(1, 0, -10, "") + node(2, 40, -10, "") + node(3, 40, -40, "") + node(4, 0, -40, "")
+                + node(5, 60, -10, "") + node(6, 90, -10, "") + node(7, 90, -40, "") + node(8, 60, -40, "")
+                + node(9, 66, -18, "") + node(10, 84, -18, "") + node(11, 84, -30, "") + node(12, 66, -30, "")
+                + node(13, 70, -34, "") + node(14, 80, -34, "") + node(15, 80, -39, "") + node(16, 70, -39, "")
+                + node(17, 100, -10, "") + node(18, 140, -10, "") + node(19, 140, -50, "") + node(20, 100, -50, "")
+                + way(100, tag("amenity", "parking"), 1, 2, 3, 4, 1)
+                + way(101, tag("amenity", "fuel"), 5, 6, 7, 8, 5)
+                + way(102, tag("building", "roof"), 9, 10, 11, 12, 9)
+                + way(103, tag("building", "retail"), 13, 14, 15, 16, 13)
+                + way(104, tag("building", "yes") + tag("shop", "supermarket"), 17, 18, 19, 20, 17) + "</osm>";
+        OsmMap map = OsmMap.read(new ByteArrayInputStream(osm.getBytes(StandardCharsets.UTF_8)));
+        RoadPlan plan = new RoadPlan();
+        RoadPlan.MapImport mi = new RoadPlan.MapImport();
+        mi.lat0 = LAT;
+        mi.lon0 = LON;
+        mi.x = 8000;
+        mi.z = 8000;
+        plan.map = mi;
+        List<OsmMap.Outline> outlines = map.buildings(mi);
+        String kinds = outlines.stream().map(OsmMap.Outline::kind).toList().toString();
+        helper.assertTrue(kinds.equals("[parking, fuel, roof, retail, retail]"), "what each is: " + kinds);
+        net.minecraft.server.level.ServerLevel level = helper.getLevel();
+        int ground = 260;
+        for (int x = 7990; x < 8270; x++) {
+            for (int z = 8000; z < 8100; z++) {
+                level.setBlock(new BlockPos(x, ground - 1, z), Blocks.STONE.defaultBlockState(), 2);
+            }
+        }
+        com.ptmuk.road.layout.Layout layout = com.ptmuk.road.layout.Layout.of(plan, com.ptmuk.road.layout.Terrain.flat(ground));
+        MapBuildings.Batch batch = MapBuildings.unpack(MapBuildings.pack(MapBuildings.around(outlines, mi, 8130, 8050, RoadPlan.PART)));
+        helper.assertTrue(batch != null && MapBuildings.buildAll(level, batch, layout, plan) == 5, "all five should be built");
+        // the car park: x 8000..8073, z 8018..8073
+        int tarmac = 0, lines = 0, other = 0, lamps = 0;
+        for (int x = 8004; x < 8070; x++) {
+            for (int z = 8022; z < 8070; z++) {
+                String id = id(level, x, ground - 1, z);
+                tarmac += id.equals("ptmuk:tarmac") ? 1 : 0;
+                lines += id.equals("minecraft:white_concrete") ? 1 : 0;
+                other += id.equals("ptmuk:tarmac") || id.equals("minecraft:white_concrete") ? 0 : 1;
+                lamps += id(level, x, ground + 5, z).equals("ptmuk:street_light_led") ? 1 : 0;
+            }
+        }
+        helper.assertTrue(other == 0 && tarmac > 1500 && lines > 100, "the car park should be tarmac and bay lines: " + tarmac + " tarmac, "
+                + lines + " lines, " + other + " other");
+        helper.assertTrue(lamps >= 2, "the car park should have lamp posts, has " + lamps);
+        // the forecourt round the canopy, x 8109..8164, z 8018..8073; the canopy x 8120..8153, z 8033..8055, 5 blocks up
+        helper.assertTrue(id(level, 8112, ground - 1, 8025).equals("minecraft:smooth_stone"), "the forecourt should be concrete, is "
+                + id(level, 8112, ground - 1, 8025));
+        int deck = 0, open = 0, pumps = 0;
+        for (int x = 8122; x < 8152; x++) {
+            for (int z = 8035; z < 8054; z++) {
+                String roof = id(level, x, ground + 4, z);
+                deck += roof.equals("minecraft:white_concrete") || roof.equals("minecraft:sea_lantern") ? 1 : 0;
+                open += id(level, x, ground + 2, z).equals("minecraft:air") ? 1 : 0;
+                pumps += id(level, x, ground, z).equals("ptmuk:fuel_pump") ? 1 : 0;
+            }
+        }
+        helper.assertTrue(deck > 400 && open > 400, "the canopy should be a roof 5 blocks up, open under it: " + deck + " deck, " + open + " open");
+        helper.assertTrue(pumps >= 2, "there should be pumps under the canopy, " + pumps);
+        int shopWindows = 0;
+        for (int x = 8180; x < 8258; x++) {
+            for (int z = 8016; z < 8094; z++) {
+                for (int y = ground; y < ground + 6; y++) {
+                    shopWindows += id(level, x, y, z).equals("ptmuk:shop_window") ? 1 : 0;
+                }
+            }
+        }
+        helper.assertTrue(shopWindows >= 4, "the supermarket should be a shop, with shop windows: " + shopWindows);
+        helper.succeed();
+    }
+
+    private static String id(net.minecraft.server.level.ServerLevel level, int x, int y, int z) {
+        return net.minecraftforge.registries.ForgeRegistries.BLOCKS.getKey(level.getBlockState(new BlockPos(x, y, z)).getBlock()).toString();
+    }
+
     /** The y of the top block in a column. */
     private static int roofAt(net.minecraft.server.level.ServerLevel level, int x, int z, int from) {
         int y = from + 40;

@@ -54,7 +54,8 @@ public final class MapBuildings {
         public List<Footprint> buildings = new ArrayList<>();
     }
 
-    private enum Use { HOUSE, FLATS, SHOP, OFFICE, INDUSTRIAL, CIVIC, CHURCH, SHED }
+    /** CAR_PARK and FORECOURT are laid on the ground (see surface); CANOPY is a roof on posts, a petrol station's (see canopy). */
+    private enum Use { HOUSE, FLATS, SHOP, OFFICE, INDUSTRIAL, CIVIC, CHURCH, SHED, CAR_PARK, FORECOURT, CANOPY }
 
     private record Style(String wall, String roof, String window, String ground, String floor, String door) {
     }
@@ -254,7 +255,12 @@ public final class MapBuildings {
     /** Works out every building's columns, what it is and its roof; built later a few at a time (see step). */
     MapBuildings(Batch batch, Layout layout, RoadPlan plan) {
         box = batch.box;
-        for (Footprint f : batch.buildings) {
+        // buildings take their ground first, then car parks and forecourts round them, then canopies over the forecourts
+        List<Footprint> order = new ArrayList<>(batch.buildings);
+        order.sort(java.util.Comparator.comparingInt(f -> com.ptmuk.road.OsmMap.surface(f.kind) ? 1 : canopy(f.kind) ? 2 : 0));
+        Set<Long> paved = new HashSet<>();
+        for (Footprint f : order) {
+            boolean surface = com.ptmuk.road.OsmMap.surface(f.kind), canopy = canopy(f.kind);
             long[] cells = raster(f);
             if (cells == null) {
                 continue;
@@ -266,14 +272,18 @@ public final class MapBuildings {
                 int idx = layout.index(kx(c), kz(c));
                 if (idx >= 0 && layout.kind[idx] != Layout.NONE && layout.kind[idx] != Layout.BLEND) {
                     clash++;
-                } else if (!occupied.contains(c)) {
+                } else if (!occupied.contains(c) && !(surface && paved.contains(c))) {
                     keep.add(c);
                 }
             }
             if (keep.size() < 4 || clash * 3 > cells.length) {
                 continue;
             }
-            occupied.addAll(keep);
+            if (surface) {
+                paved.addAll(keep);
+            } else if (!canopy) {
+                occupied.addAll(keep);                      // (a canopy stands over a forecourt: it doesn't keep the ground to itself)
+            }
             shells.add(new Shell(f, keep, shells.size()));
         }
         Set<Long> pitchedCells = new HashSet<>();
@@ -403,13 +413,23 @@ public final class MapBuildings {
             case "school", "college", "university", "hospital", "public", "civic", "government", "library", "fire_station",
                     "police", "train_station", "sports_hall", "community_centre", "kindergarten" -> Use.CIVIC;
             case "church", "chapel", "cathedral", "mosque", "temple", "synagogue", "religious" -> Use.CHURCH;
-            case "garage", "garages", "shed", "carport", "hut", "roof", "greenhouse", "outbuilding", "allotment_house" -> Use.SHED;
+            case "garage", "garages", "shed", "hut", "greenhouse", "outbuilding", "allotment_house" -> Use.SHED;
+            case "roof", "carport" -> Use.CANOPY;
+            case "parking" -> Use.CAR_PARK;
+            case "fuel" -> Use.FORECOURT;
             // just "yes": narrow and low is houses (a terrace or a pair of semis), else by its floors and size
             default -> floors <= 3 && depthM <= 7 ? Use.HOUSE : floors >= 4 ? Use.FLATS : areaM2 > 1500 ? Use.INDUSTRIAL : Use.SHOP;
         };
     }
 
+    private static boolean canopy(String kind) {
+        return kind.equals("roof") || kind.equals("carport");
+    }
+
     private static boolean pitched(Shell s, double depthM) {
+        if (s.use == Use.CAR_PARK || s.use == Use.FORECOURT || s.use == Use.CANOPY) {
+            return false;
+        }
         switch (s.fp.roof) {
             case "flat" -> {
                 return false;
@@ -455,6 +475,9 @@ public final class MapBuildings {
                     "ptmuk:leaded_window", "ptmuk:leaded_window", "minecraft:polished_andesite", "minecraft:dark_oak_door");
             case SHED -> new Style(pick(seed, 1, red, red, render), pitched ? "ptmuk:roof_concrete_tiles" : "minecraft:black_concrete",
                     null, null, "minecraft:smooth_stone", "minecraft:spruce_door");
+            // (not walls and windows: see surface and canopy) posts and deck
+            case CAR_PARK, FORECOURT, CANOPY -> new Style("minecraft:light_gray_concrete", "minecraft:white_concrete", null, null,
+                    "minecraft:smooth_stone", "minecraft:spruce_door");
         };
     }
 
@@ -500,6 +523,12 @@ public final class MapBuildings {
         int[] sorted = g.clone();
         Arrays.sort(sorted);
         int base = sorted[n / 2] - 1;                                  // the ground floor: level with most of the ground under it
+        if (s.use == Use.CAR_PARK || s.use == Use.FORECOURT) {
+            return surface(out, pal, s, base, g);
+        }
+        if (s.use == Use.CANOPY) {
+            return canopy(out, pal, s, base);
+        }
         int h = s.fp.height;
         int top = base + h;
         int storeys = Math.max(1, Math.min(s.fp.floors, h / 3));
@@ -662,6 +691,120 @@ public final class MapBuildings {
         BlockState d = pal.get(st.door(), "minecraft:oak_door");
         d = RoadBuilder.with(d, "facing", FACING[(side + 2) % 4].getSerializedName());   // opens inwards, flush with the outside
         return RoadBuilder.with(RoadBuilder.with(d, "hinge", "left"), "half", lower ? "lower" : "upper");
+    }
+
+    /** Where a car park or forecourt was laid, a column at a time: the level of its surface (a canopy over it stands on it). */
+    private final Map<Long, Integer> laid = new HashMap<>();
+
+    /**
+     * A car park or a petrol station's forecourt, level with most of the ground under it: tarmac
+     * (a forecourt concrete), filled under and cleared over. A car park's bays are marked out along
+     * its longest side the UK way (3 blocks wide, two rows of 5 back to back, a 6-block aisle), with
+     * a way round inside its edge left clear, and lamp posts down the aisles.
+     */
+    private int surface(SiteBuildings.Out out, RoadBuilder.Palette pal, Shell s, int base, int[] g) {
+        boolean park = s.use == Use.CAR_PARK;
+        BlockState top = pal.get(park ? "ptmuk:tarmac" : "minecraft:smooth_stone", "minecraft:gray_concrete");
+        BlockState line = Blocks.WHITE_CONCRETE.defaultBlockState(), fill = pal.get("minecraft:stone", null), air = Blocks.AIR.defaultBlockState();
+        double[] ax = axis(s.fp);
+        Map<Long, Integer> edge = distances(s.in);
+        double v0 = Double.MAX_VALUE, u0 = Double.MAX_VALUE;
+        for (long c : s.cells) {
+            u0 = Math.min(u0, (kx(c) + 0.5) * ax[0] + (kz(c) + 0.5) * ax[1]);
+            v0 = Math.min(v0, -(kx(c) + 0.5) * ax[1] + (kz(c) + 0.5) * ax[0]);
+        }
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        for (int i = 0; i < s.cells.length; i++) {
+            long c = s.cells[i];
+            int x = kx(c), z = kz(c);
+            for (int y = Math.min(g[i] - 1, base) ; y < base; y++) {
+                out.set(p.set(x, y, z), fill);
+            }
+            boolean bay = false, lamp = false;
+            if (park && edge.getOrDefault(c, 1) > 3) {
+                // in the car park's own frame: u along its longest side, v across it from its edge
+                int u = (int) Math.floor((x + 0.5) * ax[0] + (z + 0.5) * ax[1] - u0), v = (int) Math.floor(-(x + 0.5) * ax[1] + (z + 0.5) * ax[0] - v0) - 4;
+                int row = Math.floorMod(v, 16);                 // 0-4 and 5-9: two rows of bays; 10-15: the aisle
+                bay = row < 10 && Math.floorMod(u, 3) == 0;
+                lamp = row == 12 && Math.floorMod(u, 24) == 12;
+            }
+            out.set(p.set(x, base, z), bay ? line : top);
+            laid.put(c, base);
+            for (int y = base + 1; y <= Math.max(g[i], base + 1) + 2; y++) {
+                if (!out.level().getBlockState(p.set(x, y, z)).isAir()) {
+                    out.set(p, air);                            // the ground higher here, or a tree or plants on it
+                }
+            }
+            if (lamp) {
+                BlockState pole = pal.get("ptmuk:sign_pole_galvanised", "iron_bars");
+                for (int k = 1; k <= 5; k++) {
+                    out.set(p.set(x, base + k, z), RoadBuilder.with(RoadBuilder.with(pole, "base", k == 1), "cap", false));
+                }
+                out.set(p.set(x, base + 6, z), RoadBuilder.with(pal.get("ptmuk:street_light_led", "lantern"), "facing", "north"));
+            }
+        }
+        return s.cells.length;
+    }
+
+    /**
+     * A canopy (building=roof: a petrol station's, or a carport): a flat deck on posts at its
+     * height (5 blocks at least), lit underneath, open at the sides. On a forecourt, fuel pumps
+     * stand along its middle between the posts.
+     */
+    private int canopy(SiteBuildings.Out out, RoadBuilder.Palette pal, Shell s, int base) {
+        long middle = s.cells[s.cells.length / 2];
+        boolean forecourt = laid.containsKey(middle);
+        int floor = forecourt ? laid.get(middle) : base, top = floor + Math.max(5, s.fp.height);
+        BlockState deck = pal.get("minecraft:white_concrete", null), fascia = pal.get("minecraft:light_gray_concrete", null);
+        BlockState post = pal.get("minecraft:light_gray_concrete", null), lit = pal.get("minecraft:sea_lantern", "glowstone");
+        BlockState pump = pal.get("ptmuk:fuel_pump", "minecraft:iron_block"), air = Blocks.AIR.defaultBlockState();
+        double[] ax = axis(s.fp);
+        Map<Long, Integer> edge = distances(s.in);
+        double vMin = Double.MAX_VALUE, vMax = -Double.MAX_VALUE, uMin = Double.MAX_VALUE;
+        for (long c : s.cells) {
+            double v = -(kx(c) + 0.5) * ax[1] + (kz(c) + 0.5) * ax[0];
+            vMin = Math.min(vMin, v);
+            vMax = Math.max(vMax, v);
+            uMin = Math.min(uMin, (kx(c) + 0.5) * ax[0] + (kz(c) + 0.5) * ax[1]);
+        }
+        double vMid = (vMin + vMax) / 2;
+        // pumps face across the canopy: the side of the island they're on
+        String face = Math.abs(ax[0]) >= Math.abs(ax[1]) ? "south" : "east";
+        BlockPos.MutableBlockPos p = new BlockPos.MutableBlockPos();
+        for (long c : s.cells) {
+            int x = kx(c), z = kz(c), d = edge.getOrDefault(c, 1);
+            int u = (int) Math.floor((x + 0.5) * ax[0] + (z + 0.5) * ax[1] - uMin);
+            boolean centre = Math.abs(-(x + 0.5) * ax[1] + (z + 0.5) * ax[0] - vMid) <= 0.5;
+            boolean isPost = centre && d > 1 && Math.floorMod(u, 8) == 4, isPump = forecourt && centre && d > 1 && Math.floorMod(u, 8) == 1;
+            for (int y = floor + 1; y < top; y++) {
+                BlockState b = isPost ? post : isPump && y == floor + 1 ? RoadBuilder.with(pump, "facing", face) : air;
+                if (b != air || !out.level().getBlockState(p.set(x, y, z)).isAir()) {
+                    out.set(p.set(x, y, z), b);
+                }
+            }
+            if (!forecourt) {
+                out.set(p.set(x, floor, z), pal.get("minecraft:smooth_stone", null));
+            }
+            out.set(p.set(x, top, z), d == 1 ? fascia : Math.floorMod(x, 4) == 0 && Math.floorMod(z, 4) == 0 ? lit : deck);
+            if (d == 1) {
+                out.set(p.set(x, top + 1, z), fascia);      // a deeper edge, as a canopy's fascia is
+            }
+        }
+        return s.cells.length * 3;
+    }
+
+    /** The way along a footprint's longest side (x, z, length one). */
+    private static double[] axis(Footprint f) {
+        double best = -1, dx = 1, dz = 0;
+        for (int i = 0; i + 1 < f.x.length; i++) {
+            double ex = f.x[i + 1] - f.x[i], ez = f.z[i + 1] - f.z[i], len = Math.hypot(ex, ez);
+            if (len > best) {
+                best = len;
+                dx = ex / len;
+                dz = ez / len;
+            }
+        }
+        return new double[]{dx, dz};
     }
 
     private int riseAt(int x, int z) {
