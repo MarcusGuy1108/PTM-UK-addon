@@ -494,7 +494,7 @@ public final class UkMapImportGameTests {
     }
 
     /**
-     * A main road that splits into its two sides (two one-way roads ten metres apart) coming up to
+     * A main road that splits into its two sides (two one-way roads five metres apart) coming up to
      * a roundabout, a lane joining one side: one two-way road down the middle, in the street's own
      * style, the lane joining it, one arm into the roundabout.
      */
@@ -510,8 +510,8 @@ public final class UkMapImportGameTests {
         String side = tag("highway", "primary") + tag("name", "London Road") + tag("oneway", "yes");
         String osm = "<?xml version=\"1.0\"?><osm version=\"0.6\">" + ring
                 + node(1, -300, 0, "") + node(10, -150, 0, "")
-                + node(11, -100, 4, "") + node(12, -50, 5, "")
-                + node(21, -50, -5, "") + node(22, -75, -4.5, "") + node(23, -100, -4, "")
+                + node(11, -100, 2, "") + node(12, -50, 2.5, "")
+                + node(21, -50, -2.5, "") + node(22, -75, -2.5, "") + node(23, -100, -2, "")
                 + node(30, -75, -100, "") + node(40, 15, -100, "") + node(41, 100, 0, "")
                 + way(100, tag("highway", "primary") + tag("name", "London Road"), 1, 10)
                 + way(101, side, 10, 11, 12, 205)                   // east, on the north side, into the ring at 150 degrees
