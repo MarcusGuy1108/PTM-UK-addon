@@ -418,8 +418,10 @@ public class SelfCheckoutScreen extends Screen {
                 Product p = items.get(i);
                 int x = left + 14 + (i % 5) * 71, y = top + 46 + (i / 5) * 66;
                 g.renderItem(new ItemStack(ShopRegistry.item(p)), x + 25, y + 5);
-                centred(g, font.plainSubstrByWidth(p.title, 62), x + 33, y + 27, INK);
-                centred(g, CashItem.money(price(p)), x + 33, y + 43, BRAND_DARK);
+                String[] name = wrap(p.title, 62);
+                centred(g, name[0], x + 33, name[1].isEmpty() ? y + 28 : y + 24, INK);
+                centred(g, name[1], x + 33, y + 34, INK);
+                centred(g, CashItem.money(price(p)), x + 33, y + 47, BRAND_DARK);
             }
         }
         if (!t.assist().isEmpty()) {
@@ -492,6 +494,16 @@ public class SelfCheckoutScreen extends Screen {
         g.drawString(font, t.count() + (t.count() == 1 ? " item" : " items"), sx + 4, top + H - 24, SOFT, false);
         String total = CashItem.money(t.total());
         big(g, total, sx + sw - 6 - (int) (font.width(total) * 1.3f / 2), top + H - 26, INK, 1.3f);
+    }
+
+    /** A name over two lines (broken between words) to fit the width; the second is empty if it fits on one. */
+    private String[] wrap(String s, int w) {
+        String first = font.plainSubstrByWidth(s, w);
+        int cut = first.length() < s.length() ? first.lastIndexOf(' ') : -1;
+        if (cut <= 0) {
+            cut = first.length();
+        }
+        return new String[]{s.substring(0, cut).trim(), font.plainSubstrByWidth(s.substring(cut).trim(), w)};
     }
 
     private void centred(GuiGraphics g, String text, int x, int y, int colour) {
