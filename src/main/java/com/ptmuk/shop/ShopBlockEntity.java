@@ -76,6 +76,8 @@ public class ShopBlockEntity extends BlockEntity {
     private long seed, stockedDay = -1;
     private State state = State.IDLE;
     private UUID customer;
+    /** Who's being served, while they're about (the level's own list doesn't have stand-in players). */
+    private java.lang.ref.WeakReference<Player> served = new java.lang.ref.WeakReference<>(null);
     private final List<Line> basket = new ArrayList<>();
     private int timer, scanned, away;
     private long total;
@@ -120,7 +122,7 @@ public class ShopBlockEntity extends BlockEntity {
             if (level.getNearestPlayer(worldPosition.getX() + 0.5, worldPosition.getY(), worldPosition.getZ() + 0.5, 32, false) != null) {
                 open(level);
             }
-            Player who = customer == null ? null : level.getPlayerByUUID(customer);
+            Player who = customer(level);
             if (state != State.IDLE && state != State.MAKING) {
                 away = who == null || who.distanceToSqr(worldPosition.getCenter()) > 144 ? away + 1 : 0;
                 if (away > 30) {
@@ -132,7 +134,7 @@ public class ShopBlockEntity extends BlockEntity {
             case SCANNING -> {
                 if (++timer >= 8) {
                     timer = 0;
-                    Player who = level.getPlayerByUUID(customer);
+                    Player who = customer(level);
                     Line l = basket.get(scanned++);
                     total += l.pence();
                     sound(SoundEvents.NOTE_BLOCK_BIT.value(), 2.0f, 0.5f);
@@ -154,7 +156,7 @@ public class ShopBlockEntity extends BlockEntity {
                     makingSound();
                 }
                 if (timer <= 0) {
-                    Player who = customer == null ? null : level.getPlayerByUUID(customer);
+                    Player who = customer(level);
                     handOver(who);
                 }
             }
@@ -437,8 +439,18 @@ public class ShopBlockEntity extends BlockEntity {
         setChanged();
     }
 
+    private Player customer(Level level) {
+        if (customer == null) {
+            return null;
+        }
+        Player p = level.getPlayerByUUID(customer);
+        Player held = served.get();
+        return p != null ? p : held != null && !held.isRemoved() && held.getUUID().equals(customer) ? held : null;
+    }
+
     private void begin(Player player) {
         customer = player.getUUID();
+        served = new java.lang.ref.WeakReference<>(player);
         basket.clear();
         total = 0;
         scanned = 0;
