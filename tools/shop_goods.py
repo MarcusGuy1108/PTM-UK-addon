@@ -975,8 +975,8 @@ PRODUCTS = [
     # fruit and veg, loose
     (F, "apples", "Apples (6)", 150, 4, 0.3, "l", apples),
     (F, "bananas", "Bananas (5)", 110, 4, 0.3, "l", bananas),
-    (F, "oranges", "Easy Peeler Oranges (6)", 175, 4, 0.3, "l", oranges),
-    (F, "grapes", "Red Seedless Grapes", 199, 3, 0.3, "l", grapes),
+    (F, "oranges", "Easy Peelers (6)", 175, 4, 0.3, "l", oranges),
+    (F, "grapes", "Red Grapes", 199, 3, 0.3, "l", grapes),
     (F, "carrots", "Carrots, 1kg", 95, 3, 0.3, "l", carrots),
     (F, "potatoes", "Potatoes, 2.5kg", 175, 4, 0.4, "l", potatoes),
     (F, "broccoli", "Broccoli", 75, 2, 0.3, "l", broccoli),
