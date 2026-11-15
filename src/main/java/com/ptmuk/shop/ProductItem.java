@@ -24,8 +24,9 @@ import net.minecraft.world.level.Level;
 /**
  * Something from a shop. Off a shop's shelf it's tagged with its price and the shop, unpaid: you
  * can't eat or use it until you've paid at the till, and walking out with it sets the alarm off.
- * Food and drink fill you up (coffee and energy drinks put a spring in your step, a pint makes
- * you a bit wobbly); a scratchcard can be scratched for a prize; plasters and paracetamol help.
+ * Food and drink fill you up (coffee and energy drinks put a spring in your step, a pint, lager
+ * or wine makes you a bit wobbly); a scratchcard can be scratched for a prize; plasters and
+ * painkillers help.
  */
 public class ProductItem extends Item {
     private static final String PRICE = "ptmuk_price", UNPAID = "ptmuk_unpaid", SHOP = "ptmuk_shop";
@@ -45,7 +46,7 @@ public class ProductItem extends Item {
             } else if (p == Product.ENERGY_DRINK) {
                 food.effect(() -> new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 20 * 60, 0), 1)
                         .effect(() -> new MobEffectInstance(MobEffects.DIG_SPEED, 20 * 60, 0), 1);
-            } else if (p == Product.PINT) {
+            } else if (p == Product.PINT || p == Product.LAGER || p == Product.WINE) {
                 food.effect(() -> new MobEffectInstance(MobEffects.CONFUSION, 20 * 6, 0), 1);
             }
             props.food(food.alwaysEat().build());
@@ -53,16 +54,9 @@ public class ProductItem extends Item {
         return props;
     }
 
-    public boolean drink() {
-        return switch (product) {
-            case MILK, COLA, WATER, ENERGY_DRINK, TEA, COFFEE, PINT -> true;
-            default -> false;
-        };
-    }
-
     @Override
     public UseAnim getUseAnimation(ItemStack stack) {
-        return drink() ? UseAnim.DRINK : super.getUseAnimation(stack);
+        return product.drink ? UseAnim.DRINK : super.getUseAnimation(stack);
     }
 
     @Override
@@ -84,7 +78,7 @@ public class ProductItem extends Item {
                 level.playSound(player, player.blockPosition(), SoundEvents.BOOK_PAGE_TURN, SoundSource.PLAYERS, 1, 1.4f);
                 return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
             }
-            case PLASTERS, PARACETAMOL -> {
+            case PLASTERS, PARACETAMOL, IBUPROFEN -> {
                 if (!level.isClientSide) {
                     if (product == Product.PLASTERS) {
                         player.heal(4);

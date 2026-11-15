@@ -72,6 +72,17 @@ public class SelfCheckoutScreen extends Screen {
         PtmUkNetwork.CHANNEL.sendToServer(new SelfCheckoutMessage(pos, action, arg));
     }
 
+    /** The loose things (no barcode) in the aisle being looked up: fruit and veg, or the bakery's. */
+    private List<Product> aisleItems() {
+        List<Product> out = new ArrayList<>();
+        for (Product p : Product.values()) {
+            if (p.loose && (p.shelf == Product.Shelf.FRESH) == (aisle == Product.Shelf.FRESH) && out.size() < 10) {   // shortcut: 10 fit, page them if more loose goods are added
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
     /** This shop's price for a loose thing (as the machine will charge it). */
     private int price(Product p) {
         var level = Minecraft.getInstance().level;
@@ -203,12 +214,11 @@ public class SelfCheckoutScreen extends Screen {
                 }
             }
             case LOOKUP -> {
-                Product.Shelf[] aisles = {Product.Shelf.FRESH, Product.Shelf.GROCERIES, Product.Shelf.CHILLED, Product.Shelf.SNACKS,
-                        Product.Shelf.DRINKS, Product.Shelf.HOUSEHOLD};
-                String[] names = {"Fruit & veg", "Bakery & grocery", "Chilled", "Snacks & sweets", "Drinks", "Household"};
+                Product.Shelf[] aisles = {Product.Shelf.FRESH, Product.Shelf.GROCERIES};
+                String[] names = {"Fruit & veg", "Bakery"};
                 for (int i = 0; i < aisles.length; i++) {
                     Product.Shelf a = aisles[i];
-                    out.add(new Pad(left + 30 + (i % 3) * 110, top + 54 + (i / 3) * 54, 104, 46, names[i], BLUE, () -> {
+                    out.add(new Pad(left + 52 + i * 146, top + 70, 130, 60, names[i], BLUE, () -> {
                         aisle = a;
                         go(Stage.LOOKUP_ITEMS);
                     }));
@@ -216,15 +226,13 @@ public class SelfCheckoutScreen extends Screen {
                 out.add(new Pad(left + 14, top + H - 32, 80, 20, "Back", GREY, () -> go(Stage.MAIN)));
             }
             case LOOKUP_ITEMS -> {
-                int i = 0;
-                for (Product p : Product.values()) {
-                    if (p.shelf == aisle && i < 10) {
-                        out.add(new Pad(left + 14 + (i % 5) * 71, top + 46 + (i / 5) * 66, 66, 60, "", 0xFFFFFFFF, () -> {
-                            send(Action.EXTRA_ADD, p.ordinal());
-                            go(Stage.MAIN);
-                        }));
-                        i++;
-                    }
+                List<Product> items = aisleItems();
+                for (int i = 0; i < items.size(); i++) {
+                    Product p = items.get(i);
+                    out.add(new Pad(left + 14 + (i % 5) * 71, top + 46 + (i / 5) * 66, 66, 60, "", 0xFFFFFFFF, () -> {
+                        send(Action.EXTRA_ADD, p.ordinal());
+                        go(Stage.MAIN);
+                    }));
                 }
                 out.add(new Pad(left + 14, top + H - 32, 80, 20, "Back", GREY, () -> go(Stage.LOOKUP)));
             }
@@ -405,15 +413,13 @@ public class SelfCheckoutScreen extends Screen {
             }
         }
         if (stage == Stage.LOOKUP_ITEMS) {
-            int i = 0;
-            for (Product p : Product.values()) {
-                if (p.shelf == aisle && i < 10) {
-                    int x = left + 14 + (i % 5) * 71, y = top + 46 + (i / 5) * 66;
-                    g.renderItem(new ItemStack(ShopRegistry.item(p)), x + 25, y + 5);
-                    centred(g, font.plainSubstrByWidth(p.title, 62), x + 33, y + 27, INK);
-                    centred(g, CashItem.money(price(p)), x + 33, y + 43, BRAND_DARK);
-                    i++;
-                }
+            List<Product> items = aisleItems();
+            for (int i = 0; i < items.size(); i++) {
+                Product p = items.get(i);
+                int x = left + 14 + (i % 5) * 71, y = top + 46 + (i / 5) * 66;
+                g.renderItem(new ItemStack(ShopRegistry.item(p)), x + 25, y + 5);
+                centred(g, font.plainSubstrByWidth(p.title, 62), x + 33, y + 27, INK);
+                centred(g, CashItem.money(price(p)), x + 33, y + 43, BRAND_DARK);
             }
         }
         if (!t.assist().isEmpty()) {

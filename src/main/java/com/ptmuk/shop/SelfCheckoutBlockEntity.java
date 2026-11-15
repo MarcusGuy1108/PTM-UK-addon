@@ -172,7 +172,7 @@ public class SelfCheckoutBlockEntity extends BlockEntity {
         stack.setCount(0);
         sound(SoundEvents.NOTE_BLOCK_BIT.value(), 2.0f);
         boolean age = !ageChecked && scanned.get(scanned.size() - 1).getItem() instanceof ProductItem pi
-                && (pi.product == Product.ENERGY_DRINK || pi.product == Product.PARACETAMOL);
+                && pi.product.ageCheck;
         if (age) {
             ageChecked = true;
             hold("Age check: a colleague will approve it");
