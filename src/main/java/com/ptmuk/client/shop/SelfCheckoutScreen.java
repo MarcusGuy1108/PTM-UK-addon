@@ -435,18 +435,18 @@ public class SelfCheckoutScreen extends Screen {
         switch (stage) {
             case WELCOME -> {
                 big(g, "Welcome to " + shop, cx, top + 52, INK, 1.4f);
-                g.drawCenteredString(font, "Touch the screen to start, then scan your items", cx, top + 80, SOFT);
-                g.drawCenteredString(font, "We accept card, phone, watch and cash", cx, top + 96, SOFT);
+                centred(g, "Touch the screen to start, then scan your items", cx, top + 80, SOFT);
+                centred(g, "We accept card, phone, watch and cash", cx, top + 96, SOFT);
             }
             case BAGS -> big(g, "Have you brought your own bags?", cx, top + 52, INK, 1.2f);
             case REWARDS -> {
                 big(g, "Do you have a rewards card?", cx, top + 48, INK, 1.2f);
-                g.drawCenteredString(font, "Scan it now to collect points on today's shop", cx, top + 70, SOFT);
+                centred(g, "Scan it now to collect points on today's shop", cx, top + 70, SOFT);
             }
             case SCAN -> basket(g, mx, my);
             case LOOKUP -> {
                 big(g, "Look up an item", cx, top + 32, INK, 1.2f);
-                g.drawCenteredString(font, "For loose items without a barcode", cx, top + H - 52, SOFT);
+                centred(g, "For loose items without a barcode", cx, top + H - 52, SOFT);
             }
             case LOOKUP_ITEMS -> big(g, "Choose your item", cx, top + 32, INK, 1.2f);
             case CODE -> {
@@ -454,7 +454,7 @@ public class SelfCheckoutScreen extends Screen {
                 codeBox(g, left + 30, top + 66);
                 g.drawString(font, "Bananas 4011", left + 20, top + 104, SOFT, false);
                 g.drawString(font, "Apples 4131", left + 20, top + 116, SOFT, false);
-                g.drawString(font, "(codes are on the shelf labels)", left + 20, top + 128, SOFT, false);
+                g.drawString(font, "(on the shelf labels)", left + 20, top + 128, SOFT, false);
                 if (!message.isEmpty()) {
                     g.drawString(font, message, left + 20, top + 146, RED, false);
                 }
@@ -487,14 +487,14 @@ public class SelfCheckoutScreen extends Screen {
                 big(g, "Insert notes and coins", cx, top + 44, INK, 1.2f);
                 big(g, "To pay  " + CashItem.money(total()), cx, top + 66, BRAND_DARK, 1.3f);
                 var p = Minecraft.getInstance().player;
-                g.drawCenteredString(font, "You have " + CashItem.money(p == null ? 0 : CashItem.carried(p)) + " in cash. Change comes out below.", cx,
+                centred(g, "You have " + CashItem.money(p == null ? 0 : CashItem.carried(p)) + " in cash. Change comes out below.", cx,
                         top + 96, SOFT);
             }
             case WAIT -> big(g, (card ? "Processing your card" : "Counting your cash") + ".".repeat((int) (Util.getMillis() / 400 % 4)), cx,
                     top + 100, INK, 1.2f);
             case DONE, PROBLEM -> {
                 big(g, message, cx, top + 86, stage == Stage.DONE ? BRAND_DARK : RED, 1.2f);
-                g.drawCenteredString(font, message2, cx, top + 110, INK);
+                centred(g, message2, cx, top + 110, INK);
             }
         }
         for (Pad p : pads()) {
@@ -514,8 +514,8 @@ public class SelfCheckoutScreen extends Screen {
                 if (p.shelf == aisle && i < 8) {
                     int x = left + 14 + (i % 4) * 79, y = top + 50 + (i / 4) * 64;
                     g.renderItem(new ItemStack(ShopRegistry.item(p)), x + 29, y + 6);
-                    g.drawCenteredString(font, font.plainSubstrByWidth(p.title, 70), x + 37, y + 28, INK);
-                    g.drawCenteredString(font, CashItem.money(price(p)), x + 37, y + 42, BRAND_DARK);
+                    centred(g, font.plainSubstrByWidth(p.title, 70), x + 37, y + 28, INK);
+                    centred(g, CashItem.money(price(p)), x + 37, y + 42, BRAND_DARK);
                     i++;
                 }
             }
@@ -525,9 +525,14 @@ public class SelfCheckoutScreen extends Screen {
             g.fill(x0, y0, left + W - 30, y0 + 74, 0xFFFFC94D);
             g.renderOutline(x0, y0, W - 60, 74, 0xFF7A5300);
             big(g, assist, cx, y0 + 18, INK, 1.0f);
-            g.drawCenteredString(font, "Please wait" + ".".repeat((int) (Util.getMillis() / 400 % 4)), cx, y0 + 46, INK);
+            centred(g, "Please wait" + ".".repeat((int) (Util.getMillis() / 400 % 4)), cx, y0 + 46, INK);
         }
         super.render(g, mx, my, pt);
+    }
+
+    /** Text centred on x, without the shadow (dark text on the light screen reads sharper without). */
+    private void centred(GuiGraphics g, String text, int x, int y, int colour) {
+        g.drawString(font, text, x - font.width(text) / 2, y, colour, false);
     }
 
     private static int lighter(int c) {
@@ -556,8 +561,8 @@ public class SelfCheckoutScreen extends Screen {
         g.renderOutline(x, y, w, h, LINE);
         List<Object[]> lines = lines();
         if (lines.isEmpty()) {
-            g.drawCenteredString(font, "Scan your first item", x + w / 2, y + h / 2 - 10, SOFT);
-            g.drawCenteredString(font, "or look it up", x + w / 2, y + h / 2 + 4, SOFT);
+            centred(g, "Scan your first item", x + w / 2, y + h / 2 - 10, SOFT);
+            centred(g, "or look it up", x + w / 2, y + h / 2 + 4, SOFT);
         }
         int first = Math.max(0, lines.size() - 8);
         for (int i = first; i < lines.size(); i++) {
