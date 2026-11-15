@@ -85,12 +85,12 @@ public class SelfCheckoutRenderer implements BlockEntityRenderer<SelfCheckoutBlo
                 text(lines.get(i)[1], X - 0.015f - pw, y, 0.024f, INK, false, 0);
             }
             z = FACE + 0.0005f;
-            rect(-X, -Y, X, -Y + 0.07f, 0xFFE3E9EC);
+            rect(-X, -Y, X, -Y + 0.075f, 0xFFE3E9EC);
             z = FACE + 0.001f;
             String total = "Total " + CashItem.money(till.total());
-            text(total, X - 0.015f - width(total, 0.034f), -Y + 0.02f, 0.034f, INK, false, 0);
-            text(till.count() + (till.count() == 1 ? " item" : " items"), -X + 0.015f, -Y + 0.04f, 0.022f, SOFT, false, 0);
-            text("Tap card or pay cash", -X + 0.015f, -Y + 0.012f, 0.022f, BRAND, false, 0);
+            text(total, X - 0.015f - width(total, 0.032f), -Y + 0.034f, 0.032f, INK, false, 0);
+            text(till.count() + (till.count() == 1 ? " item" : " items"), -X + 0.015f, -Y + 0.038f, 0.022f, SOFT, false, 0);
+            text("Tap your card or pay cash to finish", 0, -Y + 0.008f, 0.02f, BRAND, true, 2 * X - 0.03f);
         }
         if (!till.assist().isEmpty()) {
             z = FACE + 0.002f;

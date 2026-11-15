@@ -429,7 +429,10 @@ public class SelfCheckoutScreen extends Screen {
     private void main(GuiGraphics g, SelfCheckoutBlockEntity t, int mx, int my) {
         // your basket
         int bx = left + 8, by = top + 28;
-        g.drawString(font, "Your basket: click to scan", bx, by + 1, SOFT, false);
+        g.drawString(font, "Your basket", bx, by + 1, SOFT, false);
+        if (!basket().isEmpty()) {
+            g.drawString(font, "Click a thing to scan it", bx + 4, top + H - 20, BLUE, false);
+        }
         g.fill(bx, by + 12, bx + 118, top + H - 8, 0xFFFFFFFF);
         g.renderOutline(bx, by + 12, 118, H - 48, LINE);
         List<Object[]> basket = basket();
