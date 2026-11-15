@@ -35,6 +35,7 @@ public final class ClientSetup {
         event.registerEntityRenderer(com.ptmuk.bus.UkBuses.K4_TYPE.get(), com.ptmuk.client.bus.KiaK4Renderer::new);
         event.registerEntityRenderer(com.ptmuk.home.HomeBlocks.SEAT.get(), net.minecraft.client.renderer.entity.NoopRenderer::new);
         event.registerEntityRenderer(com.ptmuk.shop.ShopRegistry.SHOP_KEEPER.get(), com.ptmuk.client.shop.ShopKeeperRenderer::new);
+        event.registerBlockEntityRenderer(com.ptmuk.shop.ShopRegistry.SELF_CHECKOUT_BE.get(), com.ptmuk.client.shop.SelfCheckoutRenderer::new);
         event.registerEntityRenderer(com.ptmuk.darts.DartsRegistry.DART.get(), com.ptmuk.client.shop.DartRenderer::new);
     }
 

@@ -17,6 +17,9 @@ public final class ShopRegistry {
     public static final RegistryObject<BlockEntityType<ShopBlockEntity>> SHOP_BE = ModBlockEntities.BLOCK_ENTITIES.register("shop_till",
             () -> BlockEntityType.Builder.of(ShopBlockEntity::new, HomeBlocks.BLOCKS.get(HomeFurnitureType.TILL).get(),
                     HomeBlocks.BLOCKS.get(HomeFurnitureType.CHECKOUT).get()).build(null));
+    public static final RegistryObject<BlockEntityType<SelfCheckoutBlockEntity>> SELF_CHECKOUT_BE = ModBlockEntities.BLOCK_ENTITIES.register(
+            "self_checkout", () -> BlockEntityType.Builder.of(SelfCheckoutBlockEntity::new,
+                    HomeBlocks.BLOCKS.get(HomeFurnitureType.SELF_CHECKOUT).get()).build(null));
     public static final RegistryObject<EntityType<ShopKeeperEntity>> SHOP_KEEPER = HomeBlocks.ENTITIES.register("shop_keeper",
             () -> EntityType.Builder.<ShopKeeperEntity>of(ShopKeeperEntity::new, MobCategory.MISC).sized(0.6F, 1.8F)
                     .clientTrackingRange(10).build("shop_keeper"));

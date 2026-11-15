@@ -97,6 +97,50 @@ public final class UkShopGameTests {
         helper.succeed();
     }
 
+    /** A self-checkout keeps the shopping in the machine: scan, look up bananas, a bag, pay cash; another customer has to wait; cancel gives it back. */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 200)
+    public static void payingAtASelfCheckout(GameTestHelper helper) {
+        helper.setBlock(new BlockPos(2, 1, 2), HomeBlocks.BLOCKS.get(HomeFurnitureType.SELF_CHECKOUT).get().defaultBlockState());
+        com.ptmuk.shop.SelfCheckoutBlockEntity till = (com.ptmuk.shop.SelfCheckoutBlockEntity) helper.getBlockEntity(new BlockPos(2, 1, 2));
+        BlockPos at = helper.absolutePos(new BlockPos(2, 1, 2));
+        ServerPlayer p = player(helper);
+        p.getInventory().clearContent();
+        p.getInventory().add(new ItemStack(ModItems.CASH.get(2000).get()));
+        ItemStack milk = ProductItem.priced(new ItemStack(ShopRegistry.item(Product.MILK)), 145, at);
+        p.getInventory().add(milk);
+        p.getInventory().add(ProductItem.priced(new ItemStack(ShopRegistry.item(Product.CRISPS), 2), 125, at));
+        helper.assertTrue(till.scan(p, p.getInventory().items.stream().filter(ProductItem::unpaid).findFirst().orElseThrow()), "the milk should scan");
+        for (int i = 0; i < 4 && p.getInventory().items.stream().anyMatch(ProductItem::unpaid); i++) {
+            for (int k = 0; k < 70; k++) {
+                till.tick();                                // (a colleague sorts out any unexpected item)
+            }
+            till.scanAll(p);
+        }
+        helper.assertTrue(p.getInventory().items.stream().noneMatch(ProductItem::unpaid) && till.scanned().size() == 2,
+                "everything should be scanned into the bagging area: " + till.scanned().size());
+        ServerPlayer other = player(helper);
+        helper.assertTrue(!till.scan(other, ProductItem.priced(new ItemStack(ShopRegistry.item(Product.COLA)), 120, at)), "someone else has to wait");
+        till.extra(p, Product.BANANAS, 1);
+        till.bags(p, 1);
+        for (int k = 0; k < 70; k++) {
+            till.tick();
+        }
+        long total = till.total();
+        helper.assertTrue(total == 145 + 250 + till.extras().get(0).each() + 10, "milk, two crisps, bananas and a bag: " + total);
+        com.ptmuk.shop.SelfCheckout.Reply r = till.pay(p, false);
+        helper.assertTrue(r.result() == com.ptmuk.shop.SelfCheckout.Result.OK && CashItem.carried(p) == 2000 - total,
+                "paid with £20: " + r + ", carrying " + CashItem.carried(p));
+        long bought = p.getInventory().items.stream().filter(s -> s.getItem() instanceof ProductItem && !ProductItem.unpaid(s)).mapToInt(ItemStack::getCount).sum();
+        helper.assertTrue(bought == 4, "milk, two crisps and bananas, paid for: " + bought);
+        helper.assertTrue(!till.busy() && till.count() == 0, "the checkout's free again");
+        // a cancelled one gives the shopping back
+        p.getInventory().add(ProductItem.priced(new ItemStack(ShopRegistry.item(Product.BREAD)), 110, at));
+        till.scanAll(p);
+        till.cancel(p);
+        helper.assertTrue(p.getInventory().items.stream().anyMatch(ProductItem::unpaid) && !till.busy(), "cancelled: the bread's back, unpaid");
+        helper.succeed();
+    }
+
     @GameTest(template = "empty5x4x5", timeoutTicks = 300)
     public static void orderingAtAChippy(GameTestHelper helper) {
         ShopBlockEntity shop = till(helper);
