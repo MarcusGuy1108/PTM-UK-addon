@@ -1105,13 +1105,19 @@ def pallet_racking():
 
 
 def cash_machine():
-    """A cash machine set into a wall: the block is the wall, the fascia faces out."""
+    """A cash machine set into a wall: the block is the wall; the fascia faces out, its screen lit,
+    under a hood that stands out round it, with a ledge under the keypad and the bank's lit header."""
     els = [bx((0, 0, 1), (16, 16, 16), "#plastic_grey"),
            bx((0, 0, 0.99), (16, 16, 1), "#atm", faces=("north",), full=("north",)),
-           bx((4, 7.4, 0.97), (12, 11.6, 0.98), "#atm", faces=("north",), emissive=True, uv={"north": [3.5, 3.5, 12, 8.5]}),
-           bx((1, 14.4, 0), (15, 15.2, 1), "#plastic_grey"),
-           bx((3, 4.4, 0), (13, 5, 1), "#plastic_grey")]
-    return els, {"plastic_grey": t("plastic_grey"), "atm": t("atm")}
+           bx((4, 7.4, 0.97), (12, 11.6, 0.98), "#atm", faces=("north",), emissive=True, uv={"north": [4, 4.4, 12, 8.6]}),
+           bx((0, 13.8, 0.4), (16, 16, 0.99), "#atm", faces=("north", "down"), emissive=True, uv={"north": [0, 0, 16, 2.2], "down": [0, 0, 16, 0.6]}),
+           # the hood: a top and two sides standing out from the fascia round the screen
+           bx((3.2, 12.2, -1.6), (12.8, 12.7, 0.99), "#stainless"),
+           bx((3.2, 6.8, -1.6), (3.7, 12.2, 0.99), "#stainless"),
+           bx((12.3, 6.8, -1.6), (12.8, 12.2, 0.99), "#stainless"),
+           # the ledge under the keypad
+           bx((3.8, 2.4, -0.9), (12.2, 2.9, 0.99), "#stainless")]
+    return els, {"plastic_grey": t("plastic_grey"), "atm": t("atm"), "stainless": t("stainless")}
 
 
 # ----------------------------------------------------------------- cinema

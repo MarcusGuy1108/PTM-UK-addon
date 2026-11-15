@@ -35,6 +35,8 @@ public final class ModCreativeTabs {
     public static final RegistryObject<CreativeModeTab> SHOP_FITTINGS = tab("shop_fittings", HOME,
             () -> new ItemStack(com.ptmuk.home.HomeBlocks.BLOCKS.get(com.ptmuk.home.HomeFurnitureType.SHOPPING_TROLLEY).get()),
             com.ptmuk.home.HomeBlocks.SHOP_ITEMS);
+    public static final RegistryObject<CreativeModeTab> MONEY = tab("money", SHOP_FITTINGS,
+            () -> new ItemStack(ModItems.CASH.get(2000).get()), ModItems.MONEY_ITEMS);
 
     private static RegistryObject<CreativeModeTab> tab(String name, RegistryObject<CreativeModeTab> after,
                                                        java.util.function.Supplier<ItemStack> icon,

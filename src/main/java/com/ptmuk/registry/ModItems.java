@@ -34,6 +34,8 @@ public final class ModItems {
     public static final Map<String, RegistryObject<Item>> PYLON_BUILDERS = new LinkedHashMap<>();
     public static final RegistryObject<Item> CABLE_TOOL;
     public static final List<RegistryObject<Item>> BUS_ITEMS = new ArrayList<>();
+    /** Cash, receipts and what the shops sell. */
+    public static final List<RegistryObject<Item>> MONEY_ITEMS = new ArrayList<>();
     public static final RegistryObject<Item> ALX400;
     public static final RegistryObject<Item> UK_DOUBLE_DECKER;
     public static final RegistryObject<Item> ENVIRO400;
@@ -43,6 +45,9 @@ public final class ModItems {
     public static final RegistryObject<Item> KIA_K4;
     public static final RegistryObject<Item> CUBE_CARD;
     public static final RegistryObject<Item> BUS_PASS;
+    /** Notes and coins by their value in pence. */
+    public static final Map<Integer, RegistryObject<Item>> CASH = new LinkedHashMap<>();
+    public static final RegistryObject<Item> RECEIPT;
 
     static {
         register(ModBlocks.POLES, POLE_ITEMS);
@@ -79,6 +84,12 @@ public final class ModItems {
         BUS_ITEMS.add(CUBE_CARD);
         BUS_PASS = ITEMS.register("bus_pass", com.ptmuk.fare.BusPassItem::new);
         BUS_ITEMS.add(BUS_PASS);
+        for (int pence : com.ptmuk.money.CashItem.DENOMINATIONS) {
+            CASH.put(pence, ITEMS.register(com.ptmuk.money.CashItem.id(pence), () -> new com.ptmuk.money.CashItem(pence)));
+        }
+        MONEY_ITEMS.addAll(CASH.values());
+        RECEIPT = ITEMS.register("receipt", com.ptmuk.money.ReceiptItem::new);
+        MONEY_ITEMS.add(RECEIPT);
         BUS_ITEMS.add(item("london_bus_stop", ModBlocks.BUS_STOP));
         BUS_ITEMS.add(item("bus_countdown_sign", ModBlocks.COUNTDOWN_SIGN));
         register(ModBlocks.BUS_FURNITURE, BUS_ITEMS);

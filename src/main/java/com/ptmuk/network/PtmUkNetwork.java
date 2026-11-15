@@ -6,7 +6,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class PtmUkNetwork {
-    private static final String VERSION = "7";
+    private static final String VERSION = "8";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(PtmUk.id("main"), () -> VERSION,
             VERSION::equals, VERSION::equals);
 
@@ -119,6 +119,41 @@ public final class PtmUkNetwork {
                 .encoder(SectionListMessage::encode)
                 .decoder(SectionListMessage::decode)
                 .consumerMainThread(SectionListMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(AtmMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(AtmMessage::encode)
+                .decoder(AtmMessage::decode)
+                .consumerMainThread(AtmMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(AtmReplyMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(AtmReplyMessage::encode)
+                .decoder(AtmReplyMessage::decode)
+                .consumerMainThread(AtmReplyMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(ShopMenuMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(ShopMenuMessage::encode)
+                .decoder(ShopMenuMessage::decode)
+                .consumerMainThread(ShopMenuMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(ShopOrderMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShopOrderMessage::encode)
+                .decoder(ShopOrderMessage::decode)
+                .consumerMainThread(ShopOrderMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(ShopSetupMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ShopSetupMessage::encode)
+                .decoder(ShopSetupMessage::decode)
+                .consumerMainThread(ShopSetupMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(SelfCheckoutMessage.class, id++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SelfCheckoutMessage::encode)
+                .decoder(SelfCheckoutMessage::decode)
+                .consumerMainThread(SelfCheckoutMessage::handle)
+                .add();
+        CHANNEL.messageBuilder(SelfCheckoutReplyMessage.class, id++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SelfCheckoutReplyMessage::encode)
+                .decoder(SelfCheckoutReplyMessage::decode)
+                .consumerMainThread(SelfCheckoutReplyMessage::handle)
                 .add();
     }
 }

@@ -45,6 +45,22 @@ public final class HomeBlocks {
                     .clientTrackingRange(10).noSummon().build("seat"));
 
     private static Block create(HomeFurnitureType type) {
+        switch (type) {
+            case CASH_MACHINE -> {
+                return new com.ptmuk.money.AtmBlock(type);
+            }
+            case TILL -> {
+                return new com.ptmuk.shop.TillBlock(type);
+            }
+            case CHECKOUT -> {
+                return new com.ptmuk.shop.CheckoutBlock(type);
+            }
+            case SELF_CHECKOUT -> {
+                return new com.ptmuk.shop.SelfCheckoutBlock(type);
+            }
+            default -> {
+            }
+        }
         return switch (type.kind) {
             case TABLETOP -> new TabletopHomeBlock(type);
             case SOFA -> new SofaBlock(type);

@@ -502,24 +502,53 @@ def drinks_panel(size=32):
     return img
 
 
-def atm(size=32):
-    """A cash machine fascia: screen, side keys, keypad, card slot and cash slot. No bank name."""
-    img = _img(size, size, (176, 180, 186))
+def atm(size=64, ss=4):
+    """A UK through-the-wall cash machine fascia (64 px for the block's face): a lit navy header
+    and a green FREE CASH strip, the blue screen with four keys down each side, the steel keypad
+    with its red, yellow and green keys, the card slot in its green light, the receipt slot and
+    the cash slot's shutter. No real bank's name or colours."""
+    S = size * ss
+    img = Image.new("RGB", (S, S), (186, 190, 196))
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, size - 1, 5], fill=(40, 46, 60))
-    d.rectangle([7, 7, 24, 17], fill=(30, 60, 110))
-    d.rectangle([9, 9, 22, 11], fill=(200, 220, 240))
-    d.rectangle([9, 13, 18, 14], fill=(130, 170, 220))
-    for y in (8, 11, 14):
-        d.rectangle([3, y, 5, y + 1], fill=(90, 90, 96))
-        d.rectangle([26, y, 28, y + 1], fill=(90, 90, 96))
+    for y in range(S):                                  # brushed steel, lighter at the top
+        v = int(206 - 40 * y / S)
+        d.line([(0, y), (S, y)], fill=(v, v + 3, v + 7))
+    p = lambda v: int(round(v * ss))                    # noqa: E731  (texture pixels at size 64)
+    d.rectangle([0, 0, S, p(8)], fill=(16, 44, 96))
+    d.rectangle([0, p(8), S, p(8.6)], fill=(80, 170, 255))
+    d.rectangle([p(18), p(2.5), p(46), p(5.5)], fill=(235, 240, 250))           # the bank's lit name, a bar
+    d.rectangle([0, p(9), S, p(12)], fill=(30, 122, 56))
+    d.rectangle([p(22), p(10), p(42), p(11)], fill=(220, 245, 225))
+    # the hood round the screen, the screen, its keys
+    d.rectangle([p(13), p(15), p(51), p(36)], fill=(120, 126, 132))
+    d.rectangle([p(15), p(16.5), p(49), p(35)], fill=(18, 20, 22))
+    for y in range(p(17.6), p(34.4)):
+        f = (y - p(17.6)) / (p(34.4) - p(17.6))
+        d.line([(p(16), y), (p(48), y)], fill=(int(14 - 6 * f), int(70 - 38 * f), int(150 - 72 * f)))
+    d.rectangle([p(24), p(19.5), p(40), p(21)], fill=(255, 216, 74))             # its title
+    for i in range(4):
+        y = p(23 + i * 2.8)
+        d.rectangle([p(18), y, p(26), y + p(1)], fill=(230, 236, 250))
+        d.rectangle([p(38), y, p(46), y + p(1)], fill=(230, 236, 250))
+        for x in (p(9), p(51)):
+            d.rectangle([x, y - p(0.4), x + p(4), y + p(1.4)], fill=(236, 238, 241), outline=(80, 86, 92), width=ss // 2)
+    # keypad: 3 x 4 steel keys, then CANCEL, CLEAR, ENTER
+    d.rectangle([p(16), p(37), p(47), p(53)], fill=(110, 117, 124))
     for r in range(4):
         for c in range(3):
-            d.rectangle([8 + c * 3, 19 + r * 2, 9 + c * 3, 19 + r * 2], fill=(60, 60, 66))
-    d.rectangle([19, 19, 25, 20], fill=(30, 30, 30))
-    d.point((26, 19), fill=(60, 220, 60))
-    d.rectangle([9, 28, 22, 29], fill=(20, 20, 20))
-    return img
+            x, y = p(17.5 + c * 6), p(38 + r * 3.8)
+            d.rectangle([x, y, x + p(5), y + p(3)], fill=(232, 235, 238), outline=(70, 76, 82), width=ss // 2)
+        x, y = p(36.5), p(38 + r * 3.8)
+        col = [(215, 53, 45), (240, 178, 28), (45, 156, 69), (200, 204, 208)][r]
+        d.rectangle([x, y, x + p(9), y + p(3)], fill=col, outline=(70, 76, 82), width=ss // 2)
+    # card slot in its green light, receipt slot, cash slot behind its shutter
+    d.rectangle([p(49.5), p(37.5), p(60), p(42)], fill=(30, 200, 80))
+    d.rectangle([p(50.5), p(39), p(59), p(40.5)], fill=(8, 8, 9))
+    d.rectangle([p(50.5), p(46), p(59), p(47)], fill=(8, 8, 9))
+    d.rectangle([p(18), p(55), p(46), p(61)], fill=(96, 102, 108))
+    d.rectangle([p(19.5), p(57), p(44.5), p(59)], fill=(150, 156, 162))
+    d.line([(p(19.5), p(58)), (p(44.5), p(58))], fill=(90, 96, 102), width=ss // 2)
+    return img.resize((size, size), Image.LANCZOS)
 
 
 def boxes(size=32):

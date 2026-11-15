@@ -33,6 +33,21 @@ public final class ClientHooks {
         }
     }
 
+    public static void openShopSetup(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.level.getBlockEntity(pos) instanceof com.ptmuk.shop.ShopBlockEntity shop) {
+            mc.setScreen(new com.ptmuk.client.shop.ShopSetupScreen(shop));
+        }
+    }
+
+    public static void openSelfCheckout(BlockPos pos) {
+        Minecraft.getInstance().setScreen(new com.ptmuk.client.shop.SelfCheckoutScreen(pos));
+    }
+
+    public static void openAtm(BlockPos pos) {
+        Minecraft.getInstance().setScreen(new com.ptmuk.client.money.AtmScreen(pos));
+    }
+
     public static void openShopSignEditor(BlockPos pos) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null && mc.level.getBlockEntity(pos) instanceof com.ptmuk.building.ShopSignBlockEntity sign) {

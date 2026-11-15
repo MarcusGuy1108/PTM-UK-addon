@@ -36,6 +36,9 @@ import car_k4  # noqa: E402
 import bus_extras  # noqa: E402
 import home_furniture  # noqa: E402
 import display_car  # noqa: E402
+import money  # noqa: E402
+import people  # noqa: E402
+import shop_goods  # noqa: E402
 
 MOD_ID = "ptmuk"
 ROOT = Path(__file__).resolve().parent.parent
@@ -954,6 +957,10 @@ def write_lang():
     lang.update(petrol.lang(MOD_ID))
     lang.update(home_furniture.lang(MOD_ID))
     lang.update(display_car.lang(MOD_ID))
+    lang.update(money.lang(MOD_ID))
+    lang.update(people.lang(MOD_ID))
+    lang.update(shop_goods.lang(MOD_ID))
+    lang[f"item.{MOD_ID}.section_mover"] = "Section Mover"
     lang.update({"item.ptmuk.alx400": "Alexander ALX400 (Double Decker)", "entity.ptmuk.ptm_124d_alx400": "Alexander ALX400",
                  "item.ptmuk.uk_double_decker": "UK Double Decker", "entity.ptmuk.ptm_124e_ukdd": "UK Double Decker",
                  "item.ptmuk.enviro400": "Alexander Dennis Enviro400 (London, Double Decker)",
@@ -1039,6 +1046,11 @@ def main():
     petrol.generate(sys.modules[__name__])
     home_furniture.generate(sys.modules[__name__])
     display_car.generate(sys.modules[__name__])
+    money.generate(sys.modules[__name__])
+    people.generate(sys.modules[__name__])
+    shop_goods.generate(sys.modules[__name__])
+    # the Section Mover's icon is drawn by hand (textures/item/section_mover.png); only its model is written here
+    write_json(ASSETS / "models/item/section_mover.json", {"parent": "minecraft:item/generated", "textures": {"layer0": f"{MOD_ID}:item/section_mover"}})
     prefab_designs.generate()
     car_k4.main()
     write_json(ASSETS / "signal_parts.json", INDEX, compact=True)

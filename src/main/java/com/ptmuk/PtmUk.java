@@ -20,6 +20,7 @@ public class PtmUk {
     public PtmUk() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         com.ptmuk.home.HomeBlocks.init();
+        com.ptmuk.shop.ShopRegistry.init();
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modBus);
@@ -30,11 +31,15 @@ public class PtmUk {
         PtmUkNetwork.register();
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(com.ptmuk.road.RoadBuilder::onServerTick);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(com.ptmuk.building.Sections::onServerTick);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(com.ptmuk.shop.ShopEvents::onChunkLoad);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(com.ptmuk.shop.ShopEvents::onServerTick);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(com.ptmuk.shop.ShopEvents::onPlayerTick);
     }
 
     private static void attributes(net.minecraftforge.event.entity.EntityAttributeCreationEvent event) {
         com.ptmuk.bus.UkBuses.TYPES.values().forEach(type ->
                 event.put(type.get(), com.rinventor.ptm2.objects.entities.vehicle.Vehicle.attributes()));
+        event.put(com.ptmuk.shop.ShopRegistry.SHOP_KEEPER.get(), com.ptmuk.shop.ShopKeeperEntity.attributes().build());
     }
 
     public static ResourceLocation id(String path) {
