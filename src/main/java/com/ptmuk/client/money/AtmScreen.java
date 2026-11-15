@@ -25,7 +25,7 @@ import org.lwjgl.glfw.GLFW;
  */
 public class AtmScreen extends Screen {
     private static final int W = 300, H = 236;
-    private static final int[] ROWS = {62, 82, 102, 122};
+    private static final int[] ROWS = {72, 90, 108, 126};
 
     private enum Stage { INSERT, CARD_IN, WAIT, NO_CARD, KEPT, SET_PIN, CONFIRM_PIN, ENTER_PIN, WRONG, MENU, AMOUNT, OTHER, BALANCE, PAY_IN,
         PAID_IN, NEW_PIN, CONFIRM_NEW_PIN, PIN_CHANGED, PROBLEM, TAKE_CARD, TAKE_CASH, THANKS }
@@ -578,14 +578,14 @@ public class AtmScreen extends Screen {
         g.fill(216, 160, 282, 164, 0xFF050506);
         card(g);
         // receipt slot
-        g.fill(208, 176, 290, 188, 0xFF5D646B);
-        g.fill(216, 181, 282, 183, 0xFF050506);
+        g.fill(208, 176, 290, 189, 0xFF5D646B);
+        g.fill(216, 178, 282, 180, 0xFF050506);
         if (printed && (stage == Stage.TAKE_CASH || stage == Stage.THANKS || stage == Stage.BALANCE || stage == Stage.TAKE_CARD)) {
-            g.fill(228, 172, 270, 182, 0xFFF7F5EE);
-            g.fill(232, 174, 266, 175, 0xFFB9B5AA);
-            g.fill(232, 177, 258, 178, 0xFFB9B5AA);
+            g.fill(228, 170, 270, 179, 0xFFF7F5EE);
+            g.fill(232, 172, 266, 173, 0xFFB9B5AA);
+            g.fill(232, 175, 258, 176, 0xFFB9B5AA);
         }
-        text(g, "RECEIPT", 249, 184.5, 0xFF1C1F22, 0.6f, false);
+        text(g, "RECEIPT", 249, 182.5, 0xFF1C1F22, 0.6f, false);
         // cash slot behind its shutter; the notes when it's open
         g.fill(208, 190, 290, 222, 0xFF5D646B);
         text(g, "CASH", 249, 213, 0xFF1C1F22, 0.7f, false);
@@ -672,30 +672,30 @@ public class AtmScreen extends Screen {
                 text(g, tries + (tries == 1 ? " try" : " tries") + " left", cx, 96, white, 1f, true);
             }
             case MENU -> {
-                text(g, "Please select a service", cx, 54, yellow, 1f, true);
+                text(g, "Please select a service", cx, 56, yellow, 1.1f, true);
                 options(g, new String[]{"Cash withdrawal", "Cash with receipt", "Balance on screen", "Balance with receipt"},
                         new String[]{"Pay in cash", "Change PIN", "", "Return card"});
             }
             case AMOUNT -> {
-                text(g, receipt ? "Select amount (with receipt)" : "Select amount", cx, 54, yellow, 1f, true);
+                text(g, receipt ? "Select amount (with receipt)" : "Select amount", cx, 56, yellow, 1.1f, true);
                 options(g, new String[]{"£10", "£20", "£40", "£60"}, new String[]{"£100", "£200", "£250", "Other amount"});
             }
             case OTHER -> {
                 text(g, "Enter amount", cx, 56, yellow, 1.2f, true);
                 text(g, "In £10s, up to £250", cx, 72, white, 0.85f, true);
-                text(g, "£" + entry + ((Util.getMillis() / 500) % 2 == 0 ? "_" : " "), cx, 90, white, 2f, true);
+                text(g, "£" + entry + ((Util.getMillis() / 500) % 2 == 0 ? "_" : " "), cx, 88, white, 2f, true);
                 options(g, new String[]{"", "", "", ""}, new String[]{"", "", "", "Back"});
             }
             case BALANCE -> {
-                text(g, "Available balance", cx, 60, yellow, 1.1f, true);
-                text(g, Atm.balanceText(balance), cx, 80, white, 2f, true);
+                text(g, "Available balance", cx, 56, yellow, 1.1f, true);
+                text(g, Atm.balanceText(balance), cx, 72, white, 2f, true);
                 options(g, new String[]{"", "", "", ""}, new String[]{"", "", "Another service", "Return card"});
             }
             case PAY_IN -> {
                 text(g, "Pay in cash", cx, 56, yellow, 1.2f, true);
                 if (carried > 0) {
-                    text(g, "You have " + CashItem.money(carried) + " in cash", cx, 76, white, 1f, true);
-                    text(g, "Pay it all in?", cx, 90, white, 1f, true);
+                    text(g, "You have " + CashItem.money(carried) + " in cash", cx, 72, white, 1f, true);
+                    text(g, "Pay it all in?", cx, 86, white, 1f, true);
                     options(g, new String[]{"", "", "", ""}, new String[]{"", "", "Pay in", "Cancel"});
                 } else {
                     text(g, "You haven't any cash on you", cx, 80, white, 1f, true);
@@ -704,8 +704,8 @@ public class AtmScreen extends Screen {
             }
             case PAID_IN -> {
                 text(g, "Thank you", cx, 56, yellow, 1.2f, true);
-                text(g, CashItem.money(paidIn) + " paid in", cx, 74, white, 1.2f, true);
-                text(g, "Balance " + Atm.balanceText(balance), cx, 92, pale, 1f, true);
+                text(g, CashItem.money(paidIn) + " paid in", cx, 70, white, 1.2f, true);
+                text(g, "Balance " + Atm.balanceText(balance), cx, 84, pale, 1f, true);
                 options(g, new String[]{"", "", "", ""}, new String[]{"", "", "Another service", "Return card"});
             }
             case PIN_CHANGED -> text(g, "Your PIN has been changed", cx, 86, yellow, 1.1f, true);
@@ -732,12 +732,15 @@ public class AtmScreen extends Screen {
         }
     }
 
+    /** The PIN's four boxes, a dot in each number put in. */
     private void stars(GuiGraphics g, int y) {
-        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 4; i++) {
-            sb.append(i < entry.length() ? '*' : '_').append(i < 3 ? " " : "");
+            int x = 150 - 38 + i * 20;
+            g.renderOutline(x, y, 16, 16, 0xFFFFFFFF);
+            if (i < entry.length()) {
+                g.fill(x + 5, y + 5, x + 11, y + 11, 0xFFFFFFFF);
+            }
         }
-        text(g, sb.toString(), 150, y, 0xFFFFFFFF, 2f, true);
     }
 
     /** The options beside the side keys: left ones by the left edge, right ones by the right. */
