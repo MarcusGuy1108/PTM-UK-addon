@@ -525,7 +525,7 @@ public class AtmScreen extends Screen {
         g.fill(0, 24, W, 25, 0xFF4FB0FF);
         text(g, bank.toUpperCase(Locale.ROOT), W / 2.0, 7, 0xFFFFFFFF, 1.3f, true);
         g.fill(0, 25, W, 35, 0xFF1D7A37);
-        text(g, "FREE CASH WITHDRAWALS", W / 2.0, 27.5, 0xFFFFFFFF, 0.75f, true);
+        text(g, "FREE CASH WITHDRAWALS", W / 2.0, 26.8, 0xFFFFFFFF, 0.9f, true);
         // the hood over the screen, the screen
         g.fillGradient(36, 38, 264, 44, 0xFF6F757C, 0xFF9CA3AA);
         g.fill(36, 38, 40, 148, 0xFF8C9399);
@@ -567,28 +567,28 @@ public class AtmScreen extends Screen {
             boolean lit = r < 3 && over == 10 + r;
             g.fillGradient(152, y, 196, y + 15, lit ? 0xFFFFFFFF : col[r], col[r]);
             g.renderOutline(152, y, 44, 15, 0xFF41474D);
-            text(g, fn[r], 174, y + 4.5, r == 1 ? 0xFF1A1C1E : 0xFFFFFFFF, 0.75f, false);
+            text(g, fn[r], 174, y + 4, r == 1 ? 0xFF1A1C1E : 0xFFFFFFFF, 0.9f, false);
         }
         // card slot: flashing green round it when it wants a card
         boolean wants = stage == Stage.INSERT || stage == Stage.TAKE_CARD;
         boolean blink = (Util.getMillis() / 400) % 2 == 0;
-        g.fill(208, 146, 290, 174, 0xFF5D646B);
-        text(g, "CARD", 249, 148, 0xFF1C1F22, 0.7f, false);
+        g.fill(208, 146, 290, 174, 0xFF474D54);
+        text(g, "CARD", 249, 147.5, 0xFFF4F6F8, 0.85f, false);
         g.fill(214, 157, 284, 167, wants && blink ? 0xFF3CFF6A : 0xFF1E5A2B);
         g.fill(216, 160, 282, 164, 0xFF050506);
         card(g);
         // receipt slot
-        g.fill(208, 176, 290, 189, 0xFF5D646B);
+        g.fill(208, 176, 290, 189, 0xFF474D54);
         g.fill(216, 178, 282, 180, 0xFF050506);
         if (printed && (stage == Stage.TAKE_CASH || stage == Stage.THANKS || stage == Stage.BALANCE || stage == Stage.TAKE_CARD)) {
             g.fill(228, 170, 270, 179, 0xFFF7F5EE);
             g.fill(232, 172, 266, 173, 0xFFB9B5AA);
             g.fill(232, 175, 258, 176, 0xFFB9B5AA);
         }
-        text(g, "RECEIPT", 249, 182.5, 0xFF1C1F22, 0.6f, false);
+        text(g, "RECEIPT", 249, 182, 0xFFF4F6F8, 0.75f, false);
         // cash slot behind its shutter; the notes when it's open
-        g.fill(208, 190, 290, 222, 0xFF5D646B);
-        text(g, "CASH", 249, 213, 0xFF1C1F22, 0.7f, false);
+        g.fill(208, 190, 290, 222, 0xFF474D54);
+        text(g, "CASH", 249, 212.5, 0xFFF4F6F8, 0.85f, false);
         boolean open = stage == Stage.TAKE_CASH && counted >= 7;
         g.fill(214, 200, 284, 208, 0xFF050506);
         if (open) {
@@ -635,7 +635,7 @@ public class AtmScreen extends Screen {
                 if ((Util.getMillis() / 600) % 2 == 0) {
                     text(g, "▼", 249 - 99, 110, pale, 1.2f, true);
                 }
-                text(g, "Click the card slot or press ENTER", cx, 124, pale, 0.75f, true);
+                text(g, "Click the card slot or press ENTER", cx, 122, white, 0.9f, true);
             }
             case CARD_IN, WAIT -> {
                 text(g, "Please wait", cx, 80, white, 1.4f, true);
@@ -649,23 +649,23 @@ public class AtmScreen extends Screen {
             case KEPT -> {
                 text(g, "Your card has been retained", cx, 72, yellow, 1.1f, true);
                 text(g, "Please contact your bank.", cx, 92, white, 1f, true);
-                text(g, "(It'll be back tomorrow.)", cx, 106, pale, 0.8f, true);
+                text(g, "(It'll be back tomorrow.)", cx, 106, white, 0.95f, true);
             }
             case SET_PIN, NEW_PIN -> {
                 text(g, stage == Stage.SET_PIN ? "Choose a PIN" : "Enter your new PIN", cx, 58, yellow, 1.3f, true);
                 text(g, mismatch ? "Those didn't match. Try again." : "Four numbers you'll remember", cx, 76, mismatch ? 0xFFFF9C8C : white, 0.9f, true);
                 stars(g, 94);
-                text(g, "then press ENTER", cx, 124, pale, 0.8f, true);
+                text(g, "then press ENTER", cx, 122, white, 0.95f, true);
             }
             case CONFIRM_PIN, CONFIRM_NEW_PIN -> {
                 text(g, "Enter the same PIN again", cx, 62, yellow, 1.2f, true);
                 stars(g, 92);
-                text(g, "then press ENTER", cx, 124, pale, 0.8f, true);
+                text(g, "then press ENTER", cx, 122, white, 0.95f, true);
             }
             case ENTER_PIN -> {
                 text(g, "Please enter your PIN", cx, 60, yellow, 1.2f, true);
                 stars(g, 88);
-                text(g, "Shield your PIN from others", cx, 124, pale, 0.75f, true);
+                text(g, "Shield your PIN from others", cx, 122, white, 0.9f, true);
             }
             case WRONG -> {
                 text(g, "Incorrect PIN", cx, 72, yellow, 1.4f, true);
@@ -705,7 +705,7 @@ public class AtmScreen extends Screen {
             case PAID_IN -> {
                 text(g, "Thank you", cx, 56, yellow, 1.2f, true);
                 text(g, CashItem.money(paidIn) + " paid in", cx, 70, white, 1.2f, true);
-                text(g, "Balance " + Atm.balanceText(balance), cx, 84, pale, 1f, true);
+                text(g, "Balance " + Atm.balanceText(balance), cx, 84, white, 1f, true);
                 options(g, new String[]{"", "", "", ""}, new String[]{"", "", "Another service", "Return card"});
             }
             case PIN_CHANGED -> text(g, "Your PIN has been changed", cx, 86, yellow, 1.1f, true);

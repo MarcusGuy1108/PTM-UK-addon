@@ -708,6 +708,7 @@ public class ShopBlockEntity extends BlockEntity {
         tag.putBoolean("chosen", chosen);
         tag.putString("shop", shopName);
         tag.putString("keeperName", keeperName);
+        tag.putLong("seed", seed);                          // (so a self-checkout's screen shows this shop's prices)
         return tag;
     }
 

@@ -21,6 +21,7 @@ public class PtmUk {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         com.ptmuk.home.HomeBlocks.init();
         com.ptmuk.shop.ShopRegistry.init();
+        com.ptmuk.darts.DartsRegistry.init();
         ModBlocks.BLOCKS.register(modBus);
         ModItems.ITEMS.register(modBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modBus);

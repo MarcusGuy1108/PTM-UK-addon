@@ -1,0 +1,1667 @@
+{
+ "darts.score_0": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_0",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_1": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_1",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_2": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_2",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_3": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_3",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_4": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_4",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_5": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_5",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_6": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_6",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_7": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_7",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_8": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_8",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_9": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_9",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_10": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_10",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_11": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_11",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_12": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_12",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_13": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_13",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_14": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_14",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_15": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_15",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_16": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_16",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_17": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_17",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_18": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_18",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_19": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_19",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_20": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_20",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_21": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_21",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_22": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_22",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_23": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_23",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_24": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_24",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_25": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_25",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_26": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_26",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_27": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_27",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_28": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_28",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_29": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_29",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_30": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_30",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_31": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_31",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_32": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_32",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_33": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_33",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_34": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_34",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_35": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_35",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_36": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_36",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_37": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_37",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_38": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_38",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_39": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_39",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_40": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_40",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_41": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_41",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_42": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_42",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_43": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_43",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_44": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_44",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_45": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_45",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_46": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_46",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_47": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_47",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_48": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_48",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_49": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_49",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_50": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_50",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_51": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_51",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_52": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_52",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_53": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_53",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_54": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_54",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_55": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_55",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_56": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_56",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_57": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_57",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_58": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_58",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_59": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_59",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_60": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_60",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_61": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_61",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_62": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_62",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_63": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_63",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_64": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_64",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_65": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_65",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_66": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_66",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_67": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_67",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_68": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_68",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_69": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_69",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_70": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_70",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_71": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_71",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_72": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_72",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_73": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_73",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_74": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_74",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_75": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_75",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_76": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_76",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_77": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_77",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_78": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_78",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_79": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_79",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_80": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_80",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_81": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_81",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_82": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_82",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_83": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_83",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_84": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_84",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_85": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_85",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_86": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_86",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_87": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_87",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_88": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_88",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_89": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_89",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_90": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_90",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_91": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_91",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_92": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_92",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_93": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_93",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_94": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_94",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_95": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_95",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_96": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_96",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_97": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_97",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_98": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_98",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_99": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_99",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_100": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_100",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_101": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_101",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_102": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_102",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_103": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_103",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_104": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_104",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_105": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_105",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_106": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_106",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_107": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_107",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_108": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_108",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_109": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_109",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_110": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_110",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_111": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_111",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_112": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_112",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_113": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_113",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_114": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_114",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_115": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_115",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_116": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_116",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_117": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_117",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_118": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_118",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_119": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_119",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_120": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_120",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_121": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_121",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_122": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_122",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_123": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_123",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_124": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_124",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_125": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_125",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_126": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_126",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_127": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_127",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_128": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_128",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_129": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_129",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_130": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_130",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_131": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_131",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_132": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_132",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_133": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_133",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_134": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_134",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_135": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_135",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_136": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_136",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_137": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_137",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_138": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_138",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_139": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_139",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_140": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_140",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_141": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_141",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_142": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_142",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_143": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_143",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_144": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_144",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_145": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_145",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_146": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_146",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_147": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_147",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_148": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_148",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_149": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_149",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_150": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_150",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_151": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_151",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_152": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_152",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_153": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_153",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_154": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_154",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_155": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_155",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_156": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_156",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_157": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_157",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_158": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_158",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_159": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_159",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_160": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_160",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_161": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_161",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_162": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_162",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_163": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_163",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_164": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_164",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_165": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_165",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_166": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_166",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_167": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_167",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_168": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_168",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_169": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_169",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_170": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_170",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_171": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_171",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_172": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_172",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_173": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_173",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_174": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_174",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_175": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_175",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_176": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_176",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_177": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_177",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_178": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_178",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_179": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_179",
+    "stream": false
+   }
+  ]
+ },
+ "darts.score_180": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/score_180",
+    "stream": false
+   }
+  ]
+ },
+ "darts.game_on": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/game_on",
+    "stream": false
+   }
+  ]
+ },
+ "darts.game_shot": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/game_shot",
+    "stream": false
+   }
+  ]
+ },
+ "darts.bust": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/bust",
+    "stream": false
+   }
+  ]
+ },
+ "darts.darts": {
+  "subtitle": "subtitles.ptmuk.darts.call",
+  "sounds": [
+   {
+    "name": "ptmuk:darts/darts",
+    "stream": false
+   }
+  ]
+ }
+}

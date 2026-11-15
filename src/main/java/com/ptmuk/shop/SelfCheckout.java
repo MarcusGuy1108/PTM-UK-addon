@@ -40,20 +40,43 @@ public final class SelfCheckout {
         return out;
     }
 
-    public static Reply pay(ServerPlayer player, BlockPos at, boolean card) {
+    /** Each carrier bag. */
+    public static final int BAG = 10;
+
+    /**
+     * Pays for everything unpaid on the player from the shops round here, the loose things looked
+     * up or keyed in (extras: product ordinal -> how many), and the bags; by card or cash.
+     */
+    public static Reply pay(ServerPlayer player, BlockPos at, boolean card, int[] extraIds, int[] extraCounts, int bags, boolean receipt) {
         List<ItemStack> basket = basket(player, at);
+        ShopBlockEntity till = player.level().getBlockEntity(nearestTill(player, at)) instanceof ShopBlockEntity t ? t : null;
+        List<ItemStack> extras = new ArrayList<>();
         long total = 0;
         for (ItemStack s : basket) {
             total += (long) ProductItem.price(s) * s.getCount();
         }
-        if (basket.isEmpty()) {
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < Math.min(extraIds.length, extraCounts.length); i++) {
+            if (extraIds[i] < 0 || extraIds[i] >= Product.values().length || extraCounts[i] <= 0) {
+                continue;
+            }
+            Product p = Product.values()[extraIds[i]];
+            int n = Math.min(20, extraCounts[i]);
+            if (!p.onShelf()) {
+                continue;
+            }
+            int each = till != null ? till.price(p) : p.pence;
+            total += (long) each * n;
+            extras.add(new ItemStack(ShopRegistry.item(p), n));
+            lines.add((n > 1 ? n + " x " : "") + p.title + "  " + CashItem.money((long) each * n));
+        }
+        bags = Math.max(0, Math.min(9, bags));
+        total += (long) bags * BAG;
+        if (basket.isEmpty() && extras.isEmpty()) {
             return new Reply(Result.NOTHING, 0, 0);
         }
         long change = 0;
-        String shop = "Self-checkout";
-        if (player.level().getBlockEntity(nearestTill(player, at)) instanceof ShopBlockEntity till) {
-            shop = till.shopName();
-        }
+        String shop = till != null ? till.shopName() : "Self-checkout";
         if (card) {
             boolean has = player.getInventory().items.stream().anyMatch(s -> s.getItem() instanceof BankCard)
                     || player.getOffhandItem().getItem() instanceof BankCard;
@@ -70,19 +93,30 @@ public final class SelfCheckout {
                 return new Reply(Result.SHORT, total, 0);
             }
         }
-        List<String> lines = new ArrayList<>();
-        lines.add(shop.toUpperCase(Locale.ROOT) + "  SELF-CHECKOUT");
+        List<String> out = new ArrayList<>();
+        out.add(shop.toUpperCase(Locale.ROOT) + "  SELF-CHECKOUT");
         for (ItemStack s : basket) {
-            lines.add((s.getCount() > 1 ? s.getCount() + " x " : "") + s.getHoverName().getString() + "  "
+            out.add((s.getCount() > 1 ? s.getCount() + " x " : "") + s.getHoverName().getString() + "  "
                     + CashItem.money((long) ProductItem.price(s) * s.getCount()));
             ProductItem.paid(s);
         }
-        lines.add("TOTAL  " + CashItem.money(total));
-        lines.add(card ? "CARD (CONTACTLESS)" : "CASH  CHANGE " + CashItem.money(change));
-        lines.add("THANK YOU FOR SHOPPING WITH US");
-        ItemStack r = ReceiptItem.make(ModItems.RECEIPT.get(), shop, lines);
-        if (!player.getInventory().add(r)) {
-            player.drop(r, false);
+        out.addAll(lines);
+        if (bags > 0) {
+            out.add((bags > 1 ? bags + " x " : "") + "Carrier bag  " + CashItem.money((long) bags * BAG));
+        }
+        out.add("TOTAL  " + CashItem.money(total));
+        out.add(card ? "CARD (CONTACTLESS)" : "CASH  CHANGE " + CashItem.money(change));
+        out.add("THANK YOU FOR SHOPPING WITH US");
+        for (ItemStack e : extras) {
+            if (!player.getInventory().add(e)) {
+                player.drop(e, false);
+            }
+        }
+        if (receipt) {
+            ItemStack r = ReceiptItem.make(ModItems.RECEIPT.get(), shop, out);
+            if (!player.getInventory().add(r)) {
+                player.drop(r, false);
+            }
         }
         return new Reply(Result.OK, total, change);
     }

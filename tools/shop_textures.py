@@ -976,18 +976,51 @@ def pool_top(size=64):
     return img
 
 
-def dartboard(size=64):
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+# the scoring rings as fractions of the double ring's outer edge: wider than a real board's, so
+# the treble and double can be hit in the game (DartboardBlockEntity scores with the same ones)
+DART_RINGS = {"bull": 0.06, "outer_bull": 0.14, "treble": (0.55, 0.64), "double": (0.90, 1.0)}
+DART_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5]
+
+
+def dartboard(size=128, ss=4):
+    """A dartboard: twenty segments (20 at the top), black and cream singles, red and green
+    trebles and doubles, the bulls, the wire, and the numbers round it in white."""
+    S = size * ss
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    c = size / 2
-    d.ellipse([1, 1, size - 2, size - 2], fill=(20, 20, 20))
-    for r, (a, b) in ((27, ((200, 30, 30), (30, 130, 50))), (25, ((20, 20, 20), (240, 228, 200))),
-                      (17, ((200, 30, 30), (30, 130, 50))), (15, ((20, 20, 20), (240, 228, 200)))):
+    c = S / 2
+    R = S / 2 - ss                                       # the board's edge
+    D = R * 0.78                                         # the double ring's outer edge
+    d.ellipse([c - R, c - R, c + R, c + R], fill=(18, 18, 18, 255))
+    red, green, black, cream = (205, 30, 35, 255), (25, 135, 60, 255), (22, 22, 22, 255), (238, 226, 196, 255)
+
+    def ring(r1, colours):
         for k in range(20):
-            d.pieslice([c - r, c - r, c + r, c + r], k * 18 - 99, k * 18 - 81, fill=a if k % 2 else b)
-    d.ellipse([c - 4, c - 4, c + 4, c + 4], fill=(30, 130, 50))
-    d.ellipse([c - 2, c - 2, c + 2, c + 2], fill=(200, 30, 30))
-    return img
+            a0 = -90 - 9 + k * 18
+            d.pieslice([c - r1, c - r1, c + r1, c + r1], a0, a0 + 18, fill=colours[k % 2])
+
+    t0, t1 = DART_RINGS["treble"]
+    d0, d1 = DART_RINGS["double"]
+    ring(D * d1, (red, green))
+    ring(D * d0, (black, cream))
+    ring(D * t1, (red, green))
+    ring(D * t0, (black, cream))
+    for r, col in ((DART_RINGS["outer_bull"], green), (DART_RINGS["bull"], red)):
+        d.ellipse([c - D * r, c - D * r, c + D * r, c + D * r], fill=col)
+    wire = (200, 200, 205, 255)
+    import math
+    for k in range(20):
+        a = math.radians(-90 - 9 + k * 18)
+        d.line([(c + math.cos(a) * D * DART_RINGS["outer_bull"], c + math.sin(a) * D * DART_RINGS["outer_bull"]),
+                (c + math.cos(a) * D, c + math.sin(a) * D)], fill=wire, width=ss // 2)
+    for r in (d1, d0, t1, t0, DART_RINGS["outer_bull"], DART_RINGS["bull"]):
+        d.ellipse([c - D * r, c - D * r, c + D * r, c + D * r], outline=wire, width=ss // 2)
+    font = ImageFont.load_default(size=int(9.5 * ss))
+    for k, n in enumerate(DART_ORDER):
+        a = math.radians(-90 + k * 18)
+        rr = (D + R) / 2
+        d.text((c + math.cos(a) * rr, c + math.sin(a) * rr), str(n), fill=(250, 250, 250, 255), font=font, anchor="mm")
+    return img.resize((size, size), Image.LANCZOS)
 
 
 SYMBOLS = ((220, 30, 40), (250, 200, 30), (130, 40, 160), (40, 170, 70), (250, 140, 30))

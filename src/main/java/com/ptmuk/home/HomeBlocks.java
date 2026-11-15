@@ -58,6 +58,9 @@ public final class HomeBlocks {
             case SELF_CHECKOUT -> {
                 return new com.ptmuk.shop.SelfCheckoutBlock(type);
             }
+            case DARTBOARD -> {
+                return new com.ptmuk.darts.DartboardBlock(type);
+            }
             default -> {
             }
         }

@@ -1370,9 +1370,19 @@ def pool_table(part):
 
 
 def dartboard():
-    els = [bx((2.5, 2.5, 15.2), (13.5, 13.5, 16), "#black", faces=("north", "east", "west", "up", "down")),
-           bx((3, 3, 15.18), (13, 13, 15.2), "#dartboard", faces=("north",), full=("north",))]
+    """A dartboard on the wall, the block's whole face (DartboardBlockEntity scores where darts land on it)."""
+    els = [bx((0.5, 0.5, 15.2), (15.5, 15.5, 16), "#black", faces=("north", "east", "west", "up", "down")),
+           bx((0.5, 0.5, 15.18), (15.5, 15.5, 15.2), "#dartboard", faces=("north",), full=("north",))]
     return els, {"black": t("black"), "dartboard": t("dartboard")}
+
+
+def darts_caller():
+    """The darts caller's microphone on its stand: a round base, the pole, the mic with its grille."""
+    els = [bx((5, 0, 5), (11, 0.6, 11), "#black"),
+           bx((7.6, 0.6, 7.6), (8.4, 12.5, 8.4), "#chrome"),
+           bx((7.4, 12.2, 6.6), (8.6, 13, 9.4), "#black"),
+           bx((7, 12.8, 5.4), (9, 15.6, 7.4), "#grille", rot=("x", -22.5, (8, 13, 7.5)))]
+    return els, {"black": t("black"), "chrome": t("chrome"), "grille": t("grille")}
 
 
 def fruit_machine(on):
@@ -1763,7 +1773,8 @@ def _home():
         F("back_bar", "Back Bar Shelves", back_bar, shape=(0, 0, 11, 16, 16, 16), rows=2, group="shop", sound="GLASS"),
         F("bar_stool", "Bar Stool", bar_stool, shape=(4, 0, 4, 12, 11.8, 12), seat=11.8, group="shop", sound="METAL"),
         F("pool_table", "Pool Table", pool_table, "wide", (0, 0, 1, 16, 13.4, 15), group="shop"),
-        F("dartboard", "Dartboard", dartboard, shape=(2.5, 2.5, 15, 13.5, 13.5, 16), group="shop"),
+        F("dartboard", "Dartboard", dartboard, shape=(0.5, 0.5, 15, 15.5, 15.5, 16), group="shop"),
+        F("darts_caller", "Darts Caller", darts_caller, shape=(5, 0, 5, 11, 15.6, 11), group="shop", sound="METAL"),
         F("fruit_machine", "Fruit Machine", fruit_machine, "tall", (1, 0, 2.5, 15, 16, 15), light=6, effect="click",
           group="shop", sound="METAL"),
         F("barber_chair", "Barber's Chair", barber_chair, shape=(2, 0, 1, 14, 11, 14), seat=9, group="shop",

@@ -89,4 +89,14 @@ public enum Product {
     public boolean service() {
         return shelf == Shelf.SERVICE;
     }
+
+    /** Its code to key in at a self-checkout (loose bananas and apples have their real ones). */
+    public int code() {
+        return this == BANANAS ? 4011 : this == APPLES ? 4131 : 3000 + ordinal() * 11;
+    }
+
+    /** Sold off a shelf (so a self-checkout can look it up), not made at a counter or a service. */
+    public boolean onShelf() {
+        return shelf != Shelf.COUNTER && shelf != Shelf.SERVICE;
+    }
 }
