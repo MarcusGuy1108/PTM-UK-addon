@@ -141,6 +141,31 @@ public final class UkShopGameTests {
         helper.succeed();
     }
 
+    /** An age check at a self-checkout: the supermarket's shopkeeper walks over, approves it, and goes back to their till. */
+    @GameTest(template = "empty5x4x5", timeoutTicks = 500)
+    public static void aColleagueComesToApprove(GameTestHelper helper) {
+        ShopBlockEntity shop = till(helper);
+        shop.configure(ShopKind.SUPERMARKET, "Test Superstore", false);
+        shop.open(helper.getLevel());
+        ShopKeeperEntity keeper = helper.getLevel().getEntitiesOfClass(ShopKeeperEntity.class,
+                new AABB(helper.absolutePos(new BlockPos(2, 1, 2))).inflate(3)).get(0);
+        net.minecraft.world.phys.Vec3 home = keeper.position();
+        helper.setBlock(new BlockPos(0, 1, 0), HomeBlocks.BLOCKS.get(HomeFurnitureType.SELF_CHECKOUT).get().defaultBlockState());
+        com.ptmuk.shop.SelfCheckoutBlockEntity machine = (com.ptmuk.shop.SelfCheckoutBlockEntity) helper.getBlockEntity(new BlockPos(0, 1, 0));
+        ServerPlayer p = player(helper);
+        p.getInventory().clearContent();
+        p.getInventory().add(ProductItem.priced(new ItemStack(ShopRegistry.item(Product.ENERGY_DRINK)), 180, helper.absolutePos(new BlockPos(0, 1, 0))));
+        helper.assertTrue(machine.scan(p, p.getInventory().items.stream().filter(ProductItem::unpaid).findFirst().orElseThrow()), "the energy drink should scan");
+        helper.assertTrue(!machine.assist().isEmpty(), "an energy drink waits for an age check");
+        double[] furthest = {0};
+        helper.succeedWhen(() -> {
+            furthest[0] = Math.max(furthest[0], keeper.position().distanceTo(home));
+            helper.assertTrue(machine.assist().isEmpty(), "waiting for the colleague (at " + keeper.position() + ")");
+            helper.assertTrue(furthest[0] > 0.5, "they should have walked over, not approved it from the till");
+            helper.assertTrue(keeper.position().distanceTo(home) < 0.01, "back at the till");
+        });
+    }
+
     @GameTest(template = "empty5x4x5", timeoutTicks = 300)
     public static void orderingAtAChippy(GameTestHelper helper) {
         ShopBlockEntity shop = till(helper);

@@ -69,7 +69,7 @@ public class ShopBlockEntity extends BlockEntity {
             "Sean", "Hassan", "Callum", "Pete", "Wes", "Arjun", "Rhys", "Tony"};
 
     private ShopKind kind;
-    private boolean chosen;
+    private boolean chosen, helps = true;
     private String shopName = "", keeperName = "";
     private int skin = -1;
     private UUID keeper;
@@ -231,6 +231,21 @@ public class ShopBlockEntity extends BlockEntity {
             }
         }
         return best;
+    }
+
+    /** Its shopkeeper, to walk over to a self-checkout that needs approving (if this shop's set to). */
+    public ShopKeeperEntity helper() {
+        return helps && keeper != null && level instanceof ServerLevel s && s.getEntity(keeper) instanceof ShopKeeperEntity k && k.isAlive() ? k : null;
+    }
+
+    public boolean helps() {
+        return helps;
+    }
+
+    /** Whether its shopkeeper walks over to approve things at the self-checkouts. */
+    public void setHelps(boolean on) {
+        helps = on;
+        setChanged();
     }
 
     /** Someone at the till: the one there already, or a new one where they'd stand (behind it, else in front). */
@@ -644,6 +659,7 @@ public class ShopBlockEntity extends BlockEntity {
         tag.putBoolean("chosen", chosen);
         tag.putString("shop", shopName);
         tag.putString("keeperName", keeperName);
+        tag.putBoolean("helps", helps);
         tag.putInt("skin", skin);
         if (keeper != null) {
             tag.putUUID("keeper", keeper);
@@ -680,6 +696,7 @@ public class ShopBlockEntity extends BlockEntity {
         chosen = tag.getBoolean("chosen");
         shopName = tag.getString("shop");
         keeperName = tag.getString("keeperName");
+        helps = !tag.contains("helps") || tag.getBoolean("helps");
         skin = tag.contains("skin") ? tag.getInt("skin") : -1;
         keeper = tag.hasUUID("keeper") ? tag.getUUID("keeper") : null;
         seed = tag.getLong("seed");
@@ -708,6 +725,7 @@ public class ShopBlockEntity extends BlockEntity {
         tag.putBoolean("chosen", chosen);
         tag.putString("shop", shopName);
         tag.putString("keeperName", keeperName);
+        tag.putBoolean("helps", helps);
         tag.putLong("seed", seed);                          // (so a self-checkout's screen shows this shop's prices)
         return tag;
     }

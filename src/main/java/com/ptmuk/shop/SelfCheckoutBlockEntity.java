@@ -335,8 +335,23 @@ public class SelfCheckoutBlockEntity extends BlockEntity {
 
     private void hold(String why) {
         assist = why;
-        assistTicks = 60;
+        ShopBlockEntity t = till();
+        ShopKeeperEntity k = t == null ? null : t.helper();
+        // a colleague walks over (given time to get here), or with none free it's approved from the desk
+        assistTicks = k != null && k.help(worldPosition) ? 20 * 30 : 60;
         sound(SoundEvents.NOTE_BLOCK_BASS.value(), 1.0f);
+    }
+
+    /** A colleague has come over and approved it. */
+    public void approved(ShopKeeperEntity who) {
+        if (assist.isEmpty()) {
+            return;
+        }
+        assistTicks = 1;
+        Player p = customer == null ? null : level.getPlayerByUUID(customer);
+        if (p != null) {
+            p.displayClientMessage(Component.literal(who.getName().getString() + ": That's all fine, carry on").withStyle(ChatFormatting.AQUA), true);
+        }
     }
 
     private void sound(SoundEvent s, float pitch) {

@@ -17,17 +17,24 @@ import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Someone who works in a shop: stands at their till (never wanders, can't be hurt), looks at
  * whoever's near, and wears their shop's uniform. Talk to them (click) to hand over what you're
- * buying, order, or pay; it's the till that knows the shop.
+ * buying, order, or pay; it's the till that knows the shop. Called over to a self-checkout that
+ * needs approving, they walk to it, approve it and walk back to their place.
  */
 public class ShopKeeperEntity extends PathfinderMob {
     /** Which face and uniform (see the renderer's skins): outfit * 3 + person. */
     private static final EntityDataAccessor<Integer> SKIN = SynchedEntityData.defineId(ShopKeeperEntity.class, EntityDataSerializers.INT);
     public static final int PEOPLE = 3, OUTFITS = 8;
-    private BlockPos till = BlockPos.ZERO;
+    private static final double SPEED = 0.25;
+    private BlockPos till = BlockPos.ZERO, helping;
+    /** Their place at the till while they're away from it. */
+    private Vec3 home;
+    private float homeYaw;
+    private int helpTicks;
 
     public ShopKeeperEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -36,7 +43,7 @@ public class ShopKeeperEntity extends PathfinderMob {
     }
 
     public static AttributeSupplier.Builder attributes() {
-        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 20).add(Attributes.MOVEMENT_SPEED, 0);
+        return Mob.createMobAttributes().add(Attributes.MAX_HEALTH, 20).add(Attributes.MOVEMENT_SPEED, SPEED);
     }
 
     @Override
@@ -70,6 +77,23 @@ public class ShopKeeperEntity extends PathfinderMob {
         return (skin / PEOPLE + skin % PEOPLE) % 2 == 0;
     }
 
+    /** Called over to a self-checkout: false if they're already helping or can't get there. */
+    public boolean help(BlockPos machine) {
+        if (helping != null) {
+            return false;
+        }
+        if (home == null) {
+            home = position();
+            homeYaw = getYRot();
+        }
+        if (!getNavigation().moveTo(machine.getX() + 0.5, machine.getY(), machine.getZ() + 0.5, 1.0)) {
+            return false;
+        }
+        helping = machine;
+        helpTicks = 0;
+        return true;
+    }
+
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
         if (hand != InteractionHand.MAIN_HAND) {
@@ -86,6 +110,27 @@ public class ShopKeeperEntity extends PathfinderMob {
         super.tick();
         if (!level().isClientSide && tickCount % 100 == 0 && !(level().getBlockEntity(till) instanceof ShopBlockEntity)) {
             discard();                                      // their till's gone
+        }
+        if (level().isClientSide) {
+            return;
+        }
+        if (helping != null) {
+            Vec3 at = Vec3.atCenterOf(helping);
+            helpTicks++;
+            // there, or as near as they can get, or stuck: it's approved
+            if (distanceToSqr(at) < 4 || getNavigation().isDone() && helpTicks > 10 || helpTicks > 20 * 20) {
+                getLookControl().setLookAt(at);
+                swing(InteractionHand.MAIN_HAND);
+                if (level().getBlockEntity(helping) instanceof SelfCheckoutBlockEntity m) {
+                    m.approved(this);
+                }
+                helping = null;
+                getNavigation().moveTo(home.x, home.y, home.z, 1.0);
+            }
+        } else if (home != null && getNavigation().isDone()) {
+            moveTo(home.x, home.y, home.z, homeYaw, 0);     // back in their place, facing the way they were
+            setYHeadRot(homeYaw);
+            home = null;
         }
     }
 
@@ -109,6 +154,12 @@ public class ShopKeeperEntity extends PathfinderMob {
         super.addAdditionalSaveData(tag);
         tag.putLong("till", till.asLong());
         tag.putInt("skin", skin());
+        if (home != null) {
+            tag.putDouble("homeX", home.x);
+            tag.putDouble("homeY", home.y);
+            tag.putDouble("homeZ", home.z);
+            tag.putFloat("homeYaw", homeYaw);
+        }
     }
 
     @Override
@@ -116,5 +167,10 @@ public class ShopKeeperEntity extends PathfinderMob {
         super.readAdditionalSaveData(tag);
         till = BlockPos.of(tag.getLong("till"));
         entityData.set(SKIN, tag.getInt("skin"));
+        if (tag.contains("homeX")) {
+            home = new Vec3(tag.getDouble("homeX"), tag.getDouble("homeY"), tag.getDouble("homeZ"));
+            homeYaw = tag.getFloat("homeYaw");
+        }
+        getAttribute(Attributes.MOVEMENT_SPEED).setBaseValue(SPEED);   // ones saved before they could walk
     }
 }

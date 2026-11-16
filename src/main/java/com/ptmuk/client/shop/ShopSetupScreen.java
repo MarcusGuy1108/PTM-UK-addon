@@ -12,22 +12,28 @@ import net.minecraft.network.chat.Component;
 
 /**
  * Setting up a shop of your own at its till: what kind of shop it is (or Work it out, from its
- * fittings and sign), its name, and a new shopkeeper if you'd like someone else.
+ * fittings and sign), its name, a new shopkeeper if you'd like someone else, and whether they
+ * walk over to approve things at the self-checkouts.
  */
 public class ShopSetupScreen extends Screen {
     private final ShopBlockEntity shop;
     private int kind;                                       // 0: work it out, else ShopKind ordinal + 1
-    private boolean newPerson;
+    private boolean newPerson, helps;
     private EditBox name;
 
     public ShopSetupScreen(ShopBlockEntity shop) {
         super(Component.literal("Set up this shop"));
         this.shop = shop;
         this.kind = shop.chosen() ? shop.kind().ordinal() + 1 : 0;
+        this.helps = shop.helps();
     }
 
     private String kindLabel() {
         return "Kind: " + (kind == 0 ? "Work it out (now " + shop.kind().title + ")" : ShopKind.values()[kind - 1].title);
+    }
+
+    private String helpsLabel() {
+        return "Helps at self-checkouts: " + (helps ? "yes" : "no");
     }
 
     @Override
@@ -45,12 +51,16 @@ public class ShopSetupScreen extends Screen {
             newPerson = !newPerson;
             b.setMessage(Component.literal("New shopkeeper: " + (newPerson ? "yes" : "no")));
         }).bounds(x, y + 62, 220, 20).build());
+        addRenderableWidget(Button.builder(Component.literal(helpsLabel()), b -> {
+            helps = !helps;
+            b.setMessage(Component.literal(helpsLabel()));
+        }).bounds(x, y + 86, 220, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Done"), b -> {
             PtmUkNetwork.CHANNEL.sendToServer(new ShopSetupMessage(shop.getBlockPos(), kind == 0 ? "" : ShopKind.values()[kind - 1].name(),
-                    name.getValue(), newPerson));
+                    name.getValue(), newPerson, helps));
             onClose();
-        }).bounds(x, y + 92, 106, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Cancel"), b -> onClose()).bounds(x + 114, y + 92, 106, 20).build());
+        }).bounds(x, y + 116, 106, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Cancel"), b -> onClose()).bounds(x + 114, y + 116, 106, 20).build());
     }
 
     @Override
@@ -58,7 +68,7 @@ public class ShopSetupScreen extends Screen {
         renderBackground(g);
         g.drawCenteredString(font, "Set up this shop", width / 2, height / 2 - 72, 0xFFFFFF);
         g.drawString(font, "Name (blank: from its sign)", width / 2 - 110, height / 2 - 24, 0xA0A0A0, false);
-        g.drawCenteredString(font, "Shopkeeper: " + shop.keeperName(), width / 2, height / 2 + 68, 0xA0A0A0);
+        g.drawCenteredString(font, "Shopkeeper: " + shop.keeperName(), width / 2, height / 2 + 92, 0xA0A0A0);
         super.render(g, mx, my, pt);
     }
 }
