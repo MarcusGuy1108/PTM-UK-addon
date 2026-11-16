@@ -77,7 +77,7 @@ public class ShopKeeperEntity extends PathfinderMob {
         return (skin / PEOPLE + skin % PEOPLE) % 2 == 0;
     }
 
-    /** Called over to a self-checkout: false if they're already helping or can't get there. */
+    /** Called over to a self-checkout: false if they're already helping someone. */
     public boolean help(BlockPos machine) {
         if (helping != null) {
             return false;
@@ -85,9 +85,6 @@ public class ShopKeeperEntity extends PathfinderMob {
         if (home == null) {
             home = position();
             homeYaw = getYRot();
-        }
-        if (!getNavigation().moveTo(machine.getX() + 0.5, machine.getY(), machine.getZ() + 0.5, 1.0)) {
-            return false;
         }
         helping = machine;
         helpTicks = 0;
@@ -117,8 +114,11 @@ public class ShopKeeperEntity extends PathfinderMob {
         if (helping != null) {
             Vec3 at = Vec3.atCenterOf(helping);
             helpTicks++;
-            // there, or as near as they can get, or stuck: it's approved
-            if (distanceToSqr(at) < 4 || getNavigation().isDone() && helpTicks > 10 || helpTicks > 20 * 20) {
+            boolean stopped = getNavigation().isDone();
+            if (stopped && helpTicks % 10 == 1 && distanceToSqr(at) >= 4) {
+                getNavigation().moveTo(at.x, helping.getY(), at.z, 1.0);   // (tries again if there was no way yet)
+            } else if (distanceToSqr(at) < 4 || stopped && helpTicks > 40 || helpTicks > 20 * 15) {
+                // there, or as near as they can get, or stuck: it's approved
                 getLookControl().setLookAt(at);
                 swing(InteractionHand.MAIN_HAND);
                 if (level().getBlockEntity(helping) instanceof SelfCheckoutBlockEntity m) {
